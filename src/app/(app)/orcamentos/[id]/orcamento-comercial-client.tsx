@@ -79,7 +79,7 @@ export function OrcamentoComercial({ orcamento }: { orcamento: any }) {
               <Label>Forma de Pagamento</Label>
               <Select 
                 value={formData.forma_pagamento} 
-                onValueChange={v => setFormData({ ...formData, forma_pagamento: v })}
+                onValueChange={v => setFormData({ ...formData, forma_pagamento: v || "" })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />

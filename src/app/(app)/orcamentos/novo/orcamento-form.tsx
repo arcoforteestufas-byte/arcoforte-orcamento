@@ -205,7 +205,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
               <Label>Selecione o Cliente</Label>
               <div className="flex gap-2 items-center">
                 <div className="flex-1">
-                  <Select value={selectedCliente} onValueChange={setSelectedCliente}>
+                  <Select value={selectedCliente} onValueChange={(v) => setSelectedCliente(v || "")}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione o cliente...">
                         {selectedCliente ? localClientes.find(c => c.id === selectedCliente)?.nome : undefined}
