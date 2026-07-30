@@ -407,7 +407,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                   onClick={async () => {
                     const cliente = localClientes.find(c => c.id === selectedCliente)
                     const { gerarPDFOrcamento } = await import('@/utils/pdf-generator')
-                    gerarPDFOrcamento(resultado, cliente?.nome || '', false)
+                    gerarPDFOrcamento({ id: 'RASCUNHO', clientes: { nome: cliente?.nome || '' } }, resultado, false)
                   }}
                 >
                   <Download className="h-4 w-4" />
@@ -420,7 +420,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                   onClick={async () => {
                     const cliente = localClientes.find(c => c.id === selectedCliente)
                     const { gerarPDFOrcamento } = await import('@/utils/pdf-generator')
-                    gerarPDFOrcamento(resultado, cliente?.nome || '', true)
+                    gerarPDFOrcamento({ id: 'RASCUNHO', clientes: { nome: cliente?.nome || '' } }, resultado, true)
                   }}
                 >
                   <Download className="h-4 w-4" />

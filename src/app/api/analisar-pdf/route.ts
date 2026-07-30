@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PDFParse } from "pdf-parse";
+const PDFParse = require("pdf-parse");
 import Anthropic from "@anthropic-ai/sdk";
 
 export async function POST(req: NextRequest) {

@@ -62,12 +62,12 @@ export function calcularOrcamento(
   const parser = new Parser()
   
   // Funções estilo Excel
-  parser.functions.IF = function(cond, a, b) { return cond ? a : b; }
-  parser.functions.AND = function(...args) { return args.every(Boolean); }
-  parser.functions.OR = function(...args) { return args.some(Boolean); }
-  parser.functions.SUM = function(...args) { return args.reduce((acc, v) => acc + (Number(v) || 0), 0); }
-  parser.functions.ROUNDUP = function(val, digits=0) { return Math.ceil(val); }
-  parser.functions.FLOOR = function(val, factor) { return Math.floor(val); }
+  parser.functions.IF = function(cond: any, a: any, b: any) { return cond ? a : b; }
+  parser.functions.AND = function(...args: any[]) { return args.every(Boolean); }
+  parser.functions.OR = function(...args: any[]) { return args.some(Boolean); }
+  parser.functions.SUM = function(...args: any[]) { return args.reduce((acc, v) => acc + (Number(v) || 0), 0); }
+  parser.functions.ROUNDUP = function(val: any, digits: any=0) { return Math.ceil(val); }
+  parser.functions.FLOOR = function(val: any, factor: any) { return Math.floor(val); }
   const itens: ItemOrcamento[] = []
 
   // Prepara o dicionário de produtos para acesso rápido O(1)
@@ -92,7 +92,7 @@ export function calcularOrcamento(
       let aplicavel = true
       if (regra.condicao_aplicabilidade && regra.condicao_aplicabilidade.trim() !== '' && regra.condicao_aplicabilidade !== 'PENDENTE') {
         const expr = parser.parse(regra.condicao_aplicabilidade)
-        aplicavel = Boolean(expr.evaluate(safeParametros))
+        aplicavel = Boolean(expr.evaluate(safeParametros as any))
       }
 
       if (!aplicavel) continue
@@ -101,7 +101,7 @@ export function calcularOrcamento(
       if (regra.formula_quantidade === 'PENDENTE') continue
       
       const qtyExpr = parser.parse(regra.formula_quantidade)
-      const quantidadeBruta = Number(qtyExpr.evaluate(safeParametros)) || 0
+      const quantidadeBruta = Number(qtyExpr.evaluate(safeParametros as any)) || 0
       
       // Se a quantidade calculada for 0 ou negativa, ignoramos o item
       if (quantidadeBruta <= 0) continue
