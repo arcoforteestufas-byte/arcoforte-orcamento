@@ -55,6 +55,8 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
     unidade: item.unidade,
     preco_unitario: Number(item.preco_unitario),
     valor_total: Number(item.valor_total),
+    peso_bruto_total: 0,
+    peso_liquido_total: 0,
     isManualChange: item.origem === 'manual',
     manualOriginalProduto: item.descricao_customizada?.replace('Substituiu: ', '') || ''
   }))

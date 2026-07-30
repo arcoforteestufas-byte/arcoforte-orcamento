@@ -96,15 +96,15 @@ export function AnalisadorClient({ regras, produtos, posicoes }: AnalisadorClien
 
   const gerarComparacao = () => {
     // Roda o motor matemático
-    const resultado = calcularOrcamento(regras, parametros, produtos)
-    setGabarito(resultado.itens)
+    const resultado = calcularOrcamento(parametros, regras, produtos)
+    setGabarito(resultado)
   }
 
   // Gera o Diff Table
   const comparar = () => {
     if (!analiseFeita || gabarito.length === 0) return []
 
-    const comparacao = []
+    const comparacao: any[] = []
     
     // 1. Percorrer o gabarito
     gabarito.forEach(itemGabarito => {

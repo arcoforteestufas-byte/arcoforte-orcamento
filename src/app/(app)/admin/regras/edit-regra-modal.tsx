@@ -124,7 +124,7 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
               <Label>Produto</Label>
               <Select 
                 value={watch("produto_codigo")} 
-                onValueChange={(v) => setValue("produto_codigo", v)}
+                onValueChange={(v) => setValue("produto_codigo", v || "")}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um produto...">
@@ -147,7 +147,7 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
               <Label>Posição na Estrutura</Label>
               <Select 
                 value={watch("posicao_id")} 
-                onValueChange={(v) => setValue("posicao_id", v)}
+                onValueChange={(v) => setValue("posicao_id", v || "")}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a posição...">
@@ -189,7 +189,7 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
               </div>
               <div className="space-y-2">
                 <Label>Arredondamento</Label>
-                <Select value={watch("regra_arredondamento")} onValueChange={v => setValue("regra_arredondamento", v)}>
+                <Select value={watch("regra_arredondamento")} onValueChange={v => setValue("regra_arredondamento", v || "")}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="cima">Para Cima</SelectItem>
