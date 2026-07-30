@@ -6,7 +6,13 @@ import { login } from "./actions"
 import Link from "next/link"
 import { ClearCacheButton } from "@/components/clear-cache-button"
 
-export default function LoginPage() {
+type Props = {
+  searchParams: Promise<{ message?: string }>
+}
+
+export default async function LoginPage({ searchParams }: Props) {
+  const { message } = await searchParams;
+
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
       
@@ -42,6 +48,12 @@ export default function LoginPage() {
               </p>
             </div>
           </div>
+
+          {message && (
+            <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 font-medium text-center shadow-sm">
+              🚨 {message}
+            </div>
+          )}
 
           <form action={login} className="grid gap-6">
             <div className="grid gap-2">

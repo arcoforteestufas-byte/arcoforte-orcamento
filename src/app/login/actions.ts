@@ -37,7 +37,7 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    return redirect('/login?message=Não foi possível autenticar o usuário')
+    return redirect(`/login?message=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath('/', 'layout')
