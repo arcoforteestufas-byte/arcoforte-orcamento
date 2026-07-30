@@ -1,0 +1,26 @@
+## Parâmetros Encontrados:
+- Linha 2: **TABELA PREÇO** (Sem valor K)
+- Linha 4: **DESCONTO** (Sem valor K)
+- Linha 6: **CONDIÇÕES** (Sem valor K)
+- Linha 7: **TIPO DE ARCO** -> LEVE
+- Linha 8: **TIPO DE POSTE** -> 100X50 GALVANIZADO
+- Linha 9: **TEM CALHA LATERAL?** -> LATERAL DUPLA
+- Linha 10: **POSTE FRONTAIS E DE CANTO BAIXOS  (FRENTE FUNDO) DUPLO?** -> NÃO
+- Linha 11: **POSTES FRONTAIS TOPO DUPLOS** -> NÃO
+- Linha 12: **FIXAÇÃO INFERIOR DA TELA ** -> MURETA C/ PERFIL
+- Linha 13: **QUANTIDADE DE DIVISAS NA ESTUFA? (POR MODULO)** -> 0
+- Linha 14: **OS POTES DA DIVISA SÃO DUPLOS?** -> NÃO
+- Linha 15: **TEM TELA LATERAL** -> SIM
+- Linha 16: **TIPO DE COBERTURA** -> FILME
+- Linha 17: **QUANTAS PORTAS?** -> 1
+- Linha 18: **QUAL PORTA ** -> CORRER 1,20 X 2,00
+- Linha 19: **CABO DE AÇO ** -> COMPLETO
+- Linha 20: **QUANTOS X DE CABO DE AÇO ENTRE OS POSTES POR LINHA DE POSTE?** -> 0
+- Linha 24: **TELAS** (Sem valor K)
+- Linha 25: **TUDO ** (Sem valor K)
+- Linha 26: **LATERAIS ** (Sem valor K)
+- Linha 27: **FRENTE ** (Sem valor K)
+- Linha 28: **FUNDO** (Sem valor K)
+- Linha 29: **MEI LUA** (Sem valor K)
+- Linha 30: **COBERTURA** (Sem valor K)
+- Linha 33: **FILME** (Sem valor K)

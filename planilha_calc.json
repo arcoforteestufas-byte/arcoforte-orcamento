@@ -1,0 +1,1062 @@
+[
+  [],
+  [
+    "CALCULO DE ARCOS",
+    null,
+    null,
+    null,
+    "ENCAIXE CENTRAL"
+  ],
+  [
+    "LOCAL",
+    "TAMANHO",
+    "QUANTIDADE",
+    null,
+    "QUANTIDADE",
+    12
+  ],
+  [
+    "ARCO INTERNO",
+    7,
+    12
+  ],
+  [
+    "ARCO FRONTAL",
+    7,
+    4
+  ],
+  [
+    "ARCO DE DIVISA ",
+    7,
+    0,
+    null,
+    "CALCULO DE DORÇAL"
+  ],
+  [
+    null,
+    "INTERNO: 12",
+    "FRONTAL: 4",
+    null,
+    "QUANTIDA",
+    42
+  ],
+  [
+    "TOTAL DE ARCOS",
+    16,
+    null,
+    null,
+    null,
+    7
+  ],
+  [],
+  [
+    "CALCULO DE POSTES",
+    null,
+    null,
+    null,
+    "EMENDA DE TUBO DORSAL"
+  ],
+  [
+    "LOCAL",
+    "TAMANHO ",
+    "QUANTIDADE",
+    null,
+    "QNT BARRA DORSAL",
+    "QNT MODULOS",
+    "QNT DE EMENDA POR MODULO"
+  ],
+  [
+    "POSTES INTERNOS",
+    3.8,
+    18,
+    null,
+    3.5,
+    2,
+    3
+  ],
+  [
+    "POSTES FRONTAIS BAIXOS",
+    3.8,
+    6
+  ],
+  [
+    "POSTES FRONTAIS TOPO",
+    5.5,
+    4,
+    null,
+    "QNT DE EMANDAS",
+    null,
+    6
+  ],
+  [
+    "POSTE DE DIVISA",
+    3.8,
+    0
+  ],
+  [
+    "TOTAL DE ARCOS"
+  ],
+  [],
+  [],
+  [],
+  [
+    "CONTRA VENTO",
+    null,
+    null,
+    null,
+    "KIT EMENDA 30CM"
+  ],
+  [
+    "LOCAL",
+    "QUANTIDADE",
+    "TAMANHO",
+    null,
+    "LOCAL",
+    "QNT DE BARRAS",
+    "QNT EMENDAS"
+  ],
+  [
+    "CABEÇA DA ESTUFA",
+    8,
+    "3,8",
+    null,
+    "LATERAIS SUPERIORES",
+    0,
+    0
+  ],
+  [
+    null,
+    null,
+    null,
+    null,
+    "FRENTE E FUNDO SUPERIOR",
+    2,
+    2
+  ],
+  [
+    null,
+    null,
+    null,
+    null,
+    "LATERAIS INFERIORES ",
+    3.5,
+    6
+  ],
+  [
+    "TOTAL",
+    "QUANTIDADE: 8",
+    "TAMANHOS: 3,8",
+    null,
+    "FRONTAIS INFERIORES ",
+    0,
+    0
+  ],
+  [
+    null,
+    null,
+    null,
+    null,
+    "TOTAL",
+    null,
+    8
+  ],
+  [],
+  [
+    "MOLA",
+    null,
+    null,
+    null,
+    "PERFIL DE ALUMINEO DUPLO"
+  ],
+  [
+    "LOCAL",
+    "QNT",
+    "UNIDADE ",
+    null,
+    "LOCAL",
+    "QNT",
+    "UNIDADE DE MEDIDA"
+  ],
+  [
+    "LATERAIS SUPERIORES ",
+    84,
+    "MT",
+    null,
+    "QUANTIDADE PADRÃO",
+    "12",
+    "METROS"
+  ],
+  [
+    "FRONTAIS SUPERIORES ",
+    56,
+    "MT",
+    null,
+    "TRANFORMAÇÃO DE METOS P/ BARRAS",
+    2,
+    "BARRAS"
+  ],
+  [
+    "CALHAS CENTRO",
+    42,
+    "MT",
+    null,
+    "SE MAIOR QUE 51M LATERAL",
+    0,
+    "BARRAS "
+  ],
+  [
+    "ARCOS FRONTAIS",
+    61.6,
+    "MT",
+    null,
+    "SE MAIOR QUE 51M FRONTAL",
+    0,
+    "BARRAS "
+  ],
+  [
+    "LATERAIS INFERIORES",
+    42,
+    "MT"
+  ],
+  [
+    "FRONTAIS INFERIORES ",
+    28,
+    "MT",
+    null,
+    "TOTAL DE SOMA DE BARRAS ",
+    2,
+    "BARRAS"
+  ],
+  [
+    "POSTES DOS CANTOS",
+    24,
+    "MT",
+    null,
+    "QTND DE BARRAS ",
+    2,
+    "BARRAS 6 METOS "
+  ],
+  [
+    "PORTAS",
+    25,
+    "MT"
+  ],
+  [
+    "POSTE DO ARCO DE DIVISA (SE TIVER)",
+    0,
+    "MT"
+  ],
+  [
+    "ARCO DE DIVISA (SE TIVER)",
+    0,
+    "MT"
+  ],
+  [
+    "MARGEM DE ERRO 10% ACIMA",
+    36.26,
+    "MT"
+  ],
+  [
+    398.86,
+    15.9544,
+    16
+  ],
+  [],
+  [
+    null,
+    null,
+    null,
+    null,
+    null,
+    "PERFIL DE ALUMINEO SIMPLES "
+  ],
+  [
+    "LATERAL COM PERFIL",
+    null,
+    null,
+    null,
+    null,
+    "LOCAL",
+    "QNT",
+    "UN MEDIDA"
+  ],
+  [
+    "LOCAL",
+    "TIPO",
+    "METROS",
+    "BARRAS",
+    null,
+    "FRENTE E FUNDO ",
+    28,
+    "METROS "
+  ],
+  [
+    "LATERAL SUPERIOR ",
+    "#REF!",
+    42,
+    7,
+    null,
+    "LATERAIS ",
+    42,
+    "METROS"
+  ],
+  [
+    "FRENTE E FUNDO SUPERIOR ",
+    "#REF!",
+    28,
+    4.666666667,
+    null,
+    "CONVERSÃO DE METROS PARA BARRAS ",
+    11.66666667,
+    "BARRAS"
+  ],
+  [
+    "TOTAL DE LATERAIS SUPERIORES",
+    "DUPLAS",
+    70,
+    11.66666667,
+    null,
+    "TOTAL DE BARRAS",
+    0,
+    "BARRAS"
+  ],
+  [
+    "LATERAIS INFERIOR ",
+    "SIMPLES",
+    42,
+    7
+  ],
+  [
+    "FRENTE E FUNDO INFERIOR",
+    "SIMPLES",
+    28,
+    4.666666667
+  ],
+  [
+    "TOTAL DE LATERAIS INFERIORES",
+    "SIMPLES",
+    70,
+    11.66666667
+  ],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [
+    "SUPORTE DE CALHA SIMPLES",
+    null,
+    null,
+    null,
+    "ESPERA DE ARCO"
+  ],
+  [
+    "LOCAL",
+    "QNT",
+    "TAMANHO",
+    null,
+    "LOCAL",
+    "QNT",
+    "TAMANHO"
+  ],
+  [
+    "LATERAIS",
+    0,
+    null,
+    null,
+    "LATERAIS",
+    16
+  ],
+  [],
+  [
+    "TOTAL",
+    0,
+    null,
+    null,
+    "TOTAL",
+    16
+  ],
+  [],
+  [
+    "CALHA ALUMINEO",
+    null,
+    null,
+    null,
+    "SUPORTE CALHA DUPLA"
+  ],
+  [
+    "LOCAL",
+    "TAMANHO",
+    "METROS",
+    null,
+    "LOCAL",
+    "QNT",
+    "TAMANHO"
+  ],
+  [
+    "LATERAIS ",
+    2,
+    0,
+    null,
+    "POSTES DO CENTRO ",
+    6
+  ],
+  [
+    "MEIO",
+    1,
+    21
+  ],
+  [
+    "TOTAL",
+    null,
+    21,
+    null,
+    "TOTAL",
+    6
+  ],
+  [
+    "TOTAL DE BARRAS 6M",
+    null,
+    3.5
+  ],
+  [],
+  [
+    "SUPORTE SAIDA DE CALHA",
+    null,
+    null,
+    null,
+    " SUPORTE ENTRADA DE CALHA"
+  ],
+  [
+    "LOCAL",
+    null,
+    null,
+    null,
+    "LOCAL",
+    "TIPO"
+  ],
+  [
+    "ESQUERDA ",
+    1,
+    null,
+    null,
+    "DIREITA",
+    1
+  ],
+  [
+    "FIREITA",
+    1,
+    null,
+    null,
+    "ESQUERDA",
+    1
+  ],
+  [
+    "DUPLA",
+    1,
+    null,
+    null,
+    "DUPLA",
+    1
+  ],
+  [],
+  [],
+  [
+    "SAIDA CENTRAL",
+    null,
+    null,
+    null,
+    "PU SELANTE"
+  ],
+  [
+    "LOCAL",
+    "TIPO",
+    null,
+    null,
+    "QUANTIDADE ",
+    "QUANTIDADE CERTA"
+  ],
+  [
+    "QUANIDADE DE SAIDAS",
+    0,
+    null,
+    null,
+    5.25,
+    6
+  ],
+  [
+    "TOTAL",
+    0
+  ],
+  [],
+  [
+    null,
+    null,
+    null,
+    null,
+    "TOTAL",
+    6
+  ],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [
+    "KIT PARAFUSO INST 1``",
+    null,
+    null,
+    null,
+    "BARRA ROSCADA"
+  ],
+  [
+    "LOCAL",
+    "QNT",
+    "QNT DE PARAFUSOS",
+    null,
+    "LOCAL",
+    "QNT",
+    "TAMANHO"
+  ],
+  [
+    "ARCO FRONTAL ",
+    0,
+    null,
+    null,
+    "POSTE INTERNOS  EUCALIPTO",
+    0
+  ],
+  [
+    "ARCO INTERNO",
+    0,
+    null,
+    null,
+    "POSTE FRONTAIS  EUCALIPTO OU DUPLO (CANTO)",
+    0
+  ],
+  [
+    "POSTES LINHA LATERAL",
+    0,
+    null,
+    null,
+    "POSTES FRONTAIS BAIXOS",
+    0
+  ],
+  [
+    "POSTES LINHA CENTRAL",
+    44,
+    null,
+    null,
+    "POSTES FRONTAIS TOPO",
+    false
+  ],
+  [
+    "POSTES CONTO",
+    8,
+    null,
+    null,
+    "CONTRAVENTO",
+    0
+  ],
+  [
+    "POSTES FRONTAIS BAIXOS",
+    8,
+    null,
+    null,
+    "ARCOS DUPLOS OU LANTERNING",
+    false
+  ],
+  [
+    "POSTES FRONTAIS TOPO",
+    12,
+    null,
+    null,
+    "LATERAL INFERIOR",
+    0
+  ],
+  [
+    "CALHAS LATERIAS POSTES INTERNOS ",
+    0,
+    null,
+    null,
+    "FRONTAL INFERIOR",
+    false
+  ],
+  [
+    "CALHAS MEIO POSTES INTERNOS ",
+    48
+  ],
+  [
+    "ENTRADA E SAIDA DE CALHA LATERAL",
+    0,
+    null,
+    null,
+    "TOTAL",
+    0
+  ],
+  [
+    "ENTRADA E SAIDA DE CALHA MEIO",
+    8,
+    null,
+    null,
+    "TOTAL",
+    0,
+    "BARRAS"
+  ],
+  [
+    "CONTRAVENTO ",
+    0,
+    null,
+    null,
+    null,
+    0,
+    "UNIDADE"
+  ],
+  [
+    "ARCO DE DIVISA",
+    false
+  ],
+  [
+    "10% A MAIS",
+    12.8
+  ],
+  [
+    "TOTAL DE PARAFUSOS",
+    "KITS",
+    "TOTAL DE KITS"
+  ],
+  [
+    140.8,
+    5.632,
+    6,
+    null,
+    "KIT PARAFUSO\nBROCANTE FORRO"
+  ],
+  [
+    null,
+    null,
+    null,
+    null,
+    "LOCAL",
+    "QNT",
+    "TAMANHO"
+  ],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [
+    "KIT PARAFUSO INST\r\n3"
+  ],
+  [
+    "LOCAL",
+    "QNT",
+    "TAMANHO"
+  ],
+  [
+    "ARCO FRONTAL ",
+    24
+  ],
+  [
+    "ARCO INTERNO",
+    48
+  ],
+  [
+    "EMENDA DA DORSAL",
+    12
+  ],
+  [
+    "LATERAL SUPERIOR",
+    0
+  ],
+  [
+    "FRONTAL  SUPERIOR (POSTE AÇO)",
+    0
+  ],
+  [
+    "LATERAL INFERIOR (POSTE AÇO)",
+    0
+  ],
+  [
+    "FRONTAL INFERIOR (POSTEAÇO)",
+    0
+  ],
+  [
+    null,
+    null,
+    "KIT"
+  ],
+  [
+    "TOTAL ",
+    84,
+    4
+  ],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [
+    "CLIPS/GRAMPO CABO DE AÇO",
+    null,
+    null,
+    null,
+    "CHUMBADOR"
+  ],
+  [
+    "LOCAL",
+    "QNT",
+    "TAMANHO",
+    null,
+    "LOCAL",
+    "QNT",
+    "TAMANHO"
+  ],
+  [
+    "INTERNO",
+    48,
+    null,
+    null,
+    "EXT LATERAL",
+    12
+  ],
+  [
+    "EXT LATERAL",
+    48,
+    null,
+    null,
+    "EXT FRONTAL BAIXO",
+    2
+  ],
+  [
+    "EXT FRONTAL BAIXO",
+    8,
+    null,
+    null,
+    "EXT CANTO",
+    8
+  ],
+  [
+    "EXT CANTO ",
+    32,
+    null,
+    null,
+    "EXT FRONTAL TOPO",
+    4
+  ],
+  [
+    "EXT FRONTAL TOPO",
+    16,
+    null,
+    null,
+    "TOTAL",
+    26
+  ],
+  [
+    "X ENTRE OS POSTES",
+    0
+  ],
+  [
+    "TOTAL",
+    152
+  ],
+  [],
+  [],
+  [],
+  [],
+  [
+    "ESTICADOR DE CABO DE AÇO",
+    null,
+    null,
+    null,
+    "CABO DE AÇO"
+  ],
+  [
+    "LOCAL",
+    "QNT",
+    "TAMANHO",
+    null,
+    "LOCAL DO CABO",
+    "QNT DE VESES",
+    "METROS",
+    "TOTAL DE METROS"
+  ],
+  [
+    "INTERNO",
+    12,
+    null,
+    null,
+    "INTERNO",
+    12,
+    96
+  ],
+  [
+    "EXT LATERAL",
+    12,
+    null,
+    null,
+    "EXT LATERAL",
+    12,
+    60
+  ],
+  [
+    "EXT FRONTAL BAIXO",
+    2,
+    null,
+    null,
+    "EXT FRONTAL BAIXO",
+    2,
+    10
+  ],
+  [
+    "EXT CANTO ",
+    8,
+    null,
+    null,
+    "EXT CANTO ",
+    8,
+    40
+  ],
+  [
+    "EXT FRONTAL TOPO",
+    4,
+    null,
+    null,
+    "EXT FRONTAL TOPO",
+    4,
+    32
+  ],
+  [
+    "X ENTRE OS POSTES",
+    0,
+    null,
+    null,
+    "X ENTRE OS POSTES",
+    0,
+    0
+  ],
+  [],
+  [
+    "TOTAL",
+    38
+  ],
+  [
+    null,
+    null,
+    null,
+    null,
+    null,
+    "TOTAL DE METROS ",
+    238
+  ],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [
+    "SUPORTE P/ CABO DE AÇO",
+    null,
+    null,
+    null,
+    "COBERTURA PLASTICO FILME"
+  ],
+  [
+    "LOCAL",
+    "QNT",
+    null,
+    null,
+    "LOCAL",
+    "QNT"
+  ],
+  [
+    "INTERNO",
+    24,
+    null,
+    null,
+    "COBERTURA",
+    23
+  ],
+  [
+    "EXT LATERAL",
+    24
+  ],
+  [
+    "EXT FRONTAL BAIXO",
+    4
+  ],
+  [
+    "EXT CANTO ",
+    8,
+    null,
+    null,
+    "TOTAL"
+  ],
+  [
+    "EXT FRONTAL TOPO",
+    4
+  ],
+  [
+    "X ENTRE OS POSTES",
+    0
+  ],
+  [
+    null,
+    null,
+    null,
+    null,
+    "TELA"
+  ],
+  [
+    "TOTAL",
+    64,
+    null,
+    null,
+    "LOCAL",
+    "QNT"
+  ],
+  [],
+  [
+    null,
+    null,
+    null,
+    null,
+    "LATERAIS ",
+    44
+  ],
+  [
+    null,
+    null,
+    null,
+    null,
+    "FRENTE",
+    15
+  ],
+  [
+    null,
+    null,
+    null,
+    null,
+    "FUNDO",
+    15
+  ],
+  [
+    null,
+    null,
+    null,
+    null,
+    "MEIA LUA",
+    ""
+  ],
+  [],
+  [],
+  [],
+  [],
+  [
+    null,
+    null,
+    null,
+    null,
+    "TOTAL"
+  ],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [
+    "PARTE",
+    "TELA APLICADA",
+    "ALTURA",
+    "LARGURA TELA",
+    "ÁREA m²",
+    "COSTURAS",
+    "VALOR M²",
+    "CUSTO TELA",
+    "CUSTO COSTURA",
+    "TOTAL"
+  ],
+  [
+    "Laterais",
+    "TELA OPTINET 40 MESH GINEGAR (5 METROS)",
+    3,
+    5,
+    42,
+    0,
+    21.56,
+    905.52,
+    0,
+    905.52
+  ],
+  [
+    "Frente",
+    "TELA OPTINET 40 MESH GINEGAR (5 METROS)",
+    3,
+    5,
+    63,
+    0,
+    21.56,
+    1358.28,
+    0,
+    1358.28
+  ],
+  [
+    "Fundo",
+    "TELA OPTINET 40 MESH GINEGAR (5 METROS)",
+    3,
+    5,
+    63,
+    0,
+    21.56,
+    1358.28,
+    0,
+    1358.28
+  ],
+  [
+    "Meia-lua",
+    "TELA OPTINET 40 MESH GINEGAR (5 METROS)",
+    3
+  ],
+  [
+    "Cobertura"
+  ],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  []
+]

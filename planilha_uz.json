@@ -1,0 +1,366 @@
+[
+  {
+    "row": 6,
+    "codigo": "LISTA DE ITENS DA ESTUFA",
+    "descricao": "",
+    "quantidade": "",
+    "formula_qtd": null
+  },
+  {
+    "row": 7,
+    "codigo": "CODIGO SENSIO",
+    "descricao": "DESCIÇÃO ",
+    "quantidade": "QUANTIDADE",
+    "formula_qtd": null
+  },
+  {
+    "row": 8,
+    "codigo": 3021,
+    "descricao": "POSTE 3,8MTS 100X50 2MM GALV",
+    "quantidade": 18,
+    "formula_qtd": "=IF(OR(K8=\"100X50 GALVANIZADO\", K8=\"75X40 GALVANIZADO\"),CALC!C12,0)"
+  },
+  {
+    "row": 9,
+    "codigo": 3021,
+    "descricao": "FRONTAIS E CANTO POSTE 3,8MTS 100X50 2MM GALV",
+    "quantidade": 6,
+    "formula_qtd": "=IF(OR(K8=\"100X50 GALVANIZADO\", K8=\"75X40 GALVANIZADO\"),CALC!C13,0)"
+  },
+  {
+    "row": 10,
+    "codigo": 3021,
+    "descricao": "DIVISA POSTE 3,8MTS 100X50 2MM GALV",
+    "quantidade": 0,
+    "formula_qtd": "=CALC!C15"
+  },
+  {
+    "row": 11,
+    "codigo": 3120,
+    "descricao": "POSTE CENTRAL 5,50 MTS 100X50 GALV",
+    "quantidade": 0,
+    "formula_qtd": "=IF(K8=\"NÃO\", IF(B4=10, CALC!C14, CALC!C14),0)"
+  },
+  {
+    "row": 12,
+    "codigo": 3005,
+    "descricao": "ARCO CALANDRADO 7 MTS 2`` X 1,25MM GALV",
+    "quantidade": 12,
+    "formula_qtd": "=(CALC!C4)"
+  },
+  {
+    "row": 13,
+    "codigo": 3012,
+    "descricao": "ARCO FRONTAL CALANDRADO 7MTS 2\"X1,25MM GALV",
+    "quantidade": 4,
+    "formula_qtd": "=(CALC!C5)"
+  },
+  {
+    "row": 14,
+    "codigo": "0000",
+    "descricao": "",
+    "quantidade": 0,
+    "formula_qtd": "=CALC!C6"
+  },
+  {
+    "row": 15,
+    "codigo": 3027,
+    "descricao": "ENCAIXE CENTRAL GALV",
+    "quantidade": 12,
+    "formula_qtd": "=(CALC!F3)"
+  },
+  {
+    "row": 16,
+    "codigo": 3017,
+    "descricao": "DORSAL 2`` 1,25MM GALV MTS",
+    "quantidade": 7,
+    "formula_qtd": "=CALC!F8"
+  },
+  {
+    "row": 17,
+    "codigo": 3040,
+    "descricao": "EMENDA TUBO DORSAL / ARCO 20CM 1,55 MM GALV",
+    "quantidade": 6,
+    "formula_qtd": "=(CALC!G14)"
+  },
+  {
+    "row": 18,
+    "codigo": 3031,
+    "descricao": "CONTRA VENTO 3,80MTS",
+    "quantidade": 8,
+    "formula_qtd": "=(CALC!B22)"
+  },
+  {
+    "row": 19,
+    "codigo": 5200,
+    "descricao": "CALHA MAXX ALUMÍNIO 10A X17L 6MTS",
+    "quantidade": 3.5,
+    "formula_qtd": "=CALC!C74"
+  },
+  {
+    "row": 20,
+    "codigo": 3063,
+    "descricao": "KIT EMENDA PAR 0,30 CM C/ PARAFUSO GALV",
+    "quantidade": 8,
+    "formula_qtd": "=CALC!G26"
+  },
+  {
+    "row": 21,
+    "codigo": "0000",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=IF(A4=1, IF(B4=7,2, IF(B4=8,2, IF(B4=10,2))),0)"
+  },
+  {
+    "row": 22,
+    "codigo": "0000",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=IF(AND(K9=\"LATERAL SIMPLES\", A4>1, K12=\"LATERAL SIMPLES\"), CALC!D48+CALC!D51,\n IF(AND(K9=\"LATERAL SIMPLES\", A4=1, K12=\"LATERAL SIMPLES\"), CALC!D46+CALC!D51,\n  IF(AND(A4>1, K12=\"LATERAL SIMPLES\"), CALC!D47+CALC!D51,\n   IF(AND(K9=\"LATERAL SIMPLES\", A4>1), CALC!D48, IF(K12=\"LATERAL SIMPLES\", \n    CALC!D51,0)))))"
+  },
+  {
+    "row": 23,
+    "codigo": 3034,
+    "descricao": "LATERAL 50X30MTS C/ PERFIL DUPLO GALV 1,25MM 6MTS",
+    "quantidade": 11.66666667,
+    "formula_qtd": "=IF(AND(K9=\"LATERAL DUPLA\", A4>1), CALC!D48,\n IF(AND(K9=\"LATERAL DUPLA\", A4=1), CALC!D46,\n  IF(AND(K9<>\"LATERAL DUPLA\", A4>1), CALC!D47,\n   IF(AND(K9<>\"LATERAL DUPLA\", A4=1), 0))))"
+  },
+  {
+    "row": 24,
+    "codigo": 3018,
+    "descricao": "ESPERA DE ARCO GALV",
+    "quantidade": 16,
+    "formula_qtd": "=IF(K9=\"CALHA\",CALC!B67,CALC!F67)"
+  },
+  {
+    "row": 25,
+    "codigo": 3020,
+    "descricao": "SUPORTE CALHA DUPLA CENTRAL GALV",
+    "quantidade": 0,
+    "formula_qtd": "=IF(AND(A4>1, K9=\"CALHA\"), CALC!F71, 0)"
+  },
+  {
+    "row": 26,
+    "codigo": "0000",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=IF(K9=\"CALHA\",CALC!F79,0)"
+  },
+  {
+    "row": 27,
+    "codigo": "0000",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=IF(K9=\"CALHA\",CALC!F78,0)"
+  },
+  {
+    "row": 28,
+    "codigo": "0000",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=IF(AND(K9=\"CALHA\", A4>1), CALC!F80,0)"
+  },
+  {
+    "row": 29,
+    "codigo": "0000",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=IF(K9=\"CALHA\", CALC!B79, 0)"
+  },
+  {
+    "row": 30,
+    "codigo": "0000",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=IF(K9=\"CALHA\", CALC!B78, 0)"
+  },
+  {
+    "row": 31,
+    "codigo": 3095,
+    "descricao": "SUPORTE SAIDA AGUA 150MM DUPLO GALV",
+    "quantidade": 1,
+    "formula_qtd": "=IF(A4>1,CALC!B80,0)"
+  },
+  {
+    "row": 32,
+    "codigo": "0000",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=IF(AND(K9=\"CALHA\", C4>45),  CALC!B86,0)"
+  },
+  {
+    "row": 33,
+    "codigo": 5024,
+    "descricao": "PU SELANTE 40 CZA 400GR",
+    "quantidade": 6,
+    "formula_qtd": "=IF(OR(K9=\"CALHA\", A4>1), CALC!F88, 0)"
+  },
+  {
+    "row": 34,
+    "codigo": 5084,
+    "descricao": "PERFIL DE ALUMÍNIO DUPLO MAXX PC 6 MTS",
+    "quantidade": 2,
+    "formula_qtd": "=CALC!F36"
+  },
+  {
+    "row": 35,
+    "codigo": "0000",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=CALC!G48"
+  },
+  {
+    "row": 36,
+    "codigo": 3049,
+    "descricao": "MOLAS DE FIXAÇÃO 25 MTS",
+    "quantidade": 16,
+    "formula_qtd": "=IF(OR(K16<>\"SEM COBERTURA\", K15=\"SIM\"),CALC!C41, 0)"
+  },
+  {
+    "row": 37,
+    "codigo": 5009,
+    "descricao": "CABO AÇO GALV 3/16 4,8 MM",
+    "quantidade": 238,
+    "formula_qtd": "=IF(OR(K19=\"COMPLETO\", K19=\"APENAS INTERNO \" , K20>0),CALC!G167,0)"
+  },
+  {
+    "row": 38,
+    "codigo": 3077,
+    "descricao": "SUPORTE P/ CABO DE AÇO GALV",
+    "quantidade": 64,
+    "formula_qtd": "=IF(OR(K19=\"COMPLETO\", K19=\"APENAS INTERNO \" , K20>0), CALC!B182, 0)"
+  },
+  {
+    "row": 39,
+    "codigo": 5002,
+    "descricao": "ESTICADOR P/CABO AÇO 3/8-10MM",
+    "quantidade": 38,
+    "formula_qtd": "=IF(OR(K19=\"COMPLETO\", K19=\"APENAS INTERNO \" , K20>0), CALC!B166, 0)"
+  },
+  {
+    "row": 40,
+    "codigo": 5001,
+    "descricao": "CLIP / GRAMPO CABO DE AÇO 3/16-4,8MM",
+    "quantidade": 152,
+    "formula_qtd": "=IF(OR(K19=\"COMPLETO\", K19=\"APENAS INTERNO \" , K20>0), CALC!B152, 0)"
+  },
+  {
+    "row": 41,
+    "codigo": 3058,
+    "descricao": "CHUMBADOR PRA CABO DE AÇO GALV",
+    "quantidade": 26,
+    "formula_qtd": "=IF(K19=\"COMPLETO\", CALC!F150, 0)"
+  },
+  {
+    "row": 42,
+    "codigo": 5107,
+    "descricao": "KIT PARAFUSO INST 3``X5/16 GALV 25 PCS",
+    "quantidade": 4,
+    "formula_qtd": "=IF(C4>0, CALC!C131)"
+  },
+  {
+    "row": 43,
+    "codigo": 5114,
+    "descricao": "KIT PARAFUSO INST 1``X 5/16 GALV 25 PCS",
+    "quantidade": 6,
+    "formula_qtd": "=IF(C4>0, CALC!C114,0)"
+  },
+  {
+    "row": 44,
+    "codigo": "---",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=CALC!F109"
+  },
+  {
+    "row": 45,
+    "codigo": "---",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=CALC!F110"
+  },
+  {
+    "row": 46,
+    "codigo": "---",
+    "descricao": "---",
+    "quantidade": 0,
+    "formula_qtd": "=CALC!F110"
+  },
+  {
+    "row": 47,
+    "codigo": 3039,
+    "descricao": "KIT PORTA DE CORRER 1,2X2,00 MT 1,25MM GALV",
+    "quantidade": 1,
+    "formula_qtd": "=K17"
+  },
+  {
+    "row": 48,
+    "codigo": 5069,
+    "descricao": "TELA OPTINET 40 MESH GINEGAR (5 METROS)",
+    "quantidade": "",
+    "formula_qtd": null
+  },
+  {
+    "row": 49,
+    "codigo": "0000",
+    "descricao": "LATERAIS - ...",
+    "quantidade": "",
+    "formula_qtd": null
+  },
+  {
+    "row": 50,
+    "codigo": "0000",
+    "descricao": "FRENTE - ...",
+    "quantidade": "",
+    "formula_qtd": null
+  },
+  {
+    "row": 51,
+    "codigo": "0000",
+    "descricao": "FUNDO - ...",
+    "quantidade": "",
+    "formula_qtd": null
+  },
+  {
+    "row": 52,
+    "codigo": "0000",
+    "descricao": "MEIA LUA - ...",
+    "quantidade": "",
+    "formula_qtd": null
+  },
+  {
+    "row": 53,
+    "codigo": "0000",
+    "descricao": "COBERTURA - ...",
+    "quantidade": "",
+    "formula_qtd": null
+  },
+  {
+    "row": 54,
+    "codigo": "0000",
+    "descricao": "...",
+    "quantidade": "",
+    "formula_qtd": null
+  },
+  {
+    "row": 55,
+    "codigo": "0000",
+    "descricao": "...",
+    "quantidade": "",
+    "formula_qtd": null
+  },
+  {
+    "row": 56,
+    "codigo": "0000",
+    "descricao": "...",
+    "quantidade": "",
+    "formula_qtd": null
+  },
+  {
+    "row": 57,
+    "codigo": "0000",
+    "descricao": "...",
+    "quantidade": "",
+    "formula_qtd": null
+  }
+]

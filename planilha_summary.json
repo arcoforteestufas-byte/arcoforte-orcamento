@@ -1,0 +1,203 @@
+{
+  "INICIO": {
+    "linhas_total": 67,
+    "cabecalho": [
+      "TAMANHO DA ESTUFA ",
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      "TABELA PREÇO",
+      "A VISTA"
+    ],
+    "amostra": [
+      [
+        "MODULO",
+        "LARGURA ",
+        "COMPRIMENTO",
+        " ALTURA LATERAL",
+        "METROS QUADRADOS "
+      ],
+      [
+        2,
+        7,
+        21,
+        3,
+        "294 m²",
+        null,
+        null,
+        "DESCONTO"
+      ],
+      []
+    ]
+  },
+  "CALC": {
+    "linhas_total": 225,
+    "cabecalho": [],
+    "amostra": [
+      [
+        "CALCULO DE ARCOS",
+        null,
+        null,
+        null,
+        "ENCAIXE CENTRAL"
+      ],
+      [
+        "LOCAL",
+        "TAMANHO",
+        "QUANTIDADE",
+        null,
+        "QUANTIDADE",
+        12
+      ],
+      [
+        "ARCO INTERNO",
+        7,
+        12
+      ]
+    ]
+  },
+  "BD-ESTRUTURA": {
+    "linhas_total": 939,
+    "cabecalho": [
+      "CODIGO",
+      "DESCRICAO",
+      "UNIDADE",
+      "PRECO",
+      "TABELA "
+    ],
+    "amostra": [
+      [
+        3000,
+        "ARCO CALANDRADO 3 MTS 2\"X1,25MM GALV",
+        "UN",
+        93.3,
+        97.965,
+        null,
+        45820
+      ],
+      [
+        3001,
+        "ARCO CALANDRADO 4 MTS 2`` 1,25 MM GALV",
+        "UN",
+        123,
+        129.15,
+        null,
+        45820
+      ],
+      [
+        3002,
+        "ARCO CALANDRADO 5 MTS 2``X1,25MM GALV",
+        "UN",
+        155,
+        162.75,
+        null,
+        45820
+      ]
+    ]
+  },
+  "BD-TELAS": {
+    "linhas_total": 165,
+    "cabecalho": [
+      "CODIGO",
+      "DESCRICAO",
+      "LARGURA",
+      "UNIDADE",
+      "PRECO",
+      "TABELA DE PREÇO",
+      "VALOR M²"
+    ],
+    "amostra": [
+      [
+        5069,
+        "TELA OPTINET 40 MESH GINEGAR (5 METROS)",
+        5,
+        "MT",
+        61.6,
+        64.68,
+        21.56
+      ],
+      [
+        5037,
+        "TELA CLARITE 1002 VERMELHA 25% EQUIPESCA (3 METROS)",
+        3,
+        "MT",
+        18,
+        18.9,
+        6.3
+      ],
+      [
+        5086,
+        "TELA CLARITE 1003 BCA 20%  EQUIPESCA (4,5 METROS)",
+        4.5,
+        "MT",
+        37.9,
+        39.795,
+        13.265
+      ]
+    ]
+  },
+  "BD-FILME": {
+    "linhas_total": 115,
+    "cabecalho": [
+      "CODIGO",
+      "DESCRICAO",
+      "UNIDADE",
+      "PRECO"
+    ],
+    "amostra": [
+      [
+        5029,
+        "FILME DIFUSOR 120 MIC 10,00 GINEGAR",
+        "MT",
+        66.9,
+        70.245
+      ],
+      [
+        5109,
+        "FILME DIF 150 MICRAS 9MT NACIONAL",
+        "MT",
+        49.9,
+        52.395
+      ],
+      [
+        5000,
+        "FILME DIFUSOR 120 MIC 9,00 GINEGAR",
+        "MT",
+        59.9,
+        62.895
+      ]
+    ]
+  },
+  "CATALOGO": {
+    "linhas_total": 183,
+    "cabecalho": [
+      "code",
+      "label",
+      "unit",
+      "price"
+    ],
+    "amostra": [
+      [
+        3000,
+        "ARCO CALANDRADO 3 MTS 2\"X1,25MM GALV",
+        "UN",
+        93.3
+      ],
+      [
+        3001,
+        "ARCO CALANDRADO 4 MTS 2`` 1,25 MM GALV",
+        "UN",
+        123
+      ],
+      [
+        3002,
+        "ARCO CALANDRADO 5 MTS 2``X1,25MM GALV",
+        "UN",
+        155
+      ]
+    ]
+  }
+}

@@ -1,0 +1,1990 @@
+[
+  {
+    "celula": "A2",
+    "valor": "TAMANHO DA ESTUFA "
+  },
+  {
+    "celula": "H2",
+    "valor": "TABELA PREÇO"
+  },
+  {
+    "celula": "I2",
+    "valor": "A VISTA"
+  },
+  {
+    "celula": "A3",
+    "valor": "MODULO"
+  },
+  {
+    "celula": "B3",
+    "valor": "LARGURA "
+  },
+  {
+    "celula": "C3",
+    "valor": "COMPRIMENTO"
+  },
+  {
+    "celula": "D3",
+    "valor": " ALTURA LATERAL"
+  },
+  {
+    "celula": "E3",
+    "valor": "METROS QUADRADOS "
+  },
+  {
+    "celula": "A4",
+    "valor": 2
+  },
+  {
+    "celula": "B4",
+    "valor": 7
+  },
+  {
+    "celula": "C4",
+    "valor": 21
+  },
+  {
+    "celula": "D4",
+    "valor": 3
+  },
+  {
+    "celula": "E4",
+    "valor": "294 m²"
+  },
+  {
+    "celula": "H4",
+    "valor": "DESCONTO"
+  },
+  {
+    "celula": "A6",
+    "valor": "PEDIDO DE VENDA"
+  },
+  {
+    "celula": "H6",
+    "valor": "CONDIÇÕES"
+  },
+  {
+    "celula": "U6",
+    "valor": "LISTA DE ITENS DA ESTUFA"
+  },
+  {
+    "celula": "A7",
+    "valor": "CODIGO SENSIO"
+  },
+  {
+    "celula": "B7",
+    "valor": "DESCIÇÃO "
+  },
+  {
+    "celula": "C7",
+    "valor": "UN MEDIDA"
+  },
+  {
+    "celula": "D7",
+    "valor": "QUNT"
+  },
+  {
+    "celula": "E7",
+    "valor": "VALOR UNIDADE"
+  },
+  {
+    "celula": "F7",
+    "valor": "TOTAL"
+  },
+  {
+    "celula": "H7",
+    "valor": "TIPO DE ARCO"
+  },
+  {
+    "celula": "K7",
+    "valor": "LEVE"
+  },
+  {
+    "celula": "U7",
+    "valor": "CODIGO SENSIO"
+  },
+  {
+    "celula": "V7",
+    "valor": "DESCIÇÃO "
+  },
+  {
+    "celula": "W7",
+    "valor": "UN MEDIDA"
+  },
+  {
+    "celula": "X7",
+    "valor": "QUANTIDADE"
+  },
+  {
+    "celula": "Y7",
+    "valor": "VALOR UNIDADE"
+  },
+  {
+    "celula": "Z7",
+    "valor": "TOTAL"
+  },
+  {
+    "celula": "A8",
+    "valor": 3021
+  },
+  {
+    "celula": "B8",
+    "valor": "POSTE 3,8MTS 100X50 2MM GALV"
+  },
+  {
+    "celula": "C8",
+    "valor": "UN"
+  },
+  {
+    "celula": "D8",
+    "valor": 18
+  },
+  {
+    "celula": "E8",
+    "valor": 342.8775
+  },
+  {
+    "celula": "F8",
+    "valor": 6171.795
+  },
+  {
+    "celula": "H8",
+    "valor": "TIPO DE POSTE"
+  },
+  {
+    "celula": "K8",
+    "valor": "100X50 GALVANIZADO"
+  },
+  {
+    "celula": "U8",
+    "valor": 3021
+  },
+  {
+    "celula": "V8",
+    "valor": "POSTE 3,8MTS 100X50 2MM GALV"
+  },
+  {
+    "celula": "W8",
+    "valor": "UN"
+  },
+  {
+    "celula": "X8",
+    "valor": 18
+  },
+  {
+    "celula": "Y8",
+    "valor": 342.8775
+  },
+  {
+    "celula": "Z8",
+    "valor": 6171.795
+  },
+  {
+    "celula": "A9",
+    "valor": 3021
+  },
+  {
+    "celula": "B9",
+    "valor": "FRONTAIS E CANTO POSTE 3,8MTS 100X50 2MM GALV"
+  },
+  {
+    "celula": "C9",
+    "valor": "UN"
+  },
+  {
+    "celula": "D9",
+    "valor": 6
+  },
+  {
+    "celula": "E9",
+    "valor": 342.8775
+  },
+  {
+    "celula": "F9",
+    "valor": 2057.265
+  },
+  {
+    "celula": "H9",
+    "valor": "TEM CALHA LATERAL?"
+  },
+  {
+    "celula": "K9",
+    "valor": "LATERAL DUPLA"
+  },
+  {
+    "celula": "U9",
+    "valor": 3021
+  },
+  {
+    "celula": "V9",
+    "valor": "FRONTAIS E CANTO POSTE 3,8MTS 100X50 2MM GALV"
+  },
+  {
+    "celula": "W9",
+    "valor": "UN"
+  },
+  {
+    "celula": "X9",
+    "valor": 6
+  },
+  {
+    "celula": "Y9",
+    "valor": 342.8775
+  },
+  {
+    "celula": "Z9",
+    "valor": 2057.265
+  },
+  {
+    "celula": "A10",
+    "valor": 3021
+  },
+  {
+    "celula": "B10",
+    "valor": "DIVISA POSTE 3,8MTS 100X50 2MM GALV"
+  },
+  {
+    "celula": "C10",
+    "valor": "UN"
+  },
+  {
+    "celula": "D10",
+    "valor": 0
+  },
+  {
+    "celula": "E10",
+    "valor": 342.8775
+  },
+  {
+    "celula": "F10",
+    "valor": 0
+  },
+  {
+    "celula": "H10",
+    "valor": "POSTE FRONTAIS E DE CANTO BAIXOS  (FRENTE FUNDO) DUPLO?"
+  },
+  {
+    "celula": "K10",
+    "valor": "NÃO"
+  },
+  {
+    "celula": "U10",
+    "valor": 3021
+  },
+  {
+    "celula": "V10",
+    "valor": "DIVISA POSTE 3,8MTS 100X50 2MM GALV"
+  },
+  {
+    "celula": "W10",
+    "valor": "UN"
+  },
+  {
+    "celula": "X10",
+    "valor": 0
+  },
+  {
+    "celula": "Y10",
+    "valor": 342.8775
+  },
+  {
+    "celula": "Z10",
+    "valor": 0
+  },
+  {
+    "celula": "A11",
+    "valor": 3120
+  },
+  {
+    "celula": "B11",
+    "valor": "POSTE CENTRAL 5,50 MTS 100X50 GALV"
+  },
+  {
+    "celula": "D11",
+    "valor": 0
+  },
+  {
+    "celula": "E11",
+    "valor": 472.5
+  },
+  {
+    "celula": "F11",
+    "valor": 0
+  },
+  {
+    "celula": "H11",
+    "valor": "POSTES FRONTAIS TOPO DUPLOS"
+  },
+  {
+    "celula": "K11",
+    "valor": "NÃO"
+  },
+  {
+    "celula": "U11",
+    "valor": 3120
+  },
+  {
+    "celula": "V11",
+    "valor": "POSTE CENTRAL 5,50 MTS 100X50 GALV"
+  },
+  {
+    "celula": "X11",
+    "valor": 0
+  },
+  {
+    "celula": "Y11",
+    "valor": 472.5
+  },
+  {
+    "celula": "Z11",
+    "valor": 0
+  },
+  {
+    "celula": "A12",
+    "valor": 3005
+  },
+  {
+    "celula": "B12",
+    "valor": "ARCO CALANDRADO 7 MTS 2`` X 1,25MM GALV"
+  },
+  {
+    "celula": "C12",
+    "valor": "UN"
+  },
+  {
+    "celula": "D12",
+    "valor": 12
+  },
+  {
+    "celula": "E12",
+    "valor": 227.85
+  },
+  {
+    "celula": "F12",
+    "valor": 2734.2
+  },
+  {
+    "celula": "H12",
+    "valor": "FIXAÇÃO INFERIOR DA TELA "
+  },
+  {
+    "celula": "K12",
+    "valor": "MURETA C/ PERFIL"
+  },
+  {
+    "celula": "U12",
+    "valor": 3005
+  },
+  {
+    "celula": "V12",
+    "valor": "ARCO CALANDRADO 7 MTS 2`` X 1,25MM GALV"
+  },
+  {
+    "celula": "W12",
+    "valor": "UN"
+  },
+  {
+    "celula": "X12",
+    "valor": 12
+  },
+  {
+    "celula": "Y12",
+    "valor": 227.85
+  },
+  {
+    "celula": "Z12",
+    "valor": 2734.2
+  },
+  {
+    "celula": "A13",
+    "valor": 3012
+  },
+  {
+    "celula": "B13",
+    "valor": "ARCO FRONTAL CALANDRADO 7MTS 2\"X1,25MM GALV"
+  },
+  {
+    "celula": "C13",
+    "valor": "UN"
+  },
+  {
+    "celula": "D13",
+    "valor": 4
+  },
+  {
+    "celula": "E13",
+    "valor": 388.4475
+  },
+  {
+    "celula": "F13",
+    "valor": 1553.79
+  },
+  {
+    "celula": "H13",
+    "valor": "QUANTIDADE DE DIVISAS NA ESTUFA? (POR MODULO)"
+  },
+  {
+    "celula": "K13",
+    "valor": 0
+  },
+  {
+    "celula": "U13",
+    "valor": 3012
+  },
+  {
+    "celula": "V13",
+    "valor": "ARCO FRONTAL CALANDRADO 7MTS 2\"X1,25MM GALV"
+  },
+  {
+    "celula": "W13",
+    "valor": "UN"
+  },
+  {
+    "celula": "X13",
+    "valor": 4
+  },
+  {
+    "celula": "Y13",
+    "valor": 388.4475
+  },
+  {
+    "celula": "Z13",
+    "valor": 1553.79
+  },
+  {
+    "celula": "A14",
+    "valor": 3027
+  },
+  {
+    "celula": "B14",
+    "valor": "ENCAIXE CENTRAL GALV"
+  },
+  {
+    "celula": "D14",
+    "valor": 12
+  },
+  {
+    "celula": "E14",
+    "valor": 19.95
+  },
+  {
+    "celula": "F14",
+    "valor": 239.4
+  },
+  {
+    "celula": "H14",
+    "valor": "OS POTES DA DIVISA SÃO DUPLOS?"
+  },
+  {
+    "celula": "K14",
+    "valor": "NÃO"
+  },
+  {
+    "celula": "U14",
+    "valor": "0000"
+  },
+  {
+    "celula": "W14",
+    "valor": "-"
+  },
+  {
+    "celula": "X14",
+    "valor": 0
+  },
+  {
+    "celula": "Z14",
+    "valor": 0
+  },
+  {
+    "celula": "A15",
+    "valor": 3017
+  },
+  {
+    "celula": "B15",
+    "valor": "DORSAL 2`` 1,25MM GALV MTS"
+  },
+  {
+    "celula": "D15",
+    "valor": 7
+  },
+  {
+    "celula": "E15",
+    "valor": 187.467
+  },
+  {
+    "celula": "F15",
+    "valor": 1312.269
+  },
+  {
+    "celula": "H15",
+    "valor": "TEM TELA LATERAL"
+  },
+  {
+    "celula": "K15",
+    "valor": "SIM"
+  },
+  {
+    "celula": "U15",
+    "valor": 3027
+  },
+  {
+    "celula": "V15",
+    "valor": "ENCAIXE CENTRAL GALV"
+  },
+  {
+    "celula": "X15",
+    "valor": 12
+  },
+  {
+    "celula": "Y15",
+    "valor": 19.95
+  },
+  {
+    "celula": "Z15",
+    "valor": 239.4
+  },
+  {
+    "celula": "A16",
+    "valor": 3040
+  },
+  {
+    "celula": "B16",
+    "valor": "EMENDA TUBO DORSAL / ARCO 20CM 1,55 MM GALV"
+  },
+  {
+    "celula": "D16",
+    "valor": 6
+  },
+  {
+    "celula": "E16",
+    "valor": 9.345
+  },
+  {
+    "celula": "F16",
+    "valor": 56.07
+  },
+  {
+    "celula": "H16",
+    "valor": "TIPO DE COBERTURA"
+  },
+  {
+    "celula": "K16",
+    "valor": "FILME"
+  },
+  {
+    "celula": "U16",
+    "valor": 3017
+  },
+  {
+    "celula": "V16",
+    "valor": "DORSAL 2`` 1,25MM GALV MTS"
+  },
+  {
+    "celula": "X16",
+    "valor": 7
+  },
+  {
+    "celula": "Y16",
+    "valor": 187.467
+  },
+  {
+    "celula": "Z16",
+    "valor": 1312.269
+  },
+  {
+    "celula": "A17",
+    "valor": 3031
+  },
+  {
+    "celula": "B17",
+    "valor": "CONTRA VENTO 3,80MTS"
+  },
+  {
+    "celula": "D17",
+    "valor": 8
+  },
+  {
+    "celula": "E17",
+    "valor": 113.8725
+  },
+  {
+    "celula": "F17",
+    "valor": 910.98
+  },
+  {
+    "celula": "H17",
+    "valor": "QUANTAS PORTAS?"
+  },
+  {
+    "celula": "K17",
+    "valor": 1
+  },
+  {
+    "celula": "U17",
+    "valor": 3040
+  },
+  {
+    "celula": "V17",
+    "valor": "EMENDA TUBO DORSAL / ARCO 20CM 1,55 MM GALV"
+  },
+  {
+    "celula": "X17",
+    "valor": 6
+  },
+  {
+    "celula": "Y17",
+    "valor": 9.345
+  },
+  {
+    "celula": "Z17",
+    "valor": 56.07
+  },
+  {
+    "celula": "A18",
+    "valor": 5200
+  },
+  {
+    "celula": "B18",
+    "valor": "CALHA MAXX ALUMÍNIO 10A X17L 6MTS"
+  },
+  {
+    "celula": "D18",
+    "valor": 3.5
+  },
+  {
+    "celula": "E18",
+    "valor": 525
+  },
+  {
+    "celula": "F18",
+    "valor": 1837.5
+  },
+  {
+    "celula": "H18",
+    "valor": "QUAL PORTA "
+  },
+  {
+    "celula": "K18",
+    "valor": "CORRER 1,20 X 2,00"
+  },
+  {
+    "celula": "U18",
+    "valor": 3031
+  },
+  {
+    "celula": "V18",
+    "valor": "CONTRA VENTO 3,80MTS"
+  },
+  {
+    "celula": "X18",
+    "valor": 8
+  },
+  {
+    "celula": "Y18",
+    "valor": 113.8725
+  },
+  {
+    "celula": "Z18",
+    "valor": 910.98
+  },
+  {
+    "celula": "A19",
+    "valor": 3063
+  },
+  {
+    "celula": "B19",
+    "valor": "KIT EMENDA PAR 0,30 CM C/ PARAFUSO GALV"
+  },
+  {
+    "celula": "D19",
+    "valor": 8
+  },
+  {
+    "celula": "E19",
+    "valor": 31.5
+  },
+  {
+    "celula": "F19",
+    "valor": 252
+  },
+  {
+    "celula": "H19",
+    "valor": "CABO DE AÇO "
+  },
+  {
+    "celula": "K19",
+    "valor": "COMPLETO"
+  },
+  {
+    "celula": "U19",
+    "valor": 5200
+  },
+  {
+    "celula": "V19",
+    "valor": "CALHA MAXX ALUMÍNIO 10A X17L 6MTS"
+  },
+  {
+    "celula": "X19",
+    "valor": 3.5
+  },
+  {
+    "celula": "Y19",
+    "valor": 525
+  },
+  {
+    "celula": "Z19",
+    "valor": 1837.5
+  },
+  {
+    "celula": "A20",
+    "valor": 3034
+  },
+  {
+    "celula": "B20",
+    "valor": "LATERAL 50X30MTS C/ PERFIL DUPLO GALV 1,25MM 6MTS"
+  },
+  {
+    "celula": "C20",
+    "valor": "BR"
+  },
+  {
+    "celula": "D20",
+    "valor": 11.66666667
+  },
+  {
+    "celula": "E20",
+    "valor": 281.127
+  },
+  {
+    "celula": "F20",
+    "valor": 3279.815
+  },
+  {
+    "celula": "H20",
+    "valor": "QUANTOS X DE CABO DE AÇO ENTRE OS POSTES POR LINHA DE POSTE?"
+  },
+  {
+    "celula": "K20",
+    "valor": 0
+  },
+  {
+    "celula": "U20",
+    "valor": 3063
+  },
+  {
+    "celula": "V20",
+    "valor": "KIT EMENDA PAR 0,30 CM C/ PARAFUSO GALV"
+  },
+  {
+    "celula": "X20",
+    "valor": 8
+  },
+  {
+    "celula": "Y20",
+    "valor": 31.5
+  },
+  {
+    "celula": "Z20",
+    "valor": 252
+  },
+  {
+    "celula": "A21",
+    "valor": 3018
+  },
+  {
+    "celula": "B21",
+    "valor": "ESPERA DE ARCO GALV"
+  },
+  {
+    "celula": "C21",
+    "valor": "UN"
+  },
+  {
+    "celula": "D21",
+    "valor": 16
+  },
+  {
+    "celula": "E21",
+    "valor": 24.591
+  },
+  {
+    "celula": "F21",
+    "valor": 393.456
+  },
+  {
+    "celula": "U21",
+    "valor": "0000"
+  },
+  {
+    "celula": "V21",
+    "valor": "---"
+  },
+  {
+    "celula": "W21",
+    "valor": "-"
+  },
+  {
+    "celula": "X21",
+    "valor": 0
+  },
+  {
+    "celula": "Y21",
+    "valor": 0
+  },
+  {
+    "celula": "Z21",
+    "valor": 0
+  },
+  {
+    "celula": "A22",
+    "valor": 3020
+  },
+  {
+    "celula": "B22",
+    "valor": "SUPORTE CALHA DUPLA CENTRAL GALV"
+  },
+  {
+    "celula": "C22",
+    "valor": "UN"
+  },
+  {
+    "celula": "D22",
+    "valor": 0
+  },
+  {
+    "celula": "E22",
+    "valor": 61.488
+  },
+  {
+    "celula": "F22",
+    "valor": 0
+  },
+  {
+    "celula": "U22",
+    "valor": "0000"
+  },
+  {
+    "celula": "V22",
+    "valor": "---"
+  },
+  {
+    "celula": "W22",
+    "valor": "-"
+  },
+  {
+    "celula": "X22",
+    "valor": 0
+  },
+  {
+    "celula": "Y22",
+    "valor": "---"
+  },
+  {
+    "celula": "Z22",
+    "valor": "#VALUE!"
+  },
+  {
+    "celula": "A23",
+    "valor": 3095
+  },
+  {
+    "celula": "B23",
+    "valor": "SUPORTE SAIDA AGUA 150MM DUPLO GALV"
+  },
+  {
+    "celula": "D23",
+    "valor": 1
+  },
+  {
+    "celula": "E23",
+    "valor": 157.5
+  },
+  {
+    "celula": "F23",
+    "valor": 157.5
+  },
+  {
+    "celula": "U23",
+    "valor": 3034
+  },
+  {
+    "celula": "V23",
+    "valor": "LATERAL 50X30MTS C/ PERFIL DUPLO GALV 1,25MM 6MTS"
+  },
+  {
+    "celula": "W23",
+    "valor": "BR"
+  },
+  {
+    "celula": "X23",
+    "valor": 11.66666667
+  },
+  {
+    "celula": "Y23",
+    "valor": 281.127
+  },
+  {
+    "celula": "Z23",
+    "valor": 3279.815
+  },
+  {
+    "celula": "A24",
+    "valor": 5024
+  },
+  {
+    "celula": "B24",
+    "valor": "PU SELANTE 40 CZA 400GR"
+  },
+  {
+    "celula": "D24",
+    "valor": 6
+  },
+  {
+    "celula": "E24",
+    "valor": 22.05
+  },
+  {
+    "celula": "F24",
+    "valor": 132.3
+  },
+  {
+    "celula": "H24",
+    "valor": "TELAS"
+  },
+  {
+    "celula": "U24",
+    "valor": 3018
+  },
+  {
+    "celula": "V24",
+    "valor": "ESPERA DE ARCO GALV"
+  },
+  {
+    "celula": "W24",
+    "valor": "UN"
+  },
+  {
+    "celula": "X24",
+    "valor": 16
+  },
+  {
+    "celula": "Y24",
+    "valor": 24.591
+  },
+  {
+    "celula": "Z24",
+    "valor": 393.456
+  },
+  {
+    "celula": "A25",
+    "valor": 5084
+  },
+  {
+    "celula": "B25",
+    "valor": "PERFIL DE ALUMÍNIO DUPLO MAXX PC 6 MTS"
+  },
+  {
+    "celula": "D25",
+    "valor": 2
+  },
+  {
+    "celula": "E25",
+    "valor": 74.55
+  },
+  {
+    "celula": "F25",
+    "valor": 149.1
+  },
+  {
+    "celula": "H25",
+    "valor": "TUDO "
+  },
+  {
+    "celula": "I25",
+    "valor": "TELA OPTINET 40 MESH GINEGAR (5 METROS)"
+  },
+  {
+    "celula": "U25",
+    "valor": 3020
+  },
+  {
+    "celula": "V25",
+    "valor": "SUPORTE CALHA DUPLA CENTRAL GALV"
+  },
+  {
+    "celula": "W25",
+    "valor": "UN"
+  },
+  {
+    "celula": "X25",
+    "valor": 0
+  },
+  {
+    "celula": "Y25",
+    "valor": 61.488
+  },
+  {
+    "celula": "Z25",
+    "valor": 0
+  },
+  {
+    "celula": "A26",
+    "valor": 3049
+  },
+  {
+    "celula": "B26",
+    "valor": "MOLAS DE FIXAÇÃO 25 MTS"
+  },
+  {
+    "celula": "D26",
+    "valor": 16
+  },
+  {
+    "celula": "E26",
+    "valor": 51.9
+  },
+  {
+    "celula": "F26",
+    "valor": 830.4
+  },
+  {
+    "celula": "H26",
+    "valor": "LATERAIS "
+  },
+  {
+    "celula": "U26",
+    "valor": "0000"
+  },
+  {
+    "celula": "V26",
+    "valor": "---"
+  },
+  {
+    "celula": "W26",
+    "valor": "-"
+  },
+  {
+    "celula": "X26",
+    "valor": 0
+  },
+  {
+    "celula": "Y26",
+    "valor": 0
+  },
+  {
+    "celula": "Z26",
+    "valor": 0
+  },
+  {
+    "celula": "A27",
+    "valor": 5009
+  },
+  {
+    "celula": "B27",
+    "valor": "CABO AÇO GALV 3/16 4,8 MM"
+  },
+  {
+    "celula": "D27",
+    "valor": 238
+  },
+  {
+    "celula": "E27",
+    "valor": 6.09
+  },
+  {
+    "celula": "F27",
+    "valor": 1449.42
+  },
+  {
+    "celula": "H27",
+    "valor": "FRENTE "
+  },
+  {
+    "celula": "U27",
+    "valor": "0000"
+  },
+  {
+    "celula": "V27",
+    "valor": "---"
+  },
+  {
+    "celula": "W27",
+    "valor": "-"
+  },
+  {
+    "celula": "X27",
+    "valor": 0
+  },
+  {
+    "celula": "Y27",
+    "valor": 0
+  },
+  {
+    "celula": "Z27",
+    "valor": 0
+  },
+  {
+    "celula": "A28",
+    "valor": 3077
+  },
+  {
+    "celula": "B28",
+    "valor": "SUPORTE P/ CABO DE AÇO GALV"
+  },
+  {
+    "celula": "D28",
+    "valor": 64
+  },
+  {
+    "celula": "E28",
+    "valor": 8.295
+  },
+  {
+    "celula": "F28",
+    "valor": 530.88
+  },
+  {
+    "celula": "H28",
+    "valor": "FUNDO"
+  },
+  {
+    "celula": "U28",
+    "valor": "0000"
+  },
+  {
+    "celula": "V28",
+    "valor": "---"
+  },
+  {
+    "celula": "W28",
+    "valor": "-"
+  },
+  {
+    "celula": "X28",
+    "valor": 0
+  },
+  {
+    "celula": "Y28",
+    "valor": 0
+  },
+  {
+    "celula": "Z28",
+    "valor": 0
+  },
+  {
+    "celula": "A29",
+    "valor": 5002
+  },
+  {
+    "celula": "B29",
+    "valor": "ESTICADOR P/CABO AÇO 3/8-10MM"
+  },
+  {
+    "celula": "D29",
+    "valor": 38
+  },
+  {
+    "celula": "E29",
+    "valor": 6.825
+  },
+  {
+    "celula": "F29",
+    "valor": 259.35
+  },
+  {
+    "celula": "H29",
+    "valor": "MEI LUA"
+  },
+  {
+    "celula": "U29",
+    "valor": "0000"
+  },
+  {
+    "celula": "V29",
+    "valor": "---"
+  },
+  {
+    "celula": "W29",
+    "valor": "-"
+  },
+  {
+    "celula": "X29",
+    "valor": 0
+  },
+  {
+    "celula": "Y29",
+    "valor": 0
+  },
+  {
+    "celula": "Z29",
+    "valor": 0
+  },
+  {
+    "celula": "A30",
+    "valor": 5001
+  },
+  {
+    "celula": "B30",
+    "valor": "CLIP / GRAMPO CABO DE AÇO 3/16-4,8MM"
+  },
+  {
+    "celula": "D30",
+    "valor": 152
+  },
+  {
+    "celula": "E30",
+    "valor": 1.47
+  },
+  {
+    "celula": "F30",
+    "valor": 223.44
+  },
+  {
+    "celula": "H30",
+    "valor": "COBERTURA"
+  },
+  {
+    "celula": "U30",
+    "valor": "0000"
+  },
+  {
+    "celula": "V30",
+    "valor": "---"
+  },
+  {
+    "celula": "W30",
+    "valor": "-"
+  },
+  {
+    "celula": "X30",
+    "valor": 0
+  },
+  {
+    "celula": "Y30",
+    "valor": 0
+  },
+  {
+    "celula": "Z30",
+    "valor": 0
+  },
+  {
+    "celula": "A31",
+    "valor": 3058
+  },
+  {
+    "celula": "B31",
+    "valor": "CHUMBADOR PRA CABO DE AÇO GALV"
+  },
+  {
+    "celula": "D31",
+    "valor": 26
+  },
+  {
+    "celula": "E31",
+    "valor": 31.5
+  },
+  {
+    "celula": "F31",
+    "valor": 819
+  },
+  {
+    "celula": "U31",
+    "valor": 3095
+  },
+  {
+    "celula": "V31",
+    "valor": "SUPORTE SAIDA AGUA 150MM DUPLO GALV"
+  },
+  {
+    "celula": "X31",
+    "valor": 1
+  },
+  {
+    "celula": "Y31",
+    "valor": 157.5
+  },
+  {
+    "celula": "Z31",
+    "valor": 157.5
+  },
+  {
+    "celula": "A32",
+    "valor": 5107
+  },
+  {
+    "celula": "B32",
+    "valor": "KIT PARAFUSO INST 3``X5/16 GALV 25 PCS"
+  },
+  {
+    "celula": "D32",
+    "valor": 4
+  },
+  {
+    "celula": "E32",
+    "valor": 57.75
+  },
+  {
+    "celula": "F32",
+    "valor": 231
+  },
+  {
+    "celula": "U32",
+    "valor": "0000"
+  },
+  {
+    "celula": "V32",
+    "valor": "---"
+  },
+  {
+    "celula": "W32",
+    "valor": "-"
+  },
+  {
+    "celula": "X32",
+    "valor": 0
+  },
+  {
+    "celula": "Y32",
+    "valor": 0
+  },
+  {
+    "celula": "Z32",
+    "valor": 0
+  },
+  {
+    "celula": "A33",
+    "valor": 5114
+  },
+  {
+    "celula": "B33",
+    "valor": "KIT PARAFUSO INST 1``X 5/16 GALV 25 PCS"
+  },
+  {
+    "celula": "D33",
+    "valor": 6
+  },
+  {
+    "celula": "E33",
+    "valor": 47.25
+  },
+  {
+    "celula": "F33",
+    "valor": 283.5
+  },
+  {
+    "celula": "H33",
+    "valor": "FILME"
+  },
+  {
+    "celula": "U33",
+    "valor": 5024
+  },
+  {
+    "celula": "V33",
+    "valor": "PU SELANTE 40 CZA 400GR"
+  },
+  {
+    "celula": "X33",
+    "valor": 6
+  },
+  {
+    "celula": "Y33",
+    "valor": 22.05
+  },
+  {
+    "celula": "Z33",
+    "valor": 132.3
+  },
+  {
+    "celula": "A34",
+    "valor": "---"
+  },
+  {
+    "celula": "B34",
+    "valor": "---"
+  },
+  {
+    "celula": "C34",
+    "valor": "-"
+  },
+  {
+    "celula": "D34",
+    "valor": 0
+  },
+  {
+    "celula": "E34",
+    "valor": 0
+  },
+  {
+    "celula": "F34",
+    "valor": 0
+  },
+  {
+    "celula": "U34",
+    "valor": 5084
+  },
+  {
+    "celula": "V34",
+    "valor": "PERFIL DE ALUMÍNIO DUPLO MAXX PC 6 MTS"
+  },
+  {
+    "celula": "X34",
+    "valor": 2
+  },
+  {
+    "celula": "Y34",
+    "valor": 74.55
+  },
+  {
+    "celula": "Z34",
+    "valor": 149.1
+  },
+  {
+    "celula": "A35",
+    "valor": "---"
+  },
+  {
+    "celula": "B35",
+    "valor": "---"
+  },
+  {
+    "celula": "C35",
+    "valor": "-"
+  },
+  {
+    "celula": "D35",
+    "valor": 0
+  },
+  {
+    "celula": "E35",
+    "valor": 0
+  },
+  {
+    "celula": "F35",
+    "valor": 0
+  },
+  {
+    "celula": "U35",
+    "valor": "0000"
+  },
+  {
+    "celula": "V35",
+    "valor": "---"
+  },
+  {
+    "celula": "W35",
+    "valor": "-"
+  },
+  {
+    "celula": "X35",
+    "valor": 0
+  },
+  {
+    "celula": "Y35",
+    "valor": 0
+  },
+  {
+    "celula": "Z35",
+    "valor": 0
+  },
+  {
+    "celula": "A36",
+    "valor": "---"
+  },
+  {
+    "celula": "B36",
+    "valor": "---"
+  },
+  {
+    "celula": "C36",
+    "valor": "-"
+  },
+  {
+    "celula": "D36",
+    "valor": 0
+  },
+  {
+    "celula": "E36",
+    "valor": 0
+  },
+  {
+    "celula": "F36",
+    "valor": 0
+  },
+  {
+    "celula": "U36",
+    "valor": 3049
+  },
+  {
+    "celula": "V36",
+    "valor": "MOLAS DE FIXAÇÃO 25 MTS"
+  },
+  {
+    "celula": "X36",
+    "valor": 16
+  },
+  {
+    "celula": "Y36",
+    "valor": 51.9
+  },
+  {
+    "celula": "Z36",
+    "valor": 830.4
+  },
+  {
+    "celula": "A37",
+    "valor": 3039
+  },
+  {
+    "celula": "B37",
+    "valor": "KIT PORTA DE CORRER 1,2X2,00 MT 1,25MM GALV"
+  },
+  {
+    "celula": "D37",
+    "valor": 1
+  },
+  {
+    "celula": "E37",
+    "valor": 992.25
+  },
+  {
+    "celula": "F37",
+    "valor": 992.25
+  },
+  {
+    "celula": "U37",
+    "valor": 5009
+  },
+  {
+    "celula": "V37",
+    "valor": "CABO AÇO GALV 3/16 4,8 MM"
+  },
+  {
+    "celula": "X37",
+    "valor": 238
+  },
+  {
+    "celula": "Y37",
+    "valor": 6.09
+  },
+  {
+    "celula": "Z37",
+    "valor": 1449.42
+  },
+  {
+    "celula": "A38",
+    "valor": 5069
+  },
+  {
+    "celula": "B38",
+    "valor": "TELA OPTINET 40 MESH GINEGAR (5 METROS)"
+  },
+  {
+    "celula": "C38",
+    "valor": "MT"
+  },
+  {
+    "celula": "E38",
+    "valor": 64.68
+  },
+  {
+    "celula": "U38",
+    "valor": 3077
+  },
+  {
+    "celula": "V38",
+    "valor": "SUPORTE P/ CABO DE AÇO GALV"
+  },
+  {
+    "celula": "X38",
+    "valor": 64
+  },
+  {
+    "celula": "Y38",
+    "valor": 8.295
+  },
+  {
+    "celula": "Z38",
+    "valor": 530.88
+  },
+  {
+    "celula": "U39",
+    "valor": 5002
+  },
+  {
+    "celula": "V39",
+    "valor": "ESTICADOR P/CABO AÇO 3/8-10MM"
+  },
+  {
+    "celula": "X39",
+    "valor": 38
+  },
+  {
+    "celula": "Y39",
+    "valor": 6.825
+  },
+  {
+    "celula": "Z39",
+    "valor": 259.35
+  },
+  {
+    "celula": "U40",
+    "valor": 5001
+  },
+  {
+    "celula": "V40",
+    "valor": "CLIP / GRAMPO CABO DE AÇO 3/16-4,8MM"
+  },
+  {
+    "celula": "X40",
+    "valor": 152
+  },
+  {
+    "celula": "Y40",
+    "valor": 1.47
+  },
+  {
+    "celula": "Z40",
+    "valor": 223.44
+  },
+  {
+    "celula": "U41",
+    "valor": 3058
+  },
+  {
+    "celula": "V41",
+    "valor": "CHUMBADOR PRA CABO DE AÇO GALV"
+  },
+  {
+    "celula": "X41",
+    "valor": 26
+  },
+  {
+    "celula": "Y41",
+    "valor": 31.5
+  },
+  {
+    "celula": "Z41",
+    "valor": 819
+  },
+  {
+    "celula": "U42",
+    "valor": 5107
+  },
+  {
+    "celula": "V42",
+    "valor": "KIT PARAFUSO INST 3``X5/16 GALV 25 PCS"
+  },
+  {
+    "celula": "X42",
+    "valor": 4
+  },
+  {
+    "celula": "Y42",
+    "valor": 57.75
+  },
+  {
+    "celula": "Z42",
+    "valor": 231
+  },
+  {
+    "celula": "U43",
+    "valor": 5114
+  },
+  {
+    "celula": "V43",
+    "valor": "KIT PARAFUSO INST 1``X 5/16 GALV 25 PCS"
+  },
+  {
+    "celula": "X43",
+    "valor": 6
+  },
+  {
+    "celula": "Y43",
+    "valor": 47.25
+  },
+  {
+    "celula": "Z43",
+    "valor": 283.5
+  },
+  {
+    "celula": "U44",
+    "valor": "---"
+  },
+  {
+    "celula": "V44",
+    "valor": "---"
+  },
+  {
+    "celula": "W44",
+    "valor": "-"
+  },
+  {
+    "celula": "X44",
+    "valor": 0
+  },
+  {
+    "celula": "Y44",
+    "valor": 0
+  },
+  {
+    "celula": "Z44",
+    "valor": 0
+  },
+  {
+    "celula": "U45",
+    "valor": "---"
+  },
+  {
+    "celula": "V45",
+    "valor": "---"
+  },
+  {
+    "celula": "W45",
+    "valor": "-"
+  },
+  {
+    "celula": "X45",
+    "valor": 0
+  },
+  {
+    "celula": "Y45",
+    "valor": 0
+  },
+  {
+    "celula": "Z45",
+    "valor": 0
+  },
+  {
+    "celula": "U46",
+    "valor": "---"
+  },
+  {
+    "celula": "V46",
+    "valor": "---"
+  },
+  {
+    "celula": "W46",
+    "valor": "-"
+  },
+  {
+    "celula": "X46",
+    "valor": 0
+  },
+  {
+    "celula": "Y46",
+    "valor": 0
+  },
+  {
+    "celula": "Z46",
+    "valor": 0
+  },
+  {
+    "celula": "U47",
+    "valor": 3039
+  },
+  {
+    "celula": "V47",
+    "valor": "KIT PORTA DE CORRER 1,2X2,00 MT 1,25MM GALV"
+  },
+  {
+    "celula": "X47",
+    "valor": 1
+  },
+  {
+    "celula": "Y47",
+    "valor": 992.25
+  },
+  {
+    "celula": "Z47",
+    "valor": 992.25
+  },
+  {
+    "celula": "U48",
+    "valor": 5069
+  },
+  {
+    "celula": "V48",
+    "valor": "TELA OPTINET 40 MESH GINEGAR (5 METROS)"
+  },
+  {
+    "celula": "W48",
+    "valor": "MT"
+  },
+  {
+    "celula": "Y48",
+    "valor": 64.68
+  },
+  {
+    "celula": "U49",
+    "valor": "0000"
+  },
+  {
+    "celula": "V49",
+    "valor": "LATERAIS - ..."
+  },
+  {
+    "celula": "W49",
+    "valor": "--"
+  },
+  {
+    "celula": "Y49",
+    "valor": 0
+  },
+  {
+    "celula": "U50",
+    "valor": "0000"
+  },
+  {
+    "celula": "V50",
+    "valor": "FRENTE - ..."
+  },
+  {
+    "celula": "W50",
+    "valor": "--"
+  },
+  {
+    "celula": "Y50",
+    "valor": 0
+  },
+  {
+    "celula": "U51",
+    "valor": "0000"
+  },
+  {
+    "celula": "V51",
+    "valor": "FUNDO - ..."
+  },
+  {
+    "celula": "W51",
+    "valor": "--"
+  },
+  {
+    "celula": "Y51",
+    "valor": 0
+  },
+  {
+    "celula": "U52",
+    "valor": "0000"
+  },
+  {
+    "celula": "V52",
+    "valor": "MEIA LUA - ..."
+  },
+  {
+    "celula": "W52",
+    "valor": "--"
+  },
+  {
+    "celula": "Y52",
+    "valor": 0
+  },
+  {
+    "celula": "U53",
+    "valor": "0000"
+  },
+  {
+    "celula": "V53",
+    "valor": "COBERTURA - ..."
+  },
+  {
+    "celula": "W53",
+    "valor": "--"
+  },
+  {
+    "celula": "Y53",
+    "valor": 0
+  },
+  {
+    "celula": "U54",
+    "valor": "0000"
+  },
+  {
+    "celula": "V54",
+    "valor": "..."
+  },
+  {
+    "celula": "W54",
+    "valor": "--"
+  },
+  {
+    "celula": "Y54",
+    "valor": 0
+  },
+  {
+    "celula": "U55",
+    "valor": "0000"
+  },
+  {
+    "celula": "V55",
+    "valor": "..."
+  },
+  {
+    "celula": "W55",
+    "valor": "--"
+  },
+  {
+    "celula": "Y55",
+    "valor": 0
+  },
+  {
+    "celula": "U56",
+    "valor": "0000"
+  },
+  {
+    "celula": "V56",
+    "valor": "..."
+  },
+  {
+    "celula": "W56",
+    "valor": "--"
+  },
+  {
+    "celula": "Y56",
+    "valor": 0
+  },
+  {
+    "celula": "U57",
+    "valor": "0000"
+  },
+  {
+    "celula": "V57",
+    "valor": "..."
+  },
+  {
+    "celula": "W57",
+    "valor": "--"
+  },
+  {
+    "celula": "Y57",
+    "valor": 0
+  },
+  {
+    "celula": "E58",
+    "valor": "TOTAL"
+  },
+  {
+    "celula": "F58",
+    "valor": "#VALUE!"
+  },
+  {
+    "celula": "Y59",
+    "valor": "Total"
+  },
+  {
+    "celula": "Z59",
+    "valor": "#VALUE!"
+  },
+  {
+    "celula": "B64",
+    "valor": "5023 PARAFUSO BROCA 4,2X13 FLANG FORRO"
+  },
+  {
+    "celula": "B65",
+    "valor": "ANTI-CAMARA "
+  },
+  {
+    "celula": "B68",
+    "valor": "5067 KIT PARAFUSO E BUCHA 6MM P/PERFIL DE MURETA 25PC "
+  }
+]

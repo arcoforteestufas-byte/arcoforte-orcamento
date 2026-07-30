@@ -1,0 +1,2492 @@
+[
+  {
+    "celula": "A2",
+    "valor": "CALCULO DE ARCOS",
+    "formula": null
+  },
+  {
+    "celula": "E2",
+    "valor": "ENCAIXE CENTRAL",
+    "formula": null
+  },
+  {
+    "celula": "A3",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B3",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "C3",
+    "valor": "QUANTIDADE",
+    "formula": null
+  },
+  {
+    "celula": "E3",
+    "valor": "QUANTIDADE",
+    "formula": null
+  },
+  {
+    "celula": "F3",
+    "valor": 12,
+    "formula": "=SUM((INICIO!C4/3-1)*INICIO!A4)-C6"
+  },
+  {
+    "celula": "A4",
+    "valor": "ARCO INTERNO",
+    "formula": null
+  },
+  {
+    "celula": "B4",
+    "valor": 7,
+    "formula": "=(INICIO!B4)"
+  },
+  {
+    "celula": "C4",
+    "valor": 12,
+    "formula": "=SUM((INICIO!C4/3-1)*INICIO!A4)-C6"
+  },
+  {
+    "celula": "A5",
+    "valor": "ARCO FRONTAL",
+    "formula": null
+  },
+  {
+    "celula": "B5",
+    "valor": 7,
+    "formula": "=(INICIO!B4)"
+  },
+  {
+    "celula": "C5",
+    "valor": 4,
+    "formula": "=SUM(2*INICIO!A4)"
+  },
+  {
+    "celula": "A6",
+    "valor": "ARCO DE DIVISA ",
+    "formula": null
+  },
+  {
+    "celula": "B6",
+    "valor": 7,
+    "formula": "=(INICIO!B4)"
+  },
+  {
+    "celula": "C6",
+    "valor": 0,
+    "formula": "=IF(INICIO!K13>0, INICIO!K13*INICIO!A4,0)"
+  },
+  {
+    "celula": "E6",
+    "valor": "CALCULO DE DORÇAL",
+    "formula": null
+  },
+  {
+    "celula": "B7",
+    "valor": "INTERNO: 12",
+    "formula": "=IF(INICIO!K13<=0, \"INTERNO: \"&C4, \"INTERNO: \"&C4-C6)"
+  },
+  {
+    "celula": "C7",
+    "valor": "FRONTAL: 4",
+    "formula": "=\"FRONTAL: \"&C5"
+  },
+  {
+    "celula": "E7",
+    "valor": "QUANTIDA",
+    "formula": null
+  },
+  {
+    "celula": "F7",
+    "valor": 42,
+    "formula": "=SUM(INICIO!C4*INICIO!A4)"
+  },
+  {
+    "celula": "A8",
+    "valor": "TOTAL DE ARCOS",
+    "formula": null
+  },
+  {
+    "celula": "B8",
+    "valor": 16,
+    "formula": "=SUM(C4:C6)"
+  },
+  {
+    "celula": "F8",
+    "valor": 7,
+    "formula": "=SUM(F7/6)"
+  },
+  {
+    "celula": "A10",
+    "valor": "CALCULO DE POSTES",
+    "formula": null
+  },
+  {
+    "celula": "E10",
+    "valor": "EMENDA DE TUBO DORSAL",
+    "formula": null
+  },
+  {
+    "celula": "A11",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B11",
+    "valor": "TAMANHO ",
+    "formula": null
+  },
+  {
+    "celula": "C11",
+    "valor": "QUANTIDADE",
+    "formula": null
+  },
+  {
+    "celula": "E11",
+    "valor": "QNT BARRA DORSAL",
+    "formula": null
+  },
+  {
+    "celula": "F11",
+    "valor": "QNT MODULOS",
+    "formula": null
+  },
+  {
+    "celula": "G11",
+    "valor": "QNT DE EMENDA POR MODULO",
+    "formula": null
+  },
+  {
+    "celula": "A12",
+    "valor": "POSTES INTERNOS",
+    "formula": null
+  },
+  {
+    "celula": "B12",
+    "valor": 3.8,
+    "formula": "=IF(INICIO!D4=3, 3.8, IF(INICIO!D4=4, 4.8, IF(INICIO!D4=5, 6, \"Altura inválida\")))"
+  },
+  {
+    "celula": "C12",
+    "valor": 18,
+    "formula": "=IF(INICIO!A4>0, ((INICIO!C4 / 3) + 1) * (INICIO!A4 + 1) - (C13), \"Informe valores válidos\")-C15"
+  },
+  {
+    "celula": "E12",
+    "valor": 3.5,
+    "formula": "=FLOOR(INICIO!C4/6, 0.5)"
+  },
+  {
+    "celula": "F12",
+    "valor": 2,
+    "formula": "=INICIO!A4"
+  },
+  {
+    "celula": "G12",
+    "valor": 3,
+    "formula": "=IF(E12>1, ROUNDUP(E12-1, 0), 0)"
+  },
+  {
+    "celula": "A13",
+    "valor": "POSTES FRONTAIS BAIXOS",
+    "formula": null
+  },
+  {
+    "celula": "B13",
+    "valor": 3.8,
+    "formula": "=IF(INICIO!D4=3, 3.8, IF(INICIO!D4=4, 4.8, IF(INICIO!D4=5, 6, \"Altura inválida\")))"
+  },
+  {
+    "celula": "C13",
+    "valor": 6,
+    "formula": "=SUM((INICIO!A4+1)*2)"
+  },
+  {
+    "celula": "A14",
+    "valor": "POSTES FRONTAIS TOPO",
+    "formula": null
+  },
+  {
+    "celula": "B14",
+    "valor": 5.5,
+    "formula": "=IF(INICIO!D4=3, 5.5, IF(INICIO!D4=4, 6.75, IF(INICIO!D4=5, 8, \"Altura inválida\")))"
+  },
+  {
+    "celula": "C14",
+    "valor": 4,
+    "formula": "=IF(OR(INICIO!K7=\"LANTERNIN\", INICIO!K7=\"DUPLO\"),INICIO!A4*4,INICIO!A4*2)"
+  },
+  {
+    "celula": "E14",
+    "valor": "QNT DE EMANDAS",
+    "formula": null
+  },
+  {
+    "celula": "G14",
+    "valor": 6,
+    "formula": "=SUM(F12*G12)"
+  },
+  {
+    "celula": "A15",
+    "valor": "POSTE DE DIVISA",
+    "formula": null
+  },
+  {
+    "celula": "B15",
+    "valor": 3.8,
+    "formula": "=IF(INICIO!D4=3, 3.8, IF(INICIO!D4=4, 4.8, IF(INICIO!D4=5, 6, \"Altura inválida\")))"
+  },
+  {
+    "celula": "C15",
+    "valor": 0,
+    "formula": "=IF(INICIO!K13=1, INICIO!K13*INICIO!A4+1, IF(INICIO!K13=2,INICIO!K13*INICIO!A4+2, IF(INICIO!K13=3,INICIO!K13*INICIO!A4+3, IF(INICIO!K13=4,INICIO!K13*INICIO!A4+4, IF(INICIO!K13=5,INICIO!K13*INICIO!A4+5, IF(INICIO!K13=6,INICIO!K13*INICIO!A4+6, IF(INICIO!K13=7,INICIO!K13*INICIO!A4+7,IF(INICIO!K13=8,INICIO!K13*INICIO!A4+8,IF(INICIO!K13=9,INICIO!K13*INICIO!A4+9, IF(INICIO!K13=10,INICIO!K13*INICIO!A4+10, IF(INICIO!K13=11,INICIO!K13*INICIO!A4+11, IF(INICIO!K13=12,INICIO!K13*INICIO!A4+12, IF(INICIO!K13=13,INICIO!K13*INICIO!A4+13, IF(INICIO!K13=14,INICIO!K13*INICIO!A4+14, IF(INICIO!K13=15,INICIO!K13*INICIO!A4+15, IF(INICIO!K13=16,INICIO!K13*INICIO!A4+16,IF(INICIO!K13=17,INICIO!K13*INICIO!A4+17, IF(INICIO!K13=18,INICIO!K13*INICIO!A4+18, IF(INICIO!K13=19,INICIO!K13*INICIO!A4+19, IF(INICIO!K13=20,INICIO!K13*INICIO!A4+20, IF(INICIO!K13=22,INICIO!K13*INICIO!A4+21,IF(INICIO!K13=22,INICIO!K13*INICIO!A4+22, IF(INICIO!K13=23,INICIO!K13*INICIO!A4+23, IF(INICIO!K13=24,INICIO!K13*INICIO!A4+24, IF(INICIO!K13=25,INICIO!K13*INICIO!A4+25, IF(INICIO!K13=26,INICIO!K13*INICIO!A4+26, IF(INICIO!K13=27,INICIO!K13*INICIO!A4+27, IF(INICIO!K13=28,INICIO!K13*INICIO!A4+28, IF(INICIO!K13=29,INICIO!K13*INICIO!A4+29, IF(INICIO!K13=30,INICIO!K13*INICIO!A4+30,0))))))))))))))))))))))))))))))"
+  },
+  {
+    "celula": "A16",
+    "valor": "TOTAL DE ARCOS",
+    "formula": null
+  },
+  {
+    "celula": "A20",
+    "valor": "CONTRA VENTO",
+    "formula": null
+  },
+  {
+    "celula": "E20",
+    "valor": "KIT EMENDA 30CM",
+    "formula": null
+  },
+  {
+    "celula": "A21",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B21",
+    "valor": "QUANTIDADE",
+    "formula": null
+  },
+  {
+    "celula": "C21",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "E21",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "F21",
+    "valor": "QNT DE BARRAS",
+    "formula": null
+  },
+  {
+    "celula": "G21",
+    "valor": "QNT EMENDAS",
+    "formula": null
+  },
+  {
+    "celula": "A22",
+    "valor": "CABEÇA DA ESTUFA",
+    "formula": null
+  },
+  {
+    "celula": "B22",
+    "valor": 8,
+    "formula": "=SUM(4*INICIO!A4)"
+  },
+  {
+    "celula": "C22",
+    "valor": "3,8",
+    "formula": "=IF((INICIO!B4<=8),\"3,8\",\"4,8\")"
+  },
+  {
+    "celula": "E22",
+    "valor": "LATERAIS SUPERIORES",
+    "formula": null
+  },
+  {
+    "celula": "F22",
+    "valor": 0,
+    "formula": "=IF(INICIO!K9=\"NÃO\", FLOOR(INICIO!C4/6, 0.5),0)"
+  },
+  {
+    "celula": "G22",
+    "valor": 0,
+    "formula": "=IF(F22>1, ROUNDUP(F22-1, 0), 0)*2"
+  },
+  {
+    "celula": "E23",
+    "valor": "FRENTE E FUNDO SUPERIOR",
+    "formula": null
+  },
+  {
+    "celula": "F23",
+    "valor": 2,
+    "formula": "=FLOOR((INICIO!B4*INICIO!A4)/6, 0.5)"
+  },
+  {
+    "celula": "G23",
+    "valor": 2,
+    "formula": "=IF( INICIO!A4=1,0, IF(F23>1, ROUNDUP(F23-1, 0), 0)*2)"
+  },
+  {
+    "celula": "E24",
+    "valor": "LATERAIS INFERIORES ",
+    "formula": null
+  },
+  {
+    "celula": "F24",
+    "valor": 3.5,
+    "formula": "=IF(INICIO!K12=\"SIM\", 0, FLOOR(INICIO!C4/6, 0.5))"
+  },
+  {
+    "celula": "G24",
+    "valor": 6,
+    "formula": "=IF(F24=\"\", \"\", IF(F24>1, ROUNDUP(F24-1, 0), 0)*2)"
+  },
+  {
+    "celula": "A25",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "B25",
+    "valor": "QUANTIDADE: 8",
+    "formula": "=\"QUANTIDADE: \"&B22"
+  },
+  {
+    "celula": "C25",
+    "valor": "TAMANHOS: 3,8",
+    "formula": "=\"TAMANHOS: \"&C22"
+  },
+  {
+    "celula": "E25",
+    "valor": "FRONTAIS INFERIORES ",
+    "formula": null
+  },
+  {
+    "celula": "F25",
+    "valor": 0,
+    "formula": "=IF(INICIO!K12=\"LATERAL SIMPLES\", FLOOR((INICIO!B4 * INICIO!A4) / 6, 0.5),0)"
+  },
+  {
+    "celula": "G25",
+    "valor": 0,
+    "formula": "=IF(F25=\"\",\"\", IF(F25>1, ROUNDUP(F25-1, 0), 0)*2)"
+  },
+  {
+    "celula": "E26",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "G26",
+    "valor": 8,
+    "formula": "=IF(AND(G24=\"\", G25=\"\"), SUM(G22:G23), SUM(G22:G25))"
+  },
+  {
+    "celula": "A28",
+    "valor": "MOLA",
+    "formula": null
+  },
+  {
+    "celula": "E28",
+    "valor": "PERFIL DE ALUMINEO DUPLO",
+    "formula": null
+  },
+  {
+    "celula": "A29",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B29",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "C29",
+    "valor": "UNIDADE ",
+    "formula": null
+  },
+  {
+    "celula": "E29",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "F29",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "G29",
+    "valor": "UNIDADE DE MEDIDA",
+    "formula": null
+  },
+  {
+    "celula": "A30",
+    "valor": "LATERAIS SUPERIORES ",
+    "formula": null
+  },
+  {
+    "celula": "B30",
+    "valor": 84,
+    "formula": "=IF(AND(INICIO!K16<>\"SEM COBERTURA\", INICIO!K15=\"SIM\"), \n    (INICIO!C4*2)*2, \n    IF(INICIO!K16=\"SIM\", \n        INICIO!C4*2, \n        IF(INICIO!K15=\"SIM\", \n            INICIO!C4*2, \n            0\n        )\n    )\n)"
+  },
+  {
+    "celula": "C30",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "E30",
+    "valor": "QUANTIDADE PADRÃO",
+    "formula": null
+  },
+  {
+    "celula": "F30",
+    "valor": "12",
+    "formula": "=TEXT(INICIO!D4*4, \"0\")"
+  },
+  {
+    "celula": "G30",
+    "valor": "METROS",
+    "formula": null
+  },
+  {
+    "celula": "A31",
+    "valor": "FRONTAIS SUPERIORES ",
+    "formula": null
+  },
+  {
+    "celula": "B31",
+    "valor": 56,
+    "formula": "=IF(AND(INICIO!K16<>\"SEM COBERTURA\", INICIO!K15=\"SIM\"), ((INICIO!B4*INICIO!A4)*2)*2, IF(INICIO!K16=\"SIM\", (INICIO!B4*INICIO!A4)*2, IF(INICIO!K15=\"SIM\", INICIO!B4*INICIO!A4)*2))"
+  },
+  {
+    "celula": "C31",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "E31",
+    "valor": "TRANFORMAÇÃO DE METOS P/ BARRAS",
+    "formula": null
+  },
+  {
+    "celula": "F31",
+    "valor": 2,
+    "formula": "=SUM(F30/6)"
+  },
+  {
+    "celula": "G31",
+    "valor": "BARRAS",
+    "formula": null
+  },
+  {
+    "celula": "A32",
+    "valor": "CALHAS CENTRO",
+    "formula": null
+  },
+  {
+    "celula": "B32",
+    "valor": 42,
+    "formula": "=IF(AND(INICIO!K16<>\"SEM COBERTURA\", B72>0), (B72*INICIO!C4)*2 ,0)"
+  },
+  {
+    "celula": "C32",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "E32",
+    "valor": "SE MAIOR QUE 51M LATERAL",
+    "formula": null
+  },
+  {
+    "celula": "F32",
+    "valor": 0,
+    "formula": "=IF(INICIO!C4>=100, 4, IF(INICIO!C4>=51, 2, 0))"
+  },
+  {
+    "celula": "G32",
+    "valor": "BARRAS ",
+    "formula": null
+  },
+  {
+    "celula": "A33",
+    "valor": "ARCOS FRONTAIS",
+    "formula": null
+  },
+  {
+    "celula": "B33",
+    "valor": 61.6,
+    "formula": "=IF(AND(INICIO!K16<>\"SEM COBERTURA\", INICIO!K15=\"SIM\"), ((((INICIO!B4*0.1)+INICIO!B4)*INICIO!A4)*2)*2,0)"
+  },
+  {
+    "celula": "C33",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "E33",
+    "valor": "SE MAIOR QUE 51M FRONTAL",
+    "formula": null
+  },
+  {
+    "celula": "F33",
+    "valor": 0,
+    "formula": "=IF(INICIO!B4*INICIO!A4>=100,4, IF(INICIO!B4*INICIO!A4>=51,2,0))"
+  },
+  {
+    "celula": "G33",
+    "valor": "BARRAS ",
+    "formula": null
+  },
+  {
+    "celula": "A34",
+    "valor": "LATERAIS INFERIORES",
+    "formula": null
+  },
+  {
+    "celula": "B34",
+    "valor": 42,
+    "formula": "=IF(OR(INICIO!K12=\"MURETA C/ PERFIL\", INICIO!K12=\"LATERAL SIMPLES\"), INICIO!C4*2,0)"
+  },
+  {
+    "celula": "C34",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "A35",
+    "valor": "FRONTAIS INFERIORES ",
+    "formula": null
+  },
+  {
+    "celula": "B35",
+    "valor": 28,
+    "formula": "=IF(OR(INICIO!K12=\"MURETA C/ PERFIL\", INICIO!K12=\"LATERAL SIMPLES\"),(INICIO!B4*INICIO!A4)*2,0)"
+  },
+  {
+    "celula": "C35",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "E35",
+    "valor": "TOTAL DE SOMA DE BARRAS ",
+    "formula": null
+  },
+  {
+    "celula": "F35",
+    "valor": 2,
+    "formula": "=SUM(F31+F32+F33)"
+  },
+  {
+    "celula": "G35",
+    "valor": "BARRAS",
+    "formula": null
+  },
+  {
+    "celula": "A36",
+    "valor": "POSTES DOS CANTOS",
+    "formula": null
+  },
+  {
+    "celula": "B36",
+    "valor": 24,
+    "formula": "=SUM(4*INICIO!D4)*2"
+  },
+  {
+    "celula": "C36",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "E36",
+    "valor": "QTND DE BARRAS ",
+    "formula": null
+  },
+  {
+    "celula": "F36",
+    "valor": 2,
+    "formula": "=IF(INICIO!K15=\"SIM\", ROUNDUP(F35, 0),0)"
+  },
+  {
+    "celula": "G36",
+    "valor": "BARRAS 6 METOS ",
+    "formula": null
+  },
+  {
+    "celula": "A37",
+    "valor": "PORTAS",
+    "formula": null
+  },
+  {
+    "celula": "B37",
+    "valor": 25,
+    "formula": "=IF(INICIO!K17>0,INICIO!K17*25,0)"
+  },
+  {
+    "celula": "C37",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "A38",
+    "valor": "POSTE DO ARCO DE DIVISA (SE TIVER)",
+    "formula": null
+  },
+  {
+    "celula": "B38",
+    "valor": 0,
+    "formula": "=IF(INICIO!K13>0,((INICIO!D4 *2)*2)* INICIO!K13,0)"
+  },
+  {
+    "celula": "C38",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "A39",
+    "valor": "ARCO DE DIVISA (SE TIVER)",
+    "formula": null
+  },
+  {
+    "celula": "B39",
+    "valor": 0,
+    "formula": "=IF(INICIO!K13>0, ((((INICIO!B4*0.1)+INICIO!B4)*2)*INICIO!A4)*INICIO!K13, 0)"
+  },
+  {
+    "celula": "C39",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "A40",
+    "valor": "MARGEM DE ERRO 10% ACIMA",
+    "formula": null
+  },
+  {
+    "celula": "B40",
+    "valor": 36.26,
+    "formula": "=SUM(B30:B39)*0.1"
+  },
+  {
+    "celula": "C40",
+    "valor": "MT",
+    "formula": null
+  },
+  {
+    "celula": "A41",
+    "valor": 398.86,
+    "formula": "=SUM(B30:B40)"
+  },
+  {
+    "celula": "B41",
+    "valor": 15.9544,
+    "formula": "=SUM(B30:B40)/25"
+  },
+  {
+    "celula": "C41",
+    "valor": 16,
+    "formula": "=ROUNDUP(B41, 0)"
+  },
+  {
+    "celula": "F43",
+    "valor": "PERFIL DE ALUMINEO SIMPLES ",
+    "formula": null
+  },
+  {
+    "celula": "A44",
+    "valor": "LATERAL COM PERFIL",
+    "formula": null
+  },
+  {
+    "celula": "F44",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "G44",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "H44",
+    "valor": "UN MEDIDA",
+    "formula": null
+  },
+  {
+    "celula": "A45",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B45",
+    "valor": "TIPO",
+    "formula": null
+  },
+  {
+    "celula": "C45",
+    "valor": "METROS",
+    "formula": null
+  },
+  {
+    "celula": "D45",
+    "valor": "BARRAS",
+    "formula": null
+  },
+  {
+    "celula": "F45",
+    "valor": "FRENTE E FUNDO ",
+    "formula": null
+  },
+  {
+    "celula": "G45",
+    "valor": 28,
+    "formula": "=SUM(INICIO!B4*INICIO!A4)*2"
+  },
+  {
+    "celula": "H45",
+    "valor": "METROS ",
+    "formula": null
+  },
+  {
+    "celula": "A46",
+    "valor": "LATERAL SUPERIOR ",
+    "formula": null
+  },
+  {
+    "celula": "B46",
+    "valor": "#REF!",
+    "formula": "=IF(#REF!=\"LATERAL DUPLA\", \"DUPLO\", IF(#REF!=\"NÃO\",\"SIMPLES\"))"
+  },
+  {
+    "celula": "C46",
+    "valor": 42,
+    "formula": "=IF(INICIO!K9=\"SIM\", 0, (INICIO!C4*2))"
+  },
+  {
+    "celula": "D46",
+    "valor": 7,
+    "formula": "=C46/6"
+  },
+  {
+    "celula": "F46",
+    "valor": "LATERAIS ",
+    "formula": null
+  },
+  {
+    "celula": "G46",
+    "valor": 42,
+    "formula": "=SUM(INICIO!C4*2)"
+  },
+  {
+    "celula": "H46",
+    "valor": "METROS",
+    "formula": null
+  },
+  {
+    "celula": "A47",
+    "valor": "FRENTE E FUNDO SUPERIOR ",
+    "formula": null
+  },
+  {
+    "celula": "B47",
+    "valor": "#REF!",
+    "formula": "=IF(#REF!=\"SIM\", \"DUPLO\", IF(#REF!=\"NÃO\",\"SIMPLES\"))"
+  },
+  {
+    "celula": "C47",
+    "valor": 28,
+    "formula": "=SUM((INICIO!B4*INICIO!A4)*2)"
+  },
+  {
+    "celula": "D47",
+    "valor": 4.666666667,
+    "formula": "=C47/6"
+  },
+  {
+    "celula": "F47",
+    "valor": "CONVERSÃO DE METROS PARA BARRAS ",
+    "formula": null
+  },
+  {
+    "celula": "G47",
+    "valor": 11.66666667,
+    "formula": "=SUM(G45+G46)/6"
+  },
+  {
+    "celula": "H47",
+    "valor": "BARRAS",
+    "formula": null
+  },
+  {
+    "celula": "A48",
+    "valor": "TOTAL DE LATERAIS SUPERIORES",
+    "formula": null
+  },
+  {
+    "celula": "B48",
+    "valor": "DUPLAS",
+    "formula": null
+  },
+  {
+    "celula": "C48",
+    "valor": 70,
+    "formula": "=SUM(C46:C47)"
+  },
+  {
+    "celula": "D48",
+    "valor": 11.66666667,
+    "formula": "=C48/6"
+  },
+  {
+    "celula": "F48",
+    "valor": "TOTAL DE BARRAS",
+    "formula": null
+  },
+  {
+    "celula": "G48",
+    "valor": 0,
+    "formula": "=IF(AND(INICIO!K15=\"SIM\", INICIO!K9=\"CALHA\"), ROUNDUP(G47, 0),0)"
+  },
+  {
+    "celula": "H48",
+    "valor": "BARRAS",
+    "formula": null
+  },
+  {
+    "celula": "A49",
+    "valor": "LATERAIS INFERIOR ",
+    "formula": null
+  },
+  {
+    "celula": "B49",
+    "valor": "SIMPLES",
+    "formula": null
+  },
+  {
+    "celula": "C49",
+    "valor": 42,
+    "formula": "=IF(INICIO!K9=\"SIM\", 0, (INICIO!C4*2))"
+  },
+  {
+    "celula": "D49",
+    "valor": 7,
+    "formula": "=C49/6"
+  },
+  {
+    "celula": "A50",
+    "valor": "FRENTE E FUNDO INFERIOR",
+    "formula": null
+  },
+  {
+    "celula": "B50",
+    "valor": "SIMPLES",
+    "formula": null
+  },
+  {
+    "celula": "C50",
+    "valor": 28,
+    "formula": "=IF(INICIO!K9=\"SIM\", 0, ((INICIO!B4*INICIO!A4)*2))"
+  },
+  {
+    "celula": "D50",
+    "valor": 4.666666667,
+    "formula": "=C50/6"
+  },
+  {
+    "celula": "A51",
+    "valor": "TOTAL DE LATERAIS INFERIORES",
+    "formula": null
+  },
+  {
+    "celula": "B51",
+    "valor": "SIMPLES",
+    "formula": null
+  },
+  {
+    "celula": "C51",
+    "valor": 70,
+    "formula": "=SUM(C49:C50)"
+  },
+  {
+    "celula": "D51",
+    "valor": 11.66666667,
+    "formula": "=C51/6"
+  },
+  {
+    "celula": "A63",
+    "valor": "SUPORTE DE CALHA SIMPLES",
+    "formula": null
+  },
+  {
+    "celula": "E63",
+    "valor": "ESPERA DE ARCO",
+    "formula": null
+  },
+  {
+    "celula": "A64",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B64",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "C64",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "E64",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "F64",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "G64",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "A65",
+    "valor": "LATERAIS",
+    "formula": null
+  },
+  {
+    "celula": "B65",
+    "valor": 0,
+    "formula": "=IF(INICIO!K9=\"CALHA\", (INICIO!C4/3-1)*2, 0)"
+  },
+  {
+    "celula": "E65",
+    "valor": "LATERAIS",
+    "formula": null
+  },
+  {
+    "celula": "F65",
+    "valor": 16,
+    "formula": "=IF(INICIO!K9<>\"CALHA\",(INICIO!C4/3+1)*2, 0)"
+  },
+  {
+    "celula": "A67",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "B67",
+    "valor": 0,
+    "formula": "=(B65)"
+  },
+  {
+    "celula": "E67",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "F67",
+    "valor": 16,
+    "formula": "=(F65)"
+  },
+  {
+    "celula": "A69",
+    "valor": "CALHA ALUMINEO",
+    "formula": null
+  },
+  {
+    "celula": "E69",
+    "valor": "SUPORTE CALHA DUPLA",
+    "formula": null
+  },
+  {
+    "celula": "A70",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B70",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "C70",
+    "valor": "METROS",
+    "formula": null
+  },
+  {
+    "celula": "E70",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "F70",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "G70",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "A71",
+    "valor": "LATERAIS ",
+    "formula": null
+  },
+  {
+    "celula": "B71",
+    "valor": 2,
+    "formula": null
+  },
+  {
+    "celula": "C71",
+    "valor": 0,
+    "formula": "=IF(INICIO!K9=\"SIM\", INICIO!C4*2,0)"
+  },
+  {
+    "celula": "E71",
+    "valor": "POSTES DO CENTRO ",
+    "formula": null
+  },
+  {
+    "celula": "F71",
+    "valor": 6,
+    "formula": "=IF(INICIO!A4>1,(INICIO!C4/3+1-2)*(INICIO!A4-1),0)"
+  },
+  {
+    "celula": "A72",
+    "valor": "MEIO",
+    "formula": null
+  },
+  {
+    "celula": "B72",
+    "valor": 1,
+    "formula": "=IF(INICIO!A4>1, INICIO!A4-1,0)"
+  },
+  {
+    "celula": "C72",
+    "valor": 21,
+    "formula": "=IF(INICIO!A4>1, (INICIO!A4-1)*INICIO!C4,0)"
+  },
+  {
+    "celula": "A73",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "C73",
+    "valor": 21,
+    "formula": "=SUM(C71+C72)"
+  },
+  {
+    "celula": "E73",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "F73",
+    "valor": 6,
+    "formula": "=F71"
+  },
+  {
+    "celula": "A74",
+    "valor": "TOTAL DE BARRAS 6M",
+    "formula": null
+  },
+  {
+    "celula": "C74",
+    "valor": 3.5,
+    "formula": "=FLOOR(C73/6, 0.5)"
+  },
+  {
+    "celula": "A76",
+    "valor": "SUPORTE SAIDA DE CALHA",
+    "formula": null
+  },
+  {
+    "celula": "E76",
+    "valor": " SUPORTE ENTRADA DE CALHA",
+    "formula": null
+  },
+  {
+    "celula": "A77",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "E77",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "F77",
+    "valor": "TIPO",
+    "formula": null
+  },
+  {
+    "celula": "A78",
+    "valor": "ESQUERDA ",
+    "formula": null
+  },
+  {
+    "celula": "B78",
+    "valor": 1,
+    "formula": null
+  },
+  {
+    "celula": "E78",
+    "valor": "DIREITA",
+    "formula": null
+  },
+  {
+    "celula": "F78",
+    "valor": 1,
+    "formula": null
+  },
+  {
+    "celula": "A79",
+    "valor": "FIREITA",
+    "formula": null
+  },
+  {
+    "celula": "B79",
+    "valor": 1,
+    "formula": null
+  },
+  {
+    "celula": "E79",
+    "valor": "ESQUERDA",
+    "formula": null
+  },
+  {
+    "celula": "F79",
+    "valor": 1,
+    "formula": null
+  },
+  {
+    "celula": "A80",
+    "valor": "DUPLA",
+    "formula": null
+  },
+  {
+    "celula": "B80",
+    "valor": 1,
+    "formula": "=IF(INICIO!A4>1,INICIO!A4-1,0)"
+  },
+  {
+    "celula": "E80",
+    "valor": "DUPLA",
+    "formula": null
+  },
+  {
+    "celula": "F80",
+    "valor": 1,
+    "formula": "=IF(INICIO!A4>1,INICIO!A4-1,0)"
+  },
+  {
+    "celula": "A83",
+    "valor": "SAIDA CENTRAL",
+    "formula": null
+  },
+  {
+    "celula": "E83",
+    "valor": "PU SELANTE",
+    "formula": null
+  },
+  {
+    "celula": "A84",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B84",
+    "valor": "TIPO",
+    "formula": null
+  },
+  {
+    "celula": "E84",
+    "valor": "QUANTIDADE ",
+    "formula": null
+  },
+  {
+    "celula": "F84",
+    "valor": "QUANTIDADE CERTA",
+    "formula": null
+  },
+  {
+    "celula": "A85",
+    "valor": "QUANIDADE DE SAIDAS",
+    "formula": null
+  },
+  {
+    "celula": "B85",
+    "valor": 0,
+    "formula": "=IF(INICIO!C4<51,0,(INT((INICIO!C4-51)/30)+1)*(INICIO!A4+1))"
+  },
+  {
+    "celula": "E85",
+    "valor": 5.25,
+    "formula": "=SUM((INICIO!C4/12)*(INICIO!A4+1))"
+  },
+  {
+    "celula": "F85",
+    "valor": 6,
+    "formula": "=ROUNDUP(E85, 0)"
+  },
+  {
+    "celula": "A86",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "B86",
+    "valor": 0,
+    "formula": "=B85"
+  },
+  {
+    "celula": "E88",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "F88",
+    "valor": 6,
+    "formula": "=F85"
+  },
+  {
+    "celula": "A97",
+    "valor": "KIT PARAFUSO INST 1``",
+    "formula": null
+  },
+  {
+    "celula": "E97",
+    "valor": "BARRA ROSCADA",
+    "formula": null
+  },
+  {
+    "celula": "A98",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B98",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "C98",
+    "valor": "QNT DE PARAFUSOS",
+    "formula": null
+  },
+  {
+    "celula": "E98",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "F98",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "G98",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "A99",
+    "valor": "ARCO FRONTAL ",
+    "formula": null
+  },
+  {
+    "celula": "B99",
+    "valor": 0,
+    "formula": "=IF(AND(INICIO!K7=\"LANTERNIN\", INICIO!K8=\"NÃO\"), 6,\n IF(AND(INICIO!K7=\"LANTERNIN\", INICIO!K8=\"SIM\"), 4,\n IF(AND(INICIO!K7=\"DUPLO\", INICIO!K8=\"NÃO\"), 4,\n IF(AND(INICIO!K7=\"DUPLO\", INICIO!K8=\"SIM\"), 2,\n IF(AND(INICIO!K7=\"LEVE\", INICIO!K8=\"NÃO\"), 2,\n IF(AND(INICIO!K7=\"LEVE\", INICIO!K8=\"SIM\"), 2,\n 0))))))"
+  },
+  {
+    "celula": "E99",
+    "valor": "POSTE INTERNOS  EUCALIPTO",
+    "formula": null
+  },
+  {
+    "celula": "F99",
+    "valor": 0,
+    "formula": "=IF(AND(INICIO!K8=\"EUCALIPTO\", INICIO!K9=\"LATERAL SIMPLES\"), (2*(INICIO!C4/3-1))*(INICIO!A4+1),\n IF(AND(INICIO!K8=\"EUCALIPTO\", INICIO!K9=\"LATERAL DUPLA\"), (2*(INICIO!C4/3-1))*(INICIO!A4+1),\n IF(AND(INICIO!K8=\"EUCALIPTO\", INICIO!K19=\"COMPLETO\"), (2*(INICIO!C4/3-1))*(INICIO!A4+1),\n IF(AND(INICIO!K8=\"EUCALIPTO\", INICIO!K19=\"APENAS INTERNO\"), (2*(INICIO!C4/3-1))*(INICIO!A4+1),\n IF(AND(INICIO!K8=\"EUCALIPTO\", INICIO!K19=\"SEM CABO DE AÇO\"), (INICIO!C4/3-1)*(INICIO!A4+1),\n 0)))))"
+  },
+  {
+    "celula": "A100",
+    "valor": "ARCO INTERNO",
+    "formula": null
+  },
+  {
+    "celula": "B100",
+    "valor": 0,
+    "formula": "=IF(AND(INICIO!K7=\"LANTERNIN\", INICIO!K8=\"NÃO\"), 6,\n IF(AND(INICIO!K7=\"LANTERNIN\", INICIO!K8=\"SIM\"), 4,\n IF(AND(INICIO!K7=\"DUPLO\", INICIO!K8=\"NÃO\"), 4,\n IF(AND(INICIO!K7=\"DUPLO\", INICIO!K8=\"SIM\"), 2,0))))"
+  },
+  {
+    "celula": "E100",
+    "valor": "POSTE FRONTAIS  EUCALIPTO OU DUPLO (CANTO)",
+    "formula": null
+  },
+  {
+    "celula": "F100",
+    "valor": 0,
+    "formula": "=IF(OR(INICIO!K8=\"EUCALIPTO\", INICIO!K10=\"SIM\"),\n   IF(AND(INICIO!K9=\"CALHA\", OR(INICIO!K19=\"SEM CABO DE AÇO\", INICIO!K19=\"APENAS INTERNO\")),\n      4*1,\n      4*2),\n   0)"
+  },
+  {
+    "celula": "A101",
+    "valor": "POSTES LINHA LATERAL",
+    "formula": null
+  },
+  {
+    "celula": "B101",
+    "valor": 0,
+    "formula": "=IF(INICIO!K10=\"NÃO\",\n   IF(AND(INICIO!K9=\"SIM\", INICIO!K19=\"COMPLETO\"), 4*((INICIO!C4/3-1)*2),\n   IF(AND(INICIO!K9=\"SIM\", INICIO!K19=\"APENAS INTERNO\"), 3*((INICIO!C4/3-1)*2),\n   IF(AND(INICIO!K9=\"NÃO\", INICIO!K19=\"COMPLETO\"), 4*((INICIO!C4/3-1)*2),\n   IF(AND(INICIO!K9=\"NÃO\", INICIO!K19=\"APENAS INTERNO\"), 4*((INICIO!C4/3-1)*2),\n   IF(AND(INICIO!K9=\"SIM\", INICIO!K19=\"SEM CABO DE AÇO\"), 2*((INICIO!C4/3-1)*2),\n   0))))),)"
+  },
+  {
+    "celula": "E101",
+    "valor": "POSTES FRONTAIS BAIXOS",
+    "formula": null
+  },
+  {
+    "celula": "F101",
+    "valor": 0,
+    "formula": "=IF(\n  OR(INICIO!K8=\"EUCALIPTO\", INICIO!K10=\"SIM\"),\n  IF(\n    INICIO!A4>1,\n    IF(\n      INICIO!K19=\"COMPLETO\",\n      ((INICIO!A4-1)*2)*3,\n      (INICIO!A4-1)*2\n    ),\n    0\n  ),\n  0\n)"
+  },
+  {
+    "celula": "A102",
+    "valor": "POSTES LINHA CENTRAL",
+    "formula": null
+  },
+  {
+    "celula": "B102",
+    "valor": 44,
+    "formula": "=IF(INICIO!K10=\"NÃO\", IF(AND(INICIO!A4>1, INICIO!K19=\"SEM CABO DE AÇO\"), 2*((INICIO!C4/3-1)*INICIO!A4-1), IF(AND(INICIO!A4>1, INICIO!K19=\"COMPLETO\"), 4*((INICIO!C4/3-1)*INICIO!A4-1), IF(AND(INICIO!A4>1, INICIO!K19=\"APENAS INTERNO \"), 4*((INICIO!C4/3-1)*INICIO!A4-1),0))),0)"
+  },
+  {
+    "celula": "E102",
+    "valor": "POSTES FRONTAIS TOPO",
+    "formula": null
+  },
+  {
+    "celula": "F102",
+    "valor": false,
+    "formula": "=IF(OR(INICIO!K8=\"EUCALIPTO\", INICIO!K11=\"SIM\"), IF(INICIO!K19=\"COMPLETO\",C14*4,C14*2))"
+  },
+  {
+    "celula": "A103",
+    "valor": "POSTES CONTO",
+    "formula": null
+  },
+  {
+    "celula": "B103",
+    "valor": 8,
+    "formula": "=IF(INICIO!K10=\"NÃO\", IF(AND(INICIO!K9=\"SIM\", INICIO!K19=\"COMPLETO\"), 3*4, 2*4), 0)"
+  },
+  {
+    "celula": "E103",
+    "valor": "CONTRAVENTO",
+    "formula": null
+  },
+  {
+    "celula": "F103",
+    "valor": 0,
+    "formula": "=IF(OR(INICIO!K8=\"EUCALIPTO\", INICIO!K10=\"SIM\"),4,0)"
+  },
+  {
+    "celula": "A104",
+    "valor": "POSTES FRONTAIS BAIXOS",
+    "formula": null
+  },
+  {
+    "celula": "B104",
+    "valor": 8,
+    "formula": "=IF(AND(INICIO!A4>1, INICIO!K10=\"NÃO\"), ((INICIO!A4-1)*2)*4,0)"
+  },
+  {
+    "celula": "E104",
+    "valor": "ARCOS DUPLOS OU LANTERNING",
+    "formula": null
+  },
+  {
+    "celula": "F104",
+    "valor": false,
+    "formula": "=IF(OR(INICIO!K8=\"EUCALIPTO\", INICIO!K10=\"SIM\"), IF(OR(INICIO!K7=\"DUPLO\", INICIO!K7=\"LANTERNIN\"), B8*2))"
+  },
+  {
+    "celula": "A105",
+    "valor": "POSTES FRONTAIS TOPO",
+    "formula": null
+  },
+  {
+    "celula": "B105",
+    "valor": 12,
+    "formula": "=IF(INICIO!K11=\"NÃO\",C14*3,0)"
+  },
+  {
+    "celula": "E105",
+    "valor": "LATERAL INFERIOR",
+    "formula": null
+  },
+  {
+    "celula": "F105",
+    "valor": 0,
+    "formula": "=IF(OR(INICIO!K8=\"EUCALIPTO\", INICIO!K10=\"SIM\"), (INICIO!C4/3+1)*2,0)"
+  },
+  {
+    "celula": "A106",
+    "valor": "CALHAS LATERIAS POSTES INTERNOS ",
+    "formula": null
+  },
+  {
+    "celula": "B106",
+    "valor": 0,
+    "formula": "=IF(INICIO!K9=\"SIM\",((INICIO!C4/3-1)*2)*8,0)"
+  },
+  {
+    "celula": "E106",
+    "valor": "FRONTAL INFERIOR",
+    "formula": null
+  },
+  {
+    "celula": "F106",
+    "valor": false,
+    "formula": "=IF(OR(INICIO!K8=\"EUCALIPTO\", INICIO!K10=\"SIM\"), (C13+C14)*2)"
+  },
+  {
+    "celula": "A107",
+    "valor": "CALHAS MEIO POSTES INTERNOS ",
+    "formula": null
+  },
+  {
+    "celula": "B107",
+    "valor": 48,
+    "formula": "=IF(INICIO!A4>1,((INICIO!C4/3-1)*(INICIO!A4-1))*8,0)"
+  },
+  {
+    "celula": "A108",
+    "valor": "ENTRADA E SAIDA DE CALHA LATERAL",
+    "formula": null
+  },
+  {
+    "celula": "B108",
+    "valor": 0,
+    "formula": "=IF(INICIO!K9=\"SIM\", 4*4,0)"
+  },
+  {
+    "celula": "E108",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "F108",
+    "valor": 0,
+    "formula": "=SUM(F99:F106)"
+  },
+  {
+    "celula": "A109",
+    "valor": "ENTRADA E SAIDA DE CALHA MEIO",
+    "formula": null
+  },
+  {
+    "celula": "B109",
+    "valor": 8,
+    "formula": "=IF(INICIO!A4>1,((INICIO!A4-1)*2)*4,0)"
+  },
+  {
+    "celula": "E109",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "F109",
+    "valor": 0,
+    "formula": "=ROUNDUP((F99+F100+F101+F102+F103+F104+F105+F106)/5, 0)"
+  },
+  {
+    "celula": "G109",
+    "valor": "BARRAS",
+    "formula": null
+  },
+  {
+    "celula": "A110",
+    "valor": "CONTRAVENTO ",
+    "formula": null
+  },
+  {
+    "celula": "B110",
+    "valor": 0,
+    "formula": "=IF(AND(INICIO!B4>4, INICIO!K8=\"SIM\"),B22*1, IF(AND(INICIO!B4>4, INICIO!K8=\"NÃO\"),B22*2,0))"
+  },
+  {
+    "celula": "F110",
+    "valor": 0,
+    "formula": "=SUM(F109*10)"
+  },
+  {
+    "celula": "G110",
+    "valor": "UNIDADE",
+    "formula": null
+  },
+  {
+    "celula": "A111",
+    "valor": "ARCO DE DIVISA",
+    "formula": null
+  },
+  {
+    "celula": "B111",
+    "valor": false,
+    "formula": "=IF(INICIO!K13>0,INICIO!K13*4)"
+  },
+  {
+    "celula": "A112",
+    "valor": "10% A MAIS",
+    "formula": null
+  },
+  {
+    "celula": "B112",
+    "valor": 12.8,
+    "formula": "=SUM(B99:B111)*0.1"
+  },
+  {
+    "celula": "A113",
+    "valor": "TOTAL DE PARAFUSOS",
+    "formula": null
+  },
+  {
+    "celula": "B113",
+    "valor": "KITS",
+    "formula": null
+  },
+  {
+    "celula": "C113",
+    "valor": "TOTAL DE KITS",
+    "formula": null
+  },
+  {
+    "celula": "A114",
+    "valor": 140.8,
+    "formula": "=SUM(B99:B113)"
+  },
+  {
+    "celula": "B114",
+    "valor": 5.632,
+    "formula": "=(A114/25)"
+  },
+  {
+    "celula": "C114",
+    "valor": 6,
+    "formula": "=ROUNDUP(B114, 0)"
+  },
+  {
+    "celula": "E114",
+    "valor": "KIT PARAFUSO\nBROCANTE FORRO",
+    "formula": null
+  },
+  {
+    "celula": "E115",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "F115",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "G115",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "A121",
+    "valor": "KIT PARAFUSO INST\r\n3",
+    "formula": null
+  },
+  {
+    "celula": "A122",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B122",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "C122",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "A123",
+    "valor": "ARCO FRONTAL ",
+    "formula": null
+  },
+  {
+    "celula": "B123",
+    "valor": 24,
+    "formula": "=IF(INICIO!K7=\"LANTERNIN\", 20*C5, IF(INICIO!K7=\"DUPLO\", 7*C5, IF(INICIO!K7=\"LEVE\", 6*C5,0)))"
+  },
+  {
+    "celula": "A124",
+    "valor": "ARCO INTERNO",
+    "formula": null
+  },
+  {
+    "celula": "B124",
+    "valor": 48,
+    "formula": "=IF(INICIO!K7=\"LANTERNIN\", C4*20, IF(INICIO!K7=\"DUPLO\", C4*7, IF(INICIO!K7=\"LEVE\", C4*4,0)))"
+  },
+  {
+    "celula": "A125",
+    "valor": "EMENDA DA DORSAL",
+    "formula": null
+  },
+  {
+    "celula": "B125",
+    "valor": 12,
+    "formula": "=IF(OR(INICIO!K7=\"DUPLO\", INICIO!K7=\"LEVE\"), G14*2,0)"
+  },
+  {
+    "celula": "A126",
+    "valor": "LATERAL SUPERIOR",
+    "formula": null
+  },
+  {
+    "celula": "B126",
+    "valor": 0,
+    "formula": "=IF(INICIO!K9=\"NÃO\", (INICIO!C4/3+1)*2,0)"
+  },
+  {
+    "celula": "A127",
+    "valor": "FRONTAL  SUPERIOR (POSTE AÇO)",
+    "formula": null
+  },
+  {
+    "celula": "B127",
+    "valor": 0,
+    "formula": "=IF(INICIO!K8=\"NÃO\", C13+C14,0)"
+  },
+  {
+    "celula": "A128",
+    "valor": "LATERAL INFERIOR (POSTE AÇO)",
+    "formula": null
+  },
+  {
+    "celula": "B128",
+    "valor": 0,
+    "formula": "=IF(AND(INICIO!K8=\"NÃO\",INICIO!K12=\"LATERAL SIMPLES\"),(INICIO!C4/3+1)*2,0)"
+  },
+  {
+    "celula": "A129",
+    "valor": "FRONTAL INFERIOR (POSTEAÇO)",
+    "formula": null
+  },
+  {
+    "celula": "B129",
+    "valor": 0,
+    "formula": "=IF(AND(INICIO!K8<>\"EUCALIPTO\", INICIO!K12=\"LATERAL SIMPLES\"), C13+C14,0)"
+  },
+  {
+    "celula": "C130",
+    "valor": "KIT",
+    "formula": null
+  },
+  {
+    "celula": "A131",
+    "valor": "TOTAL ",
+    "formula": null
+  },
+  {
+    "celula": "B131",
+    "valor": 84,
+    "formula": "=SUM(B123:B130)"
+  },
+  {
+    "celula": "C131",
+    "valor": 4,
+    "formula": "=ROUNDUP(B131/25, 0)"
+  },
+  {
+    "celula": "A144",
+    "valor": "CLIPS/GRAMPO CABO DE AÇO",
+    "formula": null
+  },
+  {
+    "celula": "E144",
+    "valor": "CHUMBADOR",
+    "formula": null
+  },
+  {
+    "celula": "A145",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B145",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "C145",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "E145",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "F145",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "G145",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "A146",
+    "valor": "INTERNO",
+    "formula": null
+  },
+  {
+    "celula": "B146",
+    "valor": 48,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", F159*4, IF(INICIO!K19=\"APENAS INTERNO \",F159*4,0))"
+  },
+  {
+    "celula": "E146",
+    "valor": "EXT LATERAL",
+    "formula": null
+  },
+  {
+    "celula": "F146",
+    "valor": 12,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", (INICIO!C4/3-1)*2,0)"
+  },
+  {
+    "celula": "A147",
+    "valor": "EXT LATERAL",
+    "formula": null
+  },
+  {
+    "celula": "B147",
+    "valor": 48,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", F160*4,0)"
+  },
+  {
+    "celula": "E147",
+    "valor": "EXT FRONTAL BAIXO",
+    "formula": null
+  },
+  {
+    "celula": "F147",
+    "valor": 2,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", (INICIO!A4-1)*2,0)"
+  },
+  {
+    "celula": "A148",
+    "valor": "EXT FRONTAL BAIXO",
+    "formula": null
+  },
+  {
+    "celula": "B148",
+    "valor": 8,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", F161*4,0)"
+  },
+  {
+    "celula": "E148",
+    "valor": "EXT CANTO",
+    "formula": null
+  },
+  {
+    "celula": "F148",
+    "valor": 8,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", 8,0)"
+  },
+  {
+    "celula": "A149",
+    "valor": "EXT CANTO ",
+    "formula": null
+  },
+  {
+    "celula": "B149",
+    "valor": 32,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", F162*4,0)"
+  },
+  {
+    "celula": "E149",
+    "valor": "EXT FRONTAL TOPO",
+    "formula": null
+  },
+  {
+    "celula": "F149",
+    "valor": 4,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", C14,0)"
+  },
+  {
+    "celula": "A150",
+    "valor": "EXT FRONTAL TOPO",
+    "formula": null
+  },
+  {
+    "celula": "B150",
+    "valor": 16,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", F163*4,0)"
+  },
+  {
+    "celula": "E150",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "F150",
+    "valor": 26,
+    "formula": "=SUM(F146:F149)"
+  },
+  {
+    "celula": "A151",
+    "valor": "X ENTRE OS POSTES",
+    "formula": null
+  },
+  {
+    "celula": "B151",
+    "valor": 0,
+    "formula": "=IF(INICIO!K20>0,F164*4,0)"
+  },
+  {
+    "celula": "A152",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "B152",
+    "valor": 152,
+    "formula": "=SUM(B146:B151)"
+  },
+  {
+    "celula": "A157",
+    "valor": "ESTICADOR DE CABO DE AÇO",
+    "formula": null
+  },
+  {
+    "celula": "E157",
+    "valor": "CABO DE AÇO",
+    "formula": null
+  },
+  {
+    "celula": "A158",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B158",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "C158",
+    "valor": "TAMANHO",
+    "formula": null
+  },
+  {
+    "celula": "E158",
+    "valor": "LOCAL DO CABO",
+    "formula": null
+  },
+  {
+    "celula": "F158",
+    "valor": "QNT DE VESES",
+    "formula": null
+  },
+  {
+    "celula": "G158",
+    "valor": "METROS",
+    "formula": null
+  },
+  {
+    "celula": "H158",
+    "valor": "TOTAL DE METROS",
+    "formula": null
+  },
+  {
+    "celula": "A159",
+    "valor": "INTERNO",
+    "formula": null
+  },
+  {
+    "celula": "B159",
+    "valor": 12,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", (INICIO!C4/3-1)*INICIO!A4, IF(INICIO!K19=\"APENAS INTERNO \",(INICIO!C4/3-1)*INICIO!A4,0))"
+  },
+  {
+    "celula": "E159",
+    "valor": "INTERNO",
+    "formula": null
+  },
+  {
+    "celula": "F159",
+    "valor": 12,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", (INICIO!C4/3-1)*INICIO!A4, IF(INICIO!K19=\"APENAS INTERNO \",(INICIO!C4/3-1)*INICIO!A4,0))"
+  },
+  {
+    "celula": "G159",
+    "valor": 96,
+    "formula": "=IF(B4=10,11*F159, IF(B4=8,9*F159, IF(B4=7,8*F159)))"
+  },
+  {
+    "celula": "A160",
+    "valor": "EXT LATERAL",
+    "formula": null
+  },
+  {
+    "celula": "B160",
+    "valor": 12,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", (INICIO!C4/3-1)*2,0)"
+  },
+  {
+    "celula": "E160",
+    "valor": "EXT LATERAL",
+    "formula": null
+  },
+  {
+    "celula": "F160",
+    "valor": 12,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", (INICIO!C4/3-1)*2,0)"
+  },
+  {
+    "celula": "G160",
+    "valor": 60,
+    "formula": "=IF(INICIO!D4=5,7*F160, IF(INICIO!D4=4,6*F160, IF(INICIO!D4=3,5*F160)))"
+  },
+  {
+    "celula": "A161",
+    "valor": "EXT FRONTAL BAIXO",
+    "formula": null
+  },
+  {
+    "celula": "B161",
+    "valor": 2,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", (INICIO!A4-1)*2,0)"
+  },
+  {
+    "celula": "E161",
+    "valor": "EXT FRONTAL BAIXO",
+    "formula": null
+  },
+  {
+    "celula": "F161",
+    "valor": 2,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", (INICIO!A4-1)*2,0)"
+  },
+  {
+    "celula": "G161",
+    "valor": 10,
+    "formula": "=IF(INICIO!D4=5,7*F161, IF(INICIO!D4=4,6*F161, IF(INICIO!D4=3,5*F161)))"
+  },
+  {
+    "celula": "A162",
+    "valor": "EXT CANTO ",
+    "formula": null
+  },
+  {
+    "celula": "B162",
+    "valor": 8,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", 8,0)"
+  },
+  {
+    "celula": "E162",
+    "valor": "EXT CANTO ",
+    "formula": null
+  },
+  {
+    "celula": "F162",
+    "valor": 8,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", 8,0)"
+  },
+  {
+    "celula": "G162",
+    "valor": 40,
+    "formula": "=IF(INICIO!D4=5,7*F162, IF(INICIO!D4=4,6*F162, IF(INICIO!D4=3,5*F162)))"
+  },
+  {
+    "celula": "A163",
+    "valor": "EXT FRONTAL TOPO",
+    "formula": null
+  },
+  {
+    "celula": "B163",
+    "valor": 4,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", C14,0)"
+  },
+  {
+    "celula": "E163",
+    "valor": "EXT FRONTAL TOPO",
+    "formula": null
+  },
+  {
+    "celula": "F163",
+    "valor": 4,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", C14,0)"
+  },
+  {
+    "celula": "G163",
+    "valor": 32,
+    "formula": "=IF(INICIO!D4=5,10*F163, IF(INICIO!D4=4,8*F163, IF(INICIO!D4=3,8*F163)))"
+  },
+  {
+    "celula": "A164",
+    "valor": "X ENTRE OS POSTES",
+    "formula": null
+  },
+  {
+    "celula": "B164",
+    "valor": 0,
+    "formula": "=IF(INICIO!K20>0,(INICIO!A4+1)*INICIO!K20,0)"
+  },
+  {
+    "celula": "E164",
+    "valor": "X ENTRE OS POSTES",
+    "formula": null
+  },
+  {
+    "celula": "F164",
+    "valor": 0,
+    "formula": "=IF(INICIO!K20>0,(INICIO!A4+1)*INICIO!K20,0)"
+  },
+  {
+    "celula": "G164",
+    "valor": 0,
+    "formula": "=IF(INICIO!D4=5,(7*2)*F164, IF(INICIO!D4=4,(6*2)*F164, IF(INICIO!D4=3,(5*2)*F164)))"
+  },
+  {
+    "celula": "A166",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "B166",
+    "valor": 38,
+    "formula": "=SUM(B159:B165)"
+  },
+  {
+    "celula": "F167",
+    "valor": "TOTAL DE METROS ",
+    "formula": null
+  },
+  {
+    "celula": "G167",
+    "valor": 238,
+    "formula": "=SUM(G158:G166)"
+  },
+  {
+    "celula": "A173",
+    "valor": "SUPORTE P/ CABO DE AÇO",
+    "formula": null
+  },
+  {
+    "celula": "E173",
+    "valor": "COBERTURA PLASTICO FILME",
+    "formula": null
+  },
+  {
+    "celula": "A174",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "B174",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "E174",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "F174",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "A175",
+    "valor": "INTERNO",
+    "formula": null
+  },
+  {
+    "celula": "B175",
+    "valor": 24,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", F159*2, IF(INICIO!K19=\"APENAS INTERNO \",F159*2,0))"
+  },
+  {
+    "celula": "E175",
+    "valor": "COBERTURA",
+    "formula": null
+  },
+  {
+    "celula": "F175",
+    "valor": 23,
+    "formula": "=IF(INICIO!K16<>\"SEM COBERTURA\", IF(INICIO!K13>0,(INICIO!C4+2)+INICIO!K13*2,INICIO!C4+2),0)"
+  },
+  {
+    "celula": "A176",
+    "valor": "EXT LATERAL",
+    "formula": null
+  },
+  {
+    "celula": "B176",
+    "valor": 24,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", F160*2,0)"
+  },
+  {
+    "celula": "A177",
+    "valor": "EXT FRONTAL BAIXO",
+    "formula": null
+  },
+  {
+    "celula": "B177",
+    "valor": 4,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", F161*2,0)"
+  },
+  {
+    "celula": "A178",
+    "valor": "EXT CANTO ",
+    "formula": null
+  },
+  {
+    "celula": "B178",
+    "valor": 8,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", F162,0)"
+  },
+  {
+    "celula": "E178",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "A179",
+    "valor": "EXT FRONTAL TOPO",
+    "formula": null
+  },
+  {
+    "celula": "B179",
+    "valor": 4,
+    "formula": "=IF(INICIO!K19=\"COMPLETO\", F163,0)"
+  },
+  {
+    "celula": "A180",
+    "valor": "X ENTRE OS POSTES",
+    "formula": null
+  },
+  {
+    "celula": "B180",
+    "valor": 0,
+    "formula": "=IF(INICIO!K20>0,F164*2,0)"
+  },
+  {
+    "celula": "E181",
+    "valor": "TELA",
+    "formula": null
+  },
+  {
+    "celula": "A182",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "B182",
+    "valor": 64,
+    "formula": "=SUM(B175:B181)"
+  },
+  {
+    "celula": "E182",
+    "valor": "LOCAL",
+    "formula": null
+  },
+  {
+    "celula": "F182",
+    "valor": "QNT",
+    "formula": null
+  },
+  {
+    "celula": "E184",
+    "valor": "LATERAIS ",
+    "formula": null
+  },
+  {
+    "celula": "F184",
+    "valor": 44,
+    "formula": "=IF(INICIO!K15=\"SIM\", IF(INICIO!K13>0, ((INICIO!C4+1)*2)+(INICIO!K13*2),(INICIO!C4+1)*2),0)"
+  },
+  {
+    "celula": "E185",
+    "valor": "FRENTE",
+    "formula": null
+  },
+  {
+    "celula": "F185",
+    "valor": 15,
+    "formula": "=IF(INICIO!K15=\"SIM\",\n   IF(INICIO!A4*INICIO!B4>=100, (INICIO!A4*INICIO!B4+4),\n   IF(INICIO!A4*INICIO!B4>=80,  (INICIO!A4*INICIO!B4+3),\n   IF(INICIO!A4*INICIO!B4>=51,  (INICIO!A4*INICIO!B4+2),\n                                (INICIO!A4*INICIO!B4+1)))),\n0)"
+  },
+  {
+    "celula": "E186",
+    "valor": "FUNDO",
+    "formula": null
+  },
+  {
+    "celula": "F186",
+    "valor": 15,
+    "formula": "=IF(INICIO!K15=\"SIM\",\n   IF(INICIO!A4*INICIO!B4>=100, (INICIO!A4*INICIO!B4+4),\n   IF(INICIO!A4*INICIO!B4>=80,  (INICIO!A4*INICIO!B4+3),\n   IF(INICIO!A4*INICIO!B4>=51,  (INICIO!A4*INICIO!B4+2),\n                                (INICIO!A4*INICIO!B4+1)))),\n0)"
+  },
+  {
+    "celula": "E187",
+    "valor": "MEIA LUA",
+    "formula": null
+  },
+  {
+    "celula": "E192",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "A200",
+    "valor": "PARTE",
+    "formula": null
+  },
+  {
+    "celula": "B200",
+    "valor": "TELA APLICADA",
+    "formula": null
+  },
+  {
+    "celula": "C200",
+    "valor": "ALTURA",
+    "formula": null
+  },
+  {
+    "celula": "D200",
+    "valor": "LARGURA TELA",
+    "formula": null
+  },
+  {
+    "celula": "E200",
+    "valor": "ÁREA m²",
+    "formula": null
+  },
+  {
+    "celula": "F200",
+    "valor": "COSTURAS",
+    "formula": null
+  },
+  {
+    "celula": "G200",
+    "valor": "VALOR M²",
+    "formula": null
+  },
+  {
+    "celula": "H200",
+    "valor": "CUSTO TELA",
+    "formula": null
+  },
+  {
+    "celula": "I200",
+    "valor": "CUSTO COSTURA",
+    "formula": null
+  },
+  {
+    "celula": "J200",
+    "valor": "TOTAL",
+    "formula": null
+  },
+  {
+    "celula": "A201",
+    "valor": "Laterais",
+    "formula": null
+  },
+  {
+    "celula": "B201",
+    "valor": "TELA OPTINET 40 MESH GINEGAR (5 METROS)",
+    "formula": "=IF(NOT(ISBLANK(INICIO!I25)), INICIO!I25, INICIO!I26)"
+  },
+  {
+    "celula": "C201",
+    "valor": 3,
+    "formula": "=INICIO!D4"
+  },
+  {
+    "celula": "D201",
+    "valor": 5,
+    "formula": "=IFERROR(VLOOKUP(B201, 'BD-TELAS'!B:C, 2, FALSE), \"\")"
+  },
+  {
+    "celula": "E201",
+    "valor": 42,
+    "formula": "=2 * INICIO!B4 * INICIO!D4"
+  },
+  {
+    "celula": "F201",
+    "valor": 0,
+    "formula": "=IF(C201 > D201, ROUNDUP(C201 / D201, 0) - 1, 0)"
+  },
+  {
+    "celula": "G201",
+    "valor": 21.56,
+    "formula": "=IFERROR(VLOOKUP(B201, 'BD-TELAS'!B:G, 6, FALSE), \"\")"
+  },
+  {
+    "celula": "H201",
+    "valor": 905.52,
+    "formula": "=E201 * G201"
+  },
+  {
+    "celula": "I201",
+    "valor": 0,
+    "formula": "=F201 * E201 * 2.5"
+  },
+  {
+    "celula": "J201",
+    "valor": 905.52,
+    "formula": "=H201 + I201"
+  },
+  {
+    "celula": "A202",
+    "valor": "Frente",
+    "formula": null
+  },
+  {
+    "celula": "B202",
+    "valor": "TELA OPTINET 40 MESH GINEGAR (5 METROS)",
+    "formula": "=IF(NOT(ISBLANK(INICIO!I25)), INICIO!I25, INICIO!I27)"
+  },
+  {
+    "celula": "C202",
+    "valor": 3,
+    "formula": "=INICIO!D4"
+  },
+  {
+    "celula": "D202",
+    "valor": 5,
+    "formula": "=IFERROR(VLOOKUP(B202, 'BD-TELAS'!B:C, 2, FALSE), \"\")"
+  },
+  {
+    "celula": "E202",
+    "valor": 63,
+    "formula": "=INICIO!C4 * INICIO!D4"
+  },
+  {
+    "celula": "F202",
+    "valor": 0,
+    "formula": "=IF(C202 > D202, ROUNDUP(C202 / D202, 0) - 1, 0)"
+  },
+  {
+    "celula": "G202",
+    "valor": 21.56,
+    "formula": "=IFERROR(VLOOKUP(B202, 'BD-TELAS'!B:G, 6, FALSE), \"\")"
+  },
+  {
+    "celula": "H202",
+    "valor": 1358.28,
+    "formula": "=E202 * G202"
+  },
+  {
+    "celula": "I202",
+    "valor": 0,
+    "formula": "=F202 * E202 * 2.5"
+  },
+  {
+    "celula": "J202",
+    "valor": 1358.28,
+    "formula": "=H202 + I202"
+  },
+  {
+    "celula": "A203",
+    "valor": "Fundo",
+    "formula": null
+  },
+  {
+    "celula": "B203",
+    "valor": "TELA OPTINET 40 MESH GINEGAR (5 METROS)",
+    "formula": "=IF(NOT(ISBLANK(INICIO!I25)), INICIO!I25, INICIO!I28)"
+  },
+  {
+    "celula": "C203",
+    "valor": 3,
+    "formula": "=INICIO!D4"
+  },
+  {
+    "celula": "D203",
+    "valor": 5,
+    "formula": "=IFERROR(VLOOKUP(B203, 'BD-TELAS'!B:C, 2, FALSE), \"\")"
+  },
+  {
+    "celula": "E203",
+    "valor": 63,
+    "formula": "=INICIO!C4 * INICIO!D4"
+  },
+  {
+    "celula": "F203",
+    "valor": 0,
+    "formula": "=IF(C203 > D203, ROUNDUP(C203 / D203, 0) - 1, 0)"
+  },
+  {
+    "celula": "G203",
+    "valor": 21.56,
+    "formula": "=IFERROR(VLOOKUP(B203, 'BD-TELAS'!B:G, 6, FALSE), \"\")"
+  },
+  {
+    "celula": "H203",
+    "valor": 1358.28,
+    "formula": "=E203 * G203"
+  },
+  {
+    "celula": "I203",
+    "valor": 0,
+    "formula": "=F203 * E203 * 2.5"
+  },
+  {
+    "celula": "J203",
+    "valor": 1358.28,
+    "formula": "=H203 + I203"
+  },
+  {
+    "celula": "A204",
+    "valor": "Meia-lua",
+    "formula": null
+  },
+  {
+    "celula": "B204",
+    "valor": "TELA OPTINET 40 MESH GINEGAR (5 METROS)",
+    "formula": "=IF(NOT(ISBLANK(INICIO!I25)), INICIO!I25, INICIO!I29)"
+  },
+  {
+    "celula": "C204",
+    "valor": 3,
+    "formula": "=INICIO!D4"
+  },
+  {
+    "celula": "A205",
+    "valor": "Cobertura",
+    "formula": null
+  }
+]
