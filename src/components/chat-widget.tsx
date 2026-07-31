@@ -6,9 +6,9 @@ import { useState, useRef, useEffect } from 'react';
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const chat = useChat();
-  const { messages, status, error } = chat;
-  const [input, setInput] = useState('');
+  const { messages, status, error, input, handleInputChange, handleSubmit } = useChat({
+    api: '/api/chat',
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const isLoading = status === 'in_progress' || status === 'streaming';
@@ -106,39 +106,12 @@ export function ChatWidget() {
           {/* Área de Input */}
           <div className="p-3 bg-card border-t border-border">
             <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!input.trim() || isLoading) return;
-                
-                const userMessage = { role: 'user', content: input };
-                setInput('');
-                
-                try {
-                  const anyChat = chat as any;
-                  if (anyChat.append) {
-                    await anyChat.append(userMessage);
-                  } else if (anyChat.sendMessage) {
-                    await anyChat.sendMessage(userMessage);
-                  } else if (anyChat.submit) {
-                    await anyChat.submit(userMessage);
-                  } else if (anyChat.handleSubmit) {
-                    // Se só tiver handleSubmit, precisamos de um evento fake
-                    // Mas handleSubmit lê de input.
-                    alert("A versão da biblioteca não suporta envio manual.");
-                    console.log("Chat obj:", chat);
-                  } else {
-                    alert('Erro crítico: Função de envio não encontrada na biblioteca.');
-                    console.log("Chat obj:", chat);
-                  }
-                } catch (err: any) {
-                  console.error('Error submitting chat:', err);
-                }
-              }}
+              onSubmit={handleSubmit}
               className="flex items-center bg-background border border-input rounded-full overflow-hidden px-2 py-1 focus-within:ring-1 focus-within:ring-primary"
             >
               <input
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
                 placeholder="Pergunte sobre estufas..."
                 className="flex-1 bg-transparent border-none outline-none text-sm px-2 py-2"
               />

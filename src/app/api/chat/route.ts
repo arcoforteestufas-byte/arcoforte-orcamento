@@ -103,16 +103,7 @@ export async function POST(req: Request) {
       }
     });
 
-    const anyResult = result as any;
-    if (anyResult.toDataStreamResponse) {
-      return anyResult.toDataStreamResponse();
-    } else if (anyResult.toUIMessageStreamResponse) {
-      return anyResult.toUIMessageStreamResponse();
-    } else if (anyResult.toTextStreamResponse) {
-      return anyResult.toTextStreamResponse();
-    } else {
-      throw new Error('Método de resposta não encontrado na versão atual do AI SDK.');
-    }
+    return result.toDataStreamResponse();
   } catch (error: any) {
     console.error('Erro na API de Chat:', error);
     return new Response(error.message || 'Erro interno no servidor', { status: 500 });
