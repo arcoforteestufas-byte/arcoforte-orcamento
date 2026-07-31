@@ -51,7 +51,6 @@ export async function POST(req: Request) {
       system: SYSTEM_PROMPT,
       messages,
       temperature: 0.7,
-      maxSteps: 5,
       tools: {
         consultarProdutos: tool({
           description: 'Consulta os produtos e preços no banco de dados. Pesquise por termo (ex: Plástico, Tubo, Calha) para ver o preço exato.',
