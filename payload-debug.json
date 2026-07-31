@@ -1,0 +1,16 @@
+{
+  "id": "awewQLMyFiYZyU0I",
+  "messages": [
+    {
+      "role": "user",
+      "content": "teste",
+      "id": "X60AnaE5d0GNtN0i"
+    },
+    {
+      "role": "user",
+      "content": "debug_payload",
+      "id": "p2ohBB6nKlDoEo2p"
+    }
+  ],
+  "trigger": "submit-message"
+}

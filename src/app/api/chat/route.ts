@@ -32,7 +32,34 @@ Responda às perguntas com clareza, explicando o *porquê* de cada recomendaçã
 `;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  const payload = await req.json();
+  const { messages } = payload;
+  
+  // Map safely to bypass version mismatch between ai-sdk/react and ai
+  const coreMessages = (messages || []).map((m: any) => {
+    if (m.role === 'assistant' && m.toolInvocations) {
+      return {
+        role: 'assistant',
+        content: m.toolInvocations.map((t: any) => ({
+          type: 'tool-call',
+          toolName: t.toolName,
+          toolCallId: t.toolCallId,
+          args: t.args
+        }))
+      };
+    }
+    if (m.role === 'tool' || (m.role === 'assistant' && !m.content && m.toolInvocations)) {
+      // Handle tool results if any (simplified)
+      return {
+        role: 'tool',
+        content: [ { type: 'text', text: 'Result received' } ] // fallback
+      }
+    }
+    return {
+      role: m.role,
+      content: m.content || '',
+    };
+  });
 
   console.log("CHAVE DO GEMINI ATUAL:", process.env.GOOGLE_GENERATIVE_AI_API_KEY?.substring(0, 5) + '...');
 
@@ -51,7 +78,7 @@ export async function POST(req: Request) {
     const result = await streamText({
       model: google('gemini-flash-latest'),
       system: SYSTEM_PROMPT,
-      messages: convertToModelMessages(messages),
+      messages: coreMessages,
       temperature: 0.7,
       tools: {
         consultarProdutos: tool({
