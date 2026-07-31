@@ -76,6 +76,9 @@ export function Sidebar() {
           <LogOut className="h-4 w-4" />
           Desconectar
         </Button>
+        <div className="mt-3 text-center">
+          <span className="text-[10px] text-slate-400 font-medium">v0.1.0</span>
+        </div>
       </div>
     </div>
   )
