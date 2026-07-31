@@ -7,7 +7,18 @@ async function run() {
     })
   });
   console.log("STATUS:", res.status);
-  const text = await res.text();
-  console.log("RESPONSE BODY:", text);
+  
+  if (res.body) {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      console.log("CHUNK:", decoder.decode(value, { stream: true }));
+    }
+  } else {
+    const text = await res.text();
+    console.log("RESPONSE BODY:", text);
+  }
 }
 run();

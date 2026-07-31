@@ -134,18 +134,28 @@ export async function POST(req: Request) {
       }
     });
 
-    const anyResult = result as any;
-    
-    if (anyResult.toDataStreamResponse) {
-      return anyResult.toDataStreamResponse();
-    } else if (anyResult.toUIMessageStreamResponse) {
-      return anyResult.toUIMessageStreamResponse();
-    } else if (anyResult.toAIStreamResponse) {
-      return anyResult.toAIStreamResponse();
-    } else if (anyResult.toTextStreamResponse) {
-      return anyResult.toTextStreamResponse();
-    }
-    throw new Error("No valid stream response method found in AI SDK");
+    // Bypass all AI SDK version stream mismatches by sending plain text explicitly
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of result.textStream) {
+            controller.enqueue(new TextEncoder().encode(chunk));
+          }
+        } catch (e) {
+          console.error("Stream error:", e);
+        } finally {
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
   } catch (error: any) {
     console.error('Erro na API de Chat:', error);
     require('fs').writeFileSync('chat-error.log', (error.stack || error.message) + '\n\n' + JSON.stringify(error, null, 2));

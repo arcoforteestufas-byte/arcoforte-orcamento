@@ -17,6 +17,10 @@ export function ChatWidget() {
     }
   }, [messages]);
 
+  useEffect(() => {
+    console.log("MENSAGENS NO WIDGET:", messages);
+  }, [messages]);
+
   return (
     <div className="fixed bottom-6 right-6 z-50">
       {/* Botão flutuante */}
