@@ -108,10 +108,12 @@ export async function POST(req: Request) {
     const anyResult = result as any;
     if (anyResult.toDataStreamResponse) {
       return anyResult.toDataStreamResponse();
-    } else if (anyResult.toTextStreamResponse) {
-      return anyResult.toTextStreamResponse();
+    } else if (anyResult.toUIMessageStreamResponse) {
+      return anyResult.toUIMessageStreamResponse();
     } else if (anyResult.toAIStreamResponse) {
       return anyResult.toAIStreamResponse();
+    } else if (anyResult.toTextStreamResponse) {
+      return anyResult.toTextStreamResponse();
     }
     throw new Error("No valid stream response method found in AI SDK");
   } catch (error: any) {
