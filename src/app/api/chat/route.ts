@@ -1,5 +1,5 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText, tool } from 'ai';
+import { streamText, tool, convertToModelMessages } from 'ai';
 import { z } from 'zod';
 import { createClient } from '@/utils/supabase/server';
 
@@ -34,6 +34,8 @@ Responda às perguntas com clareza, explicando o *porquê* de cada recomendaçã
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
+  console.log("CHAVE DO GEMINI ATUAL:", process.env.GOOGLE_GENERATIVE_AI_API_KEY?.substring(0, 5) + '...');
+
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return new Response(
       'A chave GOOGLE_GENERATIVE_AI_API_KEY não está configurada. Configure no arquivo .env.local para eu poder funcionar!',
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
     const result = await streamText({
       model: google('gemini-flash-latest'),
       system: SYSTEM_PROMPT,
-      messages,
+      messages: convertToModelMessages(messages),
       temperature: 0.7,
       tools: {
         consultarProdutos: tool({
@@ -119,6 +121,7 @@ export async function POST(req: Request) {
     throw new Error("No valid stream response method found in AI SDK");
   } catch (error: any) {
     console.error('Erro na API de Chat:', error);
+    require('fs').writeFileSync('chat-error.log', (error.stack || error.message) + '\n\n' + JSON.stringify(error, null, 2));
     return new Response(error.message || 'Erro interno no servidor', { status: 500 });
   }
 }
