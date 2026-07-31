@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
+import { ChatWidget } from "@/components/chat-widget"
 
 export default function AppLayout({
   children,
@@ -19,6 +20,8 @@ export default function AppLayout({
           {children}
         </main>
       </div>
+
+      <ChatWidget />
     </div>
   )
 }
