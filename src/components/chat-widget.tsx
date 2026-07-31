@@ -90,7 +90,7 @@ export function ChatWidget() {
             {error && (
                <div className="bg-destructive/10 text-destructive text-xs p-3 rounded-lg border border-destructive/20 flex items-center justify-between">
                  <span>Erro: {error.message}</span>
-                 <button onClick={() => (chat as any).clearError?.()} className="underline hover:no-underline">X</button>
+                 <button onClick={() => window.location.reload()} className="underline hover:no-underline">X</button>
                </div>
             )}
             
@@ -110,7 +110,7 @@ export function ChatWidget() {
               className="flex items-center bg-background border border-input rounded-full overflow-hidden px-2 py-1 focus-within:ring-1 focus-within:ring-primary"
             >
               <input
-                value={input}
+                value={input || ''}
                 onChange={handleInputChange}
                 placeholder="Pergunte sobre estufas..."
                 className="flex-1 bg-transparent border-none outline-none text-sm px-2 py-2"
@@ -118,7 +118,7 @@ export function ChatWidget() {
               <button
                 type="submit"
                 className="bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/90 transition-colors disabled:opacity-50"
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || !(input || '').trim()}
               >
                 <Send size={16} />
               </button>
