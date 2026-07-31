@@ -1,9 +1,9 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText, tool, convertToModelMessages } from 'ai';
+import { generateText, tool, convertToModelMessages } from 'ai';
 import { z } from 'zod';
 import { createClient } from '@/utils/supabase/server';
 
-// Permitir streaming de até 30 segundos no vercel
+// Permitir execução de até 30 segundos no vercel
 export const maxDuration = 30;
 
 const SYSTEM_PROMPT = `
@@ -75,11 +75,12 @@ export async function POST(req: Request) {
   });
 
   try {
-    const result = await streamText({
+    const result = await generateText({
       model: google('gemini-flash-latest'),
       system: SYSTEM_PROMPT,
       messages: coreMessages,
       temperature: 0.7,
+      maxSteps: 5,
       tools: {
         consultarProdutos: tool({
           description: 'Consulta os produtos e preços no banco de dados. Pesquise por termo (ex: Plástico, Tubo, Calha) para ver o preço exato.',
@@ -131,30 +132,12 @@ export async function POST(req: Request) {
             }));
           }
         })
-      }
-    });
-
-    // Bypass all AI SDK version stream mismatches by sending plain text explicitly
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of result.textStream) {
-            controller.enqueue(new TextEncoder().encode(chunk));
-          }
-        } catch (e) {
-          console.error("Stream error:", e);
-        } finally {
-          controller.close();
-        }
-      }
-    });
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
       },
+      maxSteps: 5
+    });
+
+    return new Response(JSON.stringify({ text: result.text }), {
+      headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
     console.error('Erro na API de Chat:', error);

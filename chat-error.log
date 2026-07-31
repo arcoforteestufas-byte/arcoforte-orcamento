@@ -1,6 +1,17 @@
-Error: DEBUG KEYS: _totalUsage, _finishReason, _rawFinishReason, _steps, _initialResponseMessages, outputSpecification, tools, addStream, closeStream, baseStream
-    at POST (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\[root-of-the-server]__00iokzn._.js:206:15)
+AI_RetryError: Failed after 3 attempts. Last error: AI_APICallError: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash
+Please retry in 30.310333306s.
+    at createRetryError (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\1_js_ai_dist_index_0tp568u.js:2879:58)
+    at retryWithExponentialBackoffInternal (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\1_js_@ai-sdk_provider-utils_dist_index_1x-g_hl.js:3559:19)
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async execute (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\1_js_ai_dist_index_0tp568u.js:5523:52)
+    at async runWithTracingChannelSpan (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\1_js_ai_dist_index_0tp568u.js:4287:16)
+    at async runInTracingChannelSpan (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\1_js_ai_dist_index_0tp568u.js:4420:68)
+    at async executeGenerateText (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\1_js_ai_dist_index_0tp568u.js:5409:21)
+    at async runWithTracingChannelSpan (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\1_js_ai_dist_index_0tp568u.js:4287:16)
+    at async runInTracingChannelSpan (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\1_js_ai_dist_index_0tp568u.js:4420:68)
+    at async generateText (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\1_js_ai_dist_index_0tp568u.js:5954:12)
+    at async POST (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\[root-of-the-server]__00iokzn._.js:179:24)
     at async AppRouteRouteModule.do (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:40255)
     at async AppRouteRouteModule.handle (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:47535)
     at async responseGenerator (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\.next\dev\server\chunks\1_js_next_0xpr4tx._.js:13880:38)
@@ -21,4 +32,365 @@ Error: DEBUG KEYS: _totalUsage, _finishReason, _rawFinishReason, _steps, _initia
     at async requestHandlerImpl (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\node_modules\next\dist\server\lib\router-server.js:514:13)
     at async Server.requestListener (C:\Users\Bruno\Desktop\ArcoForte Orçamento\arcoforte-orcamento\node_modules\next\dist\server\lib\start-server.js:225:13)
 
-{}
+{
+  "name": "AI_RetryError",
+  "reason": "maxRetriesExceeded",
+  "errors": [
+    {
+      "name": "AI_APICallError",
+      "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+      "requestBodyValues": {
+        "generationConfig": {
+          "temperature": 0.7
+        },
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "teste de texto com maxSteps"
+              }
+            ]
+          },
+          {
+            "role": "model",
+            "parts": []
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "teste json"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "teste json"
+              }
+            ]
+          }
+        ],
+        "systemInstruction": {
+          "parts": [
+            {
+              "text": "\nVocê é o Assistente Especialista da ArcoForte, focado em auxiliar nossa equipe e usuários a elaborar os melhores orçamentos para nossos clientes.\nSeu conhecimento é especializado em estufas agrícolas.\n\nSempre que perguntarem sobre preços de materiais, componentes que vão na estufa, ou regras, USE AS FERRAMENTAS DISPONÍVEIS para consultar o banco de dados real. Nunca invente preços.\n\n## O Que é uma Estufa e Seu Propósito\nUma estufa é uma estrutura desenhada para criar um microclima ideal para o cultivo, protegendo as plantas de intempéries (chuva em excesso, granizo, geadas, ventos fortes) e pragas. Ela permite o controle de temperatura, umidade e luminosidade, garantindo produção o ano todo, maior qualidade e produtividade.\n\n## Nosso Público-Alvo\nNossos clientes são geralmente produtores rurais, agricultores de médio a grande porte, ou investidores no agronegócio que buscam:\n- Aumentar sua produtividade por metro quadrado.\n- Produzir fora de época.\n- Reduzir perdas devido a eventos climáticos e pragas.\n- Profissionalizar sua produção.\n\n## Como Auxiliar na Configuração\nQuando um usuário estiver fazendo um orçamento:\n- Sugira as melhores coberturas dependendo do tipo de cultura. (Ex: Cultivos sensíveis podem precisar de Aluminet, cultivos de tomate precisam de pés altos, etc).\n- Quebre objeções: Se o cliente achar caro, lembre-o que o retorno do investimento vem da ausência de perdas climáticas e da produção o ano todo.\n- Sempre tenha um tom profissional, amigável e encorajador.\n\nResponda às perguntas com clareza, explicando o *porquê* de cada recomendação para ajudar a equipe de vendas a argumentar.\n"
+            }
+          ]
+        },
+        "tools": [
+          {
+            "functionDeclarations": [
+              {
+                "name": "consultarProdutos",
+                "description": "Consulta os produtos e preços no banco de dados. Pesquise por termo (ex: Plástico, Tubo, Calha) para ver o preço exato."
+              },
+              {
+                "name": "consultarRegras",
+                "description": "Consulta as regras de cálculo para entender como um orçamento é montado e quais produtos compõem cada estrutura (Ex: Calhas, Perfil, Plástico). Útil para ver quais materiais compõem a estufa e em qual quantidade."
+              }
+            ]
+          }
+        ],
+        "toolConfig": {
+          "functionCallingConfig": {
+            "mode": "AUTO"
+          }
+        }
+      },
+      "statusCode": 429,
+      "responseHeaders": {
+        "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+        "content-encoding": "gzip",
+        "content-type": "application/json; charset=UTF-8",
+        "date": "Fri, 31 Jul 2026 18:23:23 GMT",
+        "server": "scaffolding on HTTPServer2",
+        "server-timing": "gfet4t7; dur=191",
+        "transfer-encoding": "chunked",
+        "vary": "Origin, X-Origin, Referer",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "SAMEORIGIN",
+        "x-gemini-service-tier": "standard",
+        "x-xss-protection": "0"
+      },
+      "responseBody": "{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 36.888388471s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.Help\",\n        \"links\": [\n          {\n            \"description\": \"Learn more about Gemini API quotas\",\n            \"url\": \"https://ai.google.dev/gemini-api/docs/rate-limits\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.QuotaFailure\",\n        \"violations\": [\n          {\n            \"quotaMetric\": \"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\n            \"quotaId\": \"GenerateRequestsPerDayPerProjectPerModel-FreeTier\",\n            \"quotaDimensions\": {\n              \"model\": \"gemini-3.6-flash\",\n              \"location\": \"global\"\n            },\n            \"quotaValue\": \"20\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.RetryInfo\",\n        \"retryDelay\": \"36s\"\n      }\n    ]\n  }\n}\n",
+      "isRetryable": true,
+      "data": {
+        "error": {
+          "code": 429,
+          "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\nPlease retry in 36.888388471s.",
+          "status": "RESOURCE_EXHAUSTED"
+        }
+      }
+    },
+    {
+      "name": "AI_APICallError",
+      "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+      "requestBodyValues": {
+        "generationConfig": {
+          "temperature": 0.7
+        },
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "teste de texto com maxSteps"
+              }
+            ]
+          },
+          {
+            "role": "model",
+            "parts": []
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "teste json"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "teste json"
+              }
+            ]
+          }
+        ],
+        "systemInstruction": {
+          "parts": [
+            {
+              "text": "\nVocê é o Assistente Especialista da ArcoForte, focado em auxiliar nossa equipe e usuários a elaborar os melhores orçamentos para nossos clientes.\nSeu conhecimento é especializado em estufas agrícolas.\n\nSempre que perguntarem sobre preços de materiais, componentes que vão na estufa, ou regras, USE AS FERRAMENTAS DISPONÍVEIS para consultar o banco de dados real. Nunca invente preços.\n\n## O Que é uma Estufa e Seu Propósito\nUma estufa é uma estrutura desenhada para criar um microclima ideal para o cultivo, protegendo as plantas de intempéries (chuva em excesso, granizo, geadas, ventos fortes) e pragas. Ela permite o controle de temperatura, umidade e luminosidade, garantindo produção o ano todo, maior qualidade e produtividade.\n\n## Nosso Público-Alvo\nNossos clientes são geralmente produtores rurais, agricultores de médio a grande porte, ou investidores no agronegócio que buscam:\n- Aumentar sua produtividade por metro quadrado.\n- Produzir fora de época.\n- Reduzir perdas devido a eventos climáticos e pragas.\n- Profissionalizar sua produção.\n\n## Como Auxiliar na Configuração\nQuando um usuário estiver fazendo um orçamento:\n- Sugira as melhores coberturas dependendo do tipo de cultura. (Ex: Cultivos sensíveis podem precisar de Aluminet, cultivos de tomate precisam de pés altos, etc).\n- Quebre objeções: Se o cliente achar caro, lembre-o que o retorno do investimento vem da ausência de perdas climáticas e da produção o ano todo.\n- Sempre tenha um tom profissional, amigável e encorajador.\n\nResponda às perguntas com clareza, explicando o *porquê* de cada recomendação para ajudar a equipe de vendas a argumentar.\n"
+            }
+          ]
+        },
+        "tools": [
+          {
+            "functionDeclarations": [
+              {
+                "name": "consultarProdutos",
+                "description": "Consulta os produtos e preços no banco de dados. Pesquise por termo (ex: Plástico, Tubo, Calha) para ver o preço exato."
+              },
+              {
+                "name": "consultarRegras",
+                "description": "Consulta as regras de cálculo para entender como um orçamento é montado e quais produtos compõem cada estrutura (Ex: Calhas, Perfil, Plástico). Útil para ver quais materiais compõem a estufa e em qual quantidade."
+              }
+            ]
+          }
+        ],
+        "toolConfig": {
+          "functionCallingConfig": {
+            "mode": "AUTO"
+          }
+        }
+      },
+      "statusCode": 429,
+      "responseHeaders": {
+        "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+        "content-encoding": "gzip",
+        "content-type": "application/json; charset=UTF-8",
+        "date": "Fri, 31 Jul 2026 18:23:25 GMT",
+        "server": "scaffolding on HTTPServer2",
+        "server-timing": "gfet4t7; dur=187",
+        "transfer-encoding": "chunked",
+        "vary": "Origin, X-Origin, Referer",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "SAMEORIGIN",
+        "x-gemini-service-tier": "standard",
+        "x-xss-protection": "0"
+      },
+      "responseBody": "{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 34.662283124s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.Help\",\n        \"links\": [\n          {\n            \"description\": \"Learn more about Gemini API quotas\",\n            \"url\": \"https://ai.google.dev/gemini-api/docs/rate-limits\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.QuotaFailure\",\n        \"violations\": [\n          {\n            \"quotaMetric\": \"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\n            \"quotaId\": \"GenerateRequestsPerDayPerProjectPerModel-FreeTier\",\n            \"quotaDimensions\": {\n              \"location\": \"global\",\n              \"model\": \"gemini-3.6-flash\"\n            },\n            \"quotaValue\": \"20\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.RetryInfo\",\n        \"retryDelay\": \"34s\"\n      }\n    ]\n  }\n}\n",
+      "isRetryable": true,
+      "data": {
+        "error": {
+          "code": 429,
+          "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\nPlease retry in 34.662283124s.",
+          "status": "RESOURCE_EXHAUSTED"
+        }
+      }
+    },
+    {
+      "name": "AI_APICallError",
+      "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+      "requestBodyValues": {
+        "generationConfig": {
+          "temperature": 0.7
+        },
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "teste de texto com maxSteps"
+              }
+            ]
+          },
+          {
+            "role": "model",
+            "parts": []
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "teste json"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "teste json"
+              }
+            ]
+          }
+        ],
+        "systemInstruction": {
+          "parts": [
+            {
+              "text": "\nVocê é o Assistente Especialista da ArcoForte, focado em auxiliar nossa equipe e usuários a elaborar os melhores orçamentos para nossos clientes.\nSeu conhecimento é especializado em estufas agrícolas.\n\nSempre que perguntarem sobre preços de materiais, componentes que vão na estufa, ou regras, USE AS FERRAMENTAS DISPONÍVEIS para consultar o banco de dados real. Nunca invente preços.\n\n## O Que é uma Estufa e Seu Propósito\nUma estufa é uma estrutura desenhada para criar um microclima ideal para o cultivo, protegendo as plantas de intempéries (chuva em excesso, granizo, geadas, ventos fortes) e pragas. Ela permite o controle de temperatura, umidade e luminosidade, garantindo produção o ano todo, maior qualidade e produtividade.\n\n## Nosso Público-Alvo\nNossos clientes são geralmente produtores rurais, agricultores de médio a grande porte, ou investidores no agronegócio que buscam:\n- Aumentar sua produtividade por metro quadrado.\n- Produzir fora de época.\n- Reduzir perdas devido a eventos climáticos e pragas.\n- Profissionalizar sua produção.\n\n## Como Auxiliar na Configuração\nQuando um usuário estiver fazendo um orçamento:\n- Sugira as melhores coberturas dependendo do tipo de cultura. (Ex: Cultivos sensíveis podem precisar de Aluminet, cultivos de tomate precisam de pés altos, etc).\n- Quebre objeções: Se o cliente achar caro, lembre-o que o retorno do investimento vem da ausência de perdas climáticas e da produção o ano todo.\n- Sempre tenha um tom profissional, amigável e encorajador.\n\nResponda às perguntas com clareza, explicando o *porquê* de cada recomendação para ajudar a equipe de vendas a argumentar.\n"
+            }
+          ]
+        },
+        "tools": [
+          {
+            "functionDeclarations": [
+              {
+                "name": "consultarProdutos",
+                "description": "Consulta os produtos e preços no banco de dados. Pesquise por termo (ex: Plástico, Tubo, Calha) para ver o preço exato."
+              },
+              {
+                "name": "consultarRegras",
+                "description": "Consulta as regras de cálculo para entender como um orçamento é montado e quais produtos compõem cada estrutura (Ex: Calhas, Perfil, Plástico). Útil para ver quais materiais compõem a estufa e em qual quantidade."
+              }
+            ]
+          }
+        ],
+        "toolConfig": {
+          "functionCallingConfig": {
+            "mode": "AUTO"
+          }
+        }
+      },
+      "statusCode": 429,
+      "responseHeaders": {
+        "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+        "content-encoding": "gzip",
+        "content-type": "application/json; charset=UTF-8",
+        "date": "Fri, 31 Jul 2026 18:23:29 GMT",
+        "server": "scaffolding on HTTPServer2",
+        "server-timing": "gfet4t7; dur=199",
+        "transfer-encoding": "chunked",
+        "vary": "Origin, X-Origin, Referer",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "SAMEORIGIN",
+        "x-gemini-service-tier": "standard",
+        "x-xss-protection": "0"
+      },
+      "responseBody": "{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 30.310333306s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.Help\",\n        \"links\": [\n          {\n            \"description\": \"Learn more about Gemini API quotas\",\n            \"url\": \"https://ai.google.dev/gemini-api/docs/rate-limits\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.QuotaFailure\",\n        \"violations\": [\n          {\n            \"quotaMetric\": \"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\n            \"quotaId\": \"GenerateRequestsPerDayPerProjectPerModel-FreeTier\",\n            \"quotaDimensions\": {\n              \"location\": \"global\",\n              \"model\": \"gemini-3.6-flash\"\n            },\n            \"quotaValue\": \"20\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.RetryInfo\",\n        \"retryDelay\": \"30s\"\n      }\n    ]\n  }\n}\n",
+      "isRetryable": true,
+      "data": {
+        "error": {
+          "code": 429,
+          "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\nPlease retry in 30.310333306s.",
+          "status": "RESOURCE_EXHAUSTED"
+        }
+      }
+    }
+  ],
+  "lastError": {
+    "name": "AI_APICallError",
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+    "requestBodyValues": {
+      "generationConfig": {
+        "temperature": 0.7
+      },
+      "contents": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "teste de texto com maxSteps"
+            }
+          ]
+        },
+        {
+          "role": "model",
+          "parts": []
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "teste json"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "teste json"
+            }
+          ]
+        }
+      ],
+      "systemInstruction": {
+        "parts": [
+          {
+            "text": "\nVocê é o Assistente Especialista da ArcoForte, focado em auxiliar nossa equipe e usuários a elaborar os melhores orçamentos para nossos clientes.\nSeu conhecimento é especializado em estufas agrícolas.\n\nSempre que perguntarem sobre preços de materiais, componentes que vão na estufa, ou regras, USE AS FERRAMENTAS DISPONÍVEIS para consultar o banco de dados real. Nunca invente preços.\n\n## O Que é uma Estufa e Seu Propósito\nUma estufa é uma estrutura desenhada para criar um microclima ideal para o cultivo, protegendo as plantas de intempéries (chuva em excesso, granizo, geadas, ventos fortes) e pragas. Ela permite o controle de temperatura, umidade e luminosidade, garantindo produção o ano todo, maior qualidade e produtividade.\n\n## Nosso Público-Alvo\nNossos clientes são geralmente produtores rurais, agricultores de médio a grande porte, ou investidores no agronegócio que buscam:\n- Aumentar sua produtividade por metro quadrado.\n- Produzir fora de época.\n- Reduzir perdas devido a eventos climáticos e pragas.\n- Profissionalizar sua produção.\n\n## Como Auxiliar na Configuração\nQuando um usuário estiver fazendo um orçamento:\n- Sugira as melhores coberturas dependendo do tipo de cultura. (Ex: Cultivos sensíveis podem precisar de Aluminet, cultivos de tomate precisam de pés altos, etc).\n- Quebre objeções: Se o cliente achar caro, lembre-o que o retorno do investimento vem da ausência de perdas climáticas e da produção o ano todo.\n- Sempre tenha um tom profissional, amigável e encorajador.\n\nResponda às perguntas com clareza, explicando o *porquê* de cada recomendação para ajudar a equipe de vendas a argumentar.\n"
+          }
+        ]
+      },
+      "tools": [
+        {
+          "functionDeclarations": [
+            {
+              "name": "consultarProdutos",
+              "description": "Consulta os produtos e preços no banco de dados. Pesquise por termo (ex: Plástico, Tubo, Calha) para ver o preço exato."
+            },
+            {
+              "name": "consultarRegras",
+              "description": "Consulta as regras de cálculo para entender como um orçamento é montado e quais produtos compõem cada estrutura (Ex: Calhas, Perfil, Plástico). Útil para ver quais materiais compõem a estufa e em qual quantidade."
+            }
+          ]
+        }
+      ],
+      "toolConfig": {
+        "functionCallingConfig": {
+          "mode": "AUTO"
+        }
+      }
+    },
+    "statusCode": 429,
+    "responseHeaders": {
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "content-encoding": "gzip",
+      "content-type": "application/json; charset=UTF-8",
+      "date": "Fri, 31 Jul 2026 18:23:29 GMT",
+      "server": "scaffolding on HTTPServer2",
+      "server-timing": "gfet4t7; dur=199",
+      "transfer-encoding": "chunked",
+      "vary": "Origin, X-Origin, Referer",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "SAMEORIGIN",
+      "x-gemini-service-tier": "standard",
+      "x-xss-protection": "0"
+    },
+    "responseBody": "{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 30.310333306s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.Help\",\n        \"links\": [\n          {\n            \"description\": \"Learn more about Gemini API quotas\",\n            \"url\": \"https://ai.google.dev/gemini-api/docs/rate-limits\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.QuotaFailure\",\n        \"violations\": [\n          {\n            \"quotaMetric\": \"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\n            \"quotaId\": \"GenerateRequestsPerDayPerProjectPerModel-FreeTier\",\n            \"quotaDimensions\": {\n              \"location\": \"global\",\n              \"model\": \"gemini-3.6-flash\"\n            },\n            \"quotaValue\": \"20\"\n          }\n        ]\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.RetryInfo\",\n        \"retryDelay\": \"30s\"\n      }\n    ]\n  }\n}\n",
+    "isRetryable": true,
+    "data": {
+      "error": {
+        "code": 429,
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\nPlease retry in 30.310333306s.",
+        "status": "RESOURCE_EXHAUSTED"
+      }
+    }
+  }
+}

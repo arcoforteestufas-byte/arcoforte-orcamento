@@ -1,15 +1,19 @@
 'use client';
 
-import { useChat } from '@ai-sdk/react';
 import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+
+type Message = { id: string; role: 'user' | 'assistant'; content: string };
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
-  const { messages, status, error, sendMessage } = useChat();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isLoading = status === 'submitted' || status === 'streaming';
+
   // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -17,9 +21,39 @@ export function ChatWidget() {
     }
   }, [messages]);
 
-  useEffect(() => {
-    console.log("MENSAGENS NO WIDGET:", messages);
-  }, [messages]);
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    
+    const userText = input.trim();
+    setInput('');
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: userText };
+    const newMessages = [...messages, userMsg];
+    
+    setMessages(newMessages);
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newMessages })
+      });
+      
+      if (!res.ok) throw new Error(await res.text() || 'Falha ao comunicar com servidor');
+      
+      const data = await res.json();
+      
+      setMessages(prev => [...prev, { id: Date.now().toString() + 'bot', role: 'assistant', content: data.text }]);
+      
+    } catch (err: any) {
+      console.error(err);
+      setError(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
@@ -82,7 +116,6 @@ export function ChatWidget() {
                         : 'bg-muted text-foreground rounded-tl-none'
                     }`}
                   >
-                    {/* @ts-ignore */}
                     {m.content}
                   </div>
                 </div>
@@ -108,12 +141,7 @@ export function ChatWidget() {
           {/* Área de Input */}
           <div className="p-3 bg-card border-t border-border">
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!input.trim() || isLoading) return;
-                sendMessage({ role: 'user', content: input });
-                setInput('');
-              }}
+              onSubmit={handleSendMessage}
               className="flex items-center bg-background border border-input rounded-full overflow-hidden px-2 py-1 focus-within:ring-1 focus-within:ring-primary"
             >
               <input
