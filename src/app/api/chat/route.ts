@@ -106,6 +106,7 @@ export async function POST(req: Request) {
     });
 
     const anyResult = result as any;
+    
     if (anyResult.toDataStreamResponse) {
       return anyResult.toDataStreamResponse();
     } else if (anyResult.toUIMessageStreamResponse) {
