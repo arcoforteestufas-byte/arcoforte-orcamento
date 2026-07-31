@@ -6,7 +6,8 @@ import { useState, useRef, useEffect } from 'react';
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const { messages, status, error, input = '', handleInputChange, handleSubmit } = useChat({
+  const [input, setInput] = useState('');
+  const { messages, status, error, sendMessage } = useChat({
     api: '/api/chat',
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -106,12 +107,17 @@ export function ChatWidget() {
           {/* Área de Input */}
           <div className="p-3 bg-card border-t border-border">
             <form
-              onSubmit={handleSubmit}
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!input.trim() || isLoading) return;
+                sendMessage({ role: 'user', content: input });
+                setInput('');
+              }}
               className="flex items-center bg-background border border-input rounded-full overflow-hidden px-2 py-1 focus-within:ring-1 focus-within:ring-primary"
             >
               <input
                 value={input}
-                onChange={handleInputChange}
+                onChange={(e) => setInput(e.target.value)}
                 placeholder="Pergunte sobre estufas..."
                 className="flex-1 bg-transparent border-none outline-none text-sm px-2 py-2"
               />
