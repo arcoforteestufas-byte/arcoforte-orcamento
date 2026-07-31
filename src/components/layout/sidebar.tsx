@@ -22,9 +22,9 @@ export function Sidebar() {
   return (
     <div className="flex h-full w-72 flex-col border-r border-slate-200 bg-white/70 backdrop-blur-xl shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-40">
       <div className="flex flex-col items-center justify-center border-b border-slate-100 px-4 py-8 bg-gradient-to-b from-slate-50/50 to-transparent">
-        {/* Espaço reservado para a logo */}
-        <div className="w-16 h-12 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center rounded-xl mb-3 border border-primary/20 shadow-inner">
-          <Tractor className="h-6 w-6 text-primary" />
+        <div className="w-24 h-16 flex items-center justify-center rounded-xl mb-3">
+          {/* Se a imagem ainda não existir, o alt text vai aparecer ou ficar em branco, basta colocar a imagem real em public/logo.png */}
+          <img src="/logo.png" alt="Logo ArcoForte" className="max-w-full max-h-full object-contain" />
         </div>
         <span className="font-black text-base tracking-tight text-slate-800">ARCOFORTE</span>
         <span className="text-[10px] text-primary uppercase tracking-widest mt-0.5 font-bold">Orçamento</span>
@@ -39,16 +39,13 @@ export function Sidebar() {
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all relative overflow-hidden",
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all",
                   isActive 
-                    ? "bg-primary/10 text-primary font-semibold" 
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                    ? "bg-[#d97021] text-white shadow-md shadow-orange-500/20" 
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )}
               >
-                {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full" />
-                )}
-                <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-slate-400")} />
+                <item.icon className={cn("h-4 w-4", isActive ? "text-white" : "text-slate-400")} />
                 {item.name}
               </Link>
             )
