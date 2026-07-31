@@ -105,7 +105,15 @@ export async function POST(req: Request) {
       }
     });
 
-    return (result as any).toDataStreamResponse();
+    const anyResult = result as any;
+    if (anyResult.toDataStreamResponse) {
+      return anyResult.toDataStreamResponse();
+    } else if (anyResult.toTextStreamResponse) {
+      return anyResult.toTextStreamResponse();
+    } else if (anyResult.toAIStreamResponse) {
+      return anyResult.toAIStreamResponse();
+    }
+    throw new Error("No valid stream response method found in AI SDK");
   } catch (error: any) {
     console.error('Erro na API de Chat:', error);
     return new Response(error.message || 'Erro interno no servidor', { status: 500 });
