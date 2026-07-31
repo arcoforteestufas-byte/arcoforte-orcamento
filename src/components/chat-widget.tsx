@@ -57,12 +57,12 @@ export function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
       {/* Botão flutuante */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-4 shadow-lg transition-transform hover:scale-105 flex items-center justify-center"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-4 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:scale-105 flex items-center justify-center"
           aria-label="Abrir assistente"
         >
           <MessageCircle size={28} />
@@ -71,16 +71,18 @@ export function ChatWidget() {
 
       {/* Janela do Chat */}
       {isOpen && (
-        <div className="bg-background border border-border rounded-xl shadow-2xl w-[380px] h-[550px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
+        <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-2xl shadow-[0_20px_50px_rgb(0,0,0,0.15)] w-[calc(100vw-32px)] sm:w-[380px] h-[75vh] max-h-[600px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
           {/* Header */}
-          <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-primary to-[#ff8c42] text-primary-foreground px-4 py-3 flex items-center justify-between shadow-sm z-10">
             <div className="flex items-center gap-2">
-              <Bot size={20} />
+              <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-sm">
+                <Bot size={18} />
+              </div>
               <span className="font-semibold text-sm">Assistente ArcoForte</span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="hover:bg-primary-foreground/20 p-1 rounded transition-colors"
+              className="hover:bg-black/10 p-1.5 rounded-full transition-colors"
               aria-label="Fechar assistente"
             >
               <X size={18} />
@@ -88,7 +90,7 @@ export function ChatWidget() {
           </div>
 
           {/* Área de Mensagens */}
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-slate-50/50">
             {messages.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm my-auto">
                 <Bot size={40} className="mx-auto mb-3 opacity-50" />
