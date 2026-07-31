@@ -7,13 +7,9 @@ import { useState, useRef, useEffect } from 'react';
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
-  const { messages, status, error, sendMessage } = useChat({
-    api: '/api/chat',
-  });
+  const { messages, status, error, sendMessage } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  const isLoading = status === 'in_progress' || status === 'streaming';
-
+  const isLoading = status === 'submitted' || status === 'streaming';
   // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -82,6 +78,7 @@ export function ChatWidget() {
                         : 'bg-muted text-foreground rounded-tl-none'
                     }`}
                   >
+                    {/* @ts-ignore */}
                     {m.content}
                   </div>
                 </div>
