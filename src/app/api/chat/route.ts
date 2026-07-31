@@ -1,4 +1,4 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, tool } from 'ai';
 import { z } from 'zod';
 import { createClient } from '@/utils/supabase/server';
@@ -34,20 +34,20 @@ Responda às perguntas com clareza, explicando o *porquê* de cada recomendaçã
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
-  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+  if (!process.env.OPENAI_API_KEY) {
     return new Response(
-      'A chave GOOGLE_GENERATIVE_AI_API_KEY não está configurada. Configure no arquivo .env.local para eu poder funcionar!',
+      'A chave OPENAI_API_KEY não está configurada. Configure no arquivo .env.local para eu poder funcionar!',
       { status: 500 }
     );
   }
 
-  const google = createGoogleGenerativeAI({
-    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  const openai = createOpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
   });
 
   try {
     const result = await streamText({
-      model: google('gemini-1.5-flash'),
+      model: openai('gpt-4o-mini'),
       system: SYSTEM_PROMPT,
       messages,
       temperature: 0.7,
