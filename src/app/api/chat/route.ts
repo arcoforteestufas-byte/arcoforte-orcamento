@@ -80,6 +80,7 @@ export async function POST(req: Request) {
       system: SYSTEM_PROMPT,
       messages: coreMessages,
       temperature: 0.7,
+      // @ts-ignore
       maxSteps: 5,
       tools: {
         consultarProdutos: tool({
@@ -132,8 +133,7 @@ export async function POST(req: Request) {
             }));
           }
         })
-      },
-      maxSteps: 5
+      }
     });
 
     return new Response(JSON.stringify({ text: result.text }), {
