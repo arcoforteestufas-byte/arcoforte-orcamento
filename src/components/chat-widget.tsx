@@ -2,6 +2,7 @@
 
 import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 type Message = { id: string; role: 'user' | 'assistant'; content: string };
 
@@ -110,13 +111,17 @@ export function ChatWidget() {
                     {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                   </div>
                   <div
-                    className={`px-3 py-2 text-sm rounded-lg whitespace-pre-wrap ${
+                    className={`px-3 py-2 text-sm rounded-lg whitespace-pre-wrap [&>p]:mb-2 last:[&>p]:mb-0 [&>h3]:font-bold [&>h3]:text-base [&>h3]:mb-1 [&>h3]:mt-2 [&>ul]:list-disc [&>ul]:ml-4 [&>ul]:mb-2 [&>li]:mb-1 [&>strong]:font-semibold ${
                       m.role === 'user'
                         ? 'bg-primary text-primary-foreground rounded-tr-none'
                         : 'bg-muted text-foreground rounded-tl-none'
                     }`}
                   >
-                    {m.content}
+                    {m.role === 'user' ? (
+                      m.content
+                    ) : (
+                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                    )}
                   </div>
                 </div>
               ))
