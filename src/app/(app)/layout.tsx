@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { ChatWidget } from "@/components/chat-widget"
+import { SettingsProvider } from "@/contexts/SettingsContext"
 
 export default function AppLayout({
   children,
@@ -8,13 +9,14 @@ export default function AppLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans selection:bg-primary/20 selection:text-primary">
-      <div className="hidden md:block">
+    <SettingsProvider>
+      <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans selection:bg-primary/20 selection:text-primary">
+        <div className="hidden md:block">
         <Sidebar />
       </div>
       
       <div className="flex flex-1 flex-col h-full overflow-hidden relative">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none mix-blend-overlay z-0" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] pointer-events-none z-0" />
         <Header />
         
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 z-10">
@@ -26,5 +28,6 @@ export default function AppLayout({
 
       <ChatWidget />
     </div>
+    </SettingsProvider>
   )
 }

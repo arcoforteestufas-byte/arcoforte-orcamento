@@ -27,6 +27,17 @@ export function PdfButtons({ itens, orcamento }: { itens: ItemOrcamento[], orcam
         <Download className="h-4 w-4" />
         Exportar PDF (Agrupado)
       </Button>
+      {/* 
+      <div className="h-px bg-zinc-800 my-2" />
+      <Button 
+        variant="outline" 
+        className="w-full justify-start gap-2 border-zinc-700 hover:bg-zinc-800 text-zinc-300 hover:text-white"
+        onClick={() => window.open(`/orcamentos/${orcamento.id}/proposta`, '_blank')}
+      >
+        <Download className="h-4 w-4" />
+        Gerar Proposta Comercial
+      </Button>
+      */}
     </div>
   )
 }

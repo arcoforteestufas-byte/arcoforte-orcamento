@@ -78,7 +78,7 @@ export function ChatWidget() {
               <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-sm">
                 <Bot size={18} />
               </div>
-              <span className="font-semibold text-sm">Assistente ArcoForte</span>
+              <span className="font-semibold text-sm">Zeca</span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -94,7 +94,7 @@ export function ChatWidget() {
             {messages.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm my-auto">
                 <Bot size={40} className="mx-auto mb-3 opacity-50" />
-                <p>Olá! Sou o especialista em estufas da ArcoForte.</p>
+                <p>Olá! Sou o Zeca, especialista em estufas da ArcoForte.</p>
                 <p className="mt-1">Como posso te ajudar a montar o orçamento ideal hoje?</p>
               </div>
             ) : (

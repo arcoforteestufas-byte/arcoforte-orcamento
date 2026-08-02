@@ -34,7 +34,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
+  --color-primary: var(--theme-primary, var(--primary));
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -125,6 +125,11 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-geist-sans);
   }
+}@media print {
+  @page { margin: 15mm; size: A4; }
+  body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .proposta-print-container { width: 100%; max-width: none; background: white; color: black; }
+  .prose { max-width: none !important; }
 }

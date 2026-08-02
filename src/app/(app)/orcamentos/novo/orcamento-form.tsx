@@ -38,6 +38,13 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   const [isLoading, setIsLoading] = useState(false)
   const [novoCliente, setNovoCliente] = useState({ nome: '', documento: '', cidade_uf: '' })
   const [swapItemIndex, setSwapItemIndex] = useState<number | null>(null)
+  
+  // Controle de Comprimento e Largura
+  const [comprimento, setComprimento] = useState<number | ''>('')
+  const [larguraTotal, setLarguraTotal] = useState<number | ''>('')
+  const [vaoError, setVaoError] = useState('')
+  const [vaoUltimo, setVaoUltimo] = useState<number | ''>('')
+
 
   // Mantém a lista atualizada caso o Next.js mande novos props do servidor
   useEffect(() => {
@@ -50,6 +57,63 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
       [nome_tecnico]: valor
     }))
   }
+
+  // Efeito para calcular n_vaos e comprimento_estufa
+  useEffect(() => {
+    if (comprimento && paramsForm['vao']) {
+      const c = Number(comprimento)
+      const vaoNum = Number(paramsForm['vao'])
+      
+      if (vaoNum > 0) {
+        const calculadoNVaos = Math.ceil(c / vaoNum)
+        setParamsForm(prev => ({ ...prev, n_vaos: calculadoNVaos }))
+        
+        if (c % vaoNum !== 0) {
+          const resto = c % vaoNum
+          setVaoError(`Nota: Como ${c}m não divide perfeitamente por ${vaoNum}m, haverá um vão de ${resto}m no final.`)
+          if (vaoUltimo === '') {
+            setVaoUltimo(resto)
+          }
+        } else {
+          setVaoError('')
+          setVaoUltimo('')
+        }
+      }
+    } else {
+      setVaoError('')
+      setVaoUltimo('')
+    }
+  }, [comprimento, paramsForm['vao']])
+
+  // Efeito para atualizar comprimento_estufa no paramsForm
+  useEffect(() => {
+    if (paramsForm['vao'] && paramsForm['n_vaos']) {
+      const vao = Number(paramsForm['vao'])
+      const nVaos = Number(paramsForm['n_vaos'])
+      const vaoUlt = vaoUltimo !== '' ? Number(vaoUltimo) : vao
+
+      const comprimento_estufa = vao * (nVaos - 1) + vaoUlt
+      setParamsForm(prev => ({ ...prev, comprimento_estufa }))
+    }
+  }, [paramsForm['vao'], paramsForm['n_vaos'], vaoUltimo])
+
+  // Efeito para adivinhar módulos pela largura total
+  useEffect(() => {
+    if (larguraTotal) {
+      const l = Number(larguraTotal)
+      const largurasPermitidas = [10, 8, 7] // Preferência para módulos maiores
+      for (const w of largurasPermitidas) {
+        if (l % w === 0) {
+          setParamsForm(prev => ({
+            ...prev,
+            largura_modulo: w,
+            n_modulos: l / w
+          }))
+          break
+        }
+      }
+    }
+  }, [larguraTotal])
 
   const handleCalcular = () => {
     const itens = calcularOrcamento(paramsForm, regras, produtos)
@@ -291,17 +355,39 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
             <CardTitle>TAMANHO DA ESTUFA</CardTitle>
             <CardDescription className="text-slate-300">Defina as dimensões principais do projeto.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6 sm:grid-cols-4 p-6 bg-slate-100 rounded-b-lg border border-slate-200">
-            {parametrosDef.filter(p => ['n_modulos', 'largura_modulo', 'n_vaos', 'pe_direito'].includes(p.nome_tecnico)).map((param) => {
-              if (param.tipo === 'selecao' && param.opcoes) {
+          <CardContent className="grid gap-6 p-6 bg-slate-100 rounded-b-lg border border-slate-200">
+            {/* Primeira Linha: Comprimento, Largura e Pé-Direito */}
+            <div className="grid gap-6 sm:grid-cols-3">
+              <div className="grid gap-2">
+                <Label className="font-bold text-slate-800 uppercase text-xs">Comprimento da Estufa (m)</Label>
+                <Input 
+                  type="number"
+                  value={comprimento}
+                  placeholder="Ex: 50"
+                  className="bg-white border-slate-300 text-lg py-6"
+                  onChange={(e) => setComprimento(Number(e.target.value) || '')}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label className="font-bold text-slate-800 uppercase text-xs">Largura da Estufa (m)</Label>
+                <Input 
+                  type="number"
+                  value={larguraTotal}
+                  placeholder="Ex: 14"
+                  className="bg-white border-slate-300 text-lg py-6"
+                  onChange={(e) => setLarguraTotal(Number(e.target.value) || '')}
+                />
+              </div>
+
+              {(() => {
+                const param = parametrosDef.find(p => p.nome_tecnico === 'pe_direito')
+                if (!param) return null
                 const opcoes: string[] = Array.isArray(param.opcoes) ? param.opcoes : JSON.parse(param.opcoes as string || '[]')
                 return (
-                  <div key={param.nome_tecnico} className="grid gap-2">
+                  <div className="grid gap-2">
                     <Label className="font-bold text-slate-800 uppercase text-xs">{param.rotulo}</Label>
-                    <Select onValueChange={(val) => {
-                      const num = Number(val)
-                      handleParamChange(param.nome_tecnico, isNaN(num) ? val : num)
-                    }}>
+                    <Select onValueChange={(val) => handleParamChange(param.nome_tecnico, Number(val))}>
                       <SelectTrigger className="bg-white border-slate-300 text-lg py-6"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
@@ -311,22 +397,89 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                     </Select>
                   </div>
                 )
-              }
-              return (
-                <div key={param.nome_tecnico} className="grid gap-2">
-                  <Label className="font-bold text-slate-800 uppercase text-xs">{param.rotulo}</Label>
+              })()}
+            </div>
+
+            {/* Segunda Linha: Módulos, Largura e Tamanho do Vão */}
+            <div className="grid gap-6 sm:grid-cols-3">
+              {(() => {
+                const paramModulos = parametrosDef.find(p => p.nome_tecnico === 'n_modulos')
+                return paramModulos ? (
+                  <div className="grid gap-2">
+                    <Label className="font-bold text-slate-800 uppercase text-xs">{paramModulos.rotulo}</Label>
+                    <Input 
+                      type="number" 
+                      value={paramsForm['n_modulos'] as number || ''}
+                      placeholder="Ex: 2"
+                      className="bg-white border-slate-300 text-lg py-6"
+                      onChange={(e) => handleParamChange('n_modulos', Number(e.target.value))}
+                    />
+                  </div>
+                ) : null
+              })()}
+
+              {(() => {
+                const paramLargura = parametrosDef.find(p => p.nome_tecnico === 'largura_modulo')
+                if (!paramLargura) return null
+                const opcoes: string[] = Array.isArray(paramLargura.opcoes) ? paramLargura.opcoes : JSON.parse(paramLargura.opcoes as string || '[]')
+                return (
+                  <div className="grid gap-2">
+                    <Label className="font-bold text-slate-800 uppercase text-xs">{paramLargura.rotulo}</Label>
+                    <Select value={paramsForm['largura_modulo']?.toString() || ''} onValueChange={(val) => handleParamChange('largura_modulo', Number(val))}>
+                      <SelectTrigger className="bg-white border-slate-300 text-lg py-6"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        {opcoes.map(op => (
+                          <SelectItem key={op} value={op}>{op}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )
+              })()}
+
+              {(() => {
+                const paramVao = parametrosDef.find(p => p.nome_tecnico === 'vao')
+                if (!paramVao) return null
+                const opcoes: string[] = Array.isArray(paramVao.opcoes) ? paramVao.opcoes : JSON.parse(paramVao.opcoes as string || '[]')
+                return (
+                  <div className="grid gap-2">
+                    <Label className="font-bold text-slate-800 uppercase text-xs">{paramVao.rotulo}</Label>
+                    <Select onValueChange={(val) => handleParamChange('vao', Number(val))}>
+                      <SelectTrigger className="bg-white border-slate-300 text-lg py-6"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        {opcoes.map(op => (
+                          <SelectItem key={op} value={op}>{op}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )
+              })()}
+            </div>
+            
+            {comprimento && paramsForm['vao'] && !vaoError && (
+              <div className="text-sm text-slate-500 font-medium bg-slate-200/50 p-3 rounded-md mt-2 flex items-center gap-2">
+                <span className="text-[#d97021]">ℹ</span>
+                O sistema calculou automaticamente {paramsForm['n_vaos']} vãos para cobrir o comprimento de {comprimento}m.
+              </div>
+            )}
+            {vaoError && (
+              <div className="grid gap-2 mt-4 bg-orange-50 p-4 rounded-md border border-orange-200">
+                <div className="text-sm text-orange-800 font-medium flex items-center gap-2 mb-2">
+                  <span className="text-orange-600 font-bold">!</span>
+                  {vaoError}
+                </div>
+                <div className="grid gap-2 sm:w-1/3">
+                  <Label className="font-bold text-orange-900 uppercase text-xs">Tamanho do último vão (m)</Label>
                   <Input 
-                    type={param.tipo === 'numero' ? 'number' : 'text'} 
-                    placeholder={`Ex: ${param.tipo === 'numero' ? '10' : ''}`}
-                    className="bg-white border-slate-300 text-lg py-6"
-                    onChange={(e) => {
-                      const val = param.tipo === 'numero' ? Number(e.target.value) : e.target.value
-                      handleParamChange(param.nome_tecnico, val)
-                    }}
+                    type="number"
+                    value={vaoUltimo}
+                    onChange={(e) => setVaoUltimo(Number(e.target.value) || '')}
+                    className="bg-white border-orange-300 text-lg py-6 focus-visible:ring-orange-500"
                   />
                 </div>
-              )
-            })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -336,7 +489,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
             <CardDescription>Preencha os demais parâmetros técnicos.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6 sm:grid-cols-2">
-            {parametrosDef.filter(p => !['n_modulos', 'largura_modulo', 'n_vaos', 'pe_direito'].includes(p.nome_tecnico)).map((param) => {
+            {parametrosDef.filter(p => !['n_modulos', 'largura_modulo', 'n_vaos', 'pe_direito', 'vao'].includes(p.nome_tecnico)).map((param) => {
               if (param.tipo === 'booleano') {
                 return (
                   <div key={param.nome_tecnico} className="col-span-2 flex items-center space-x-2 mt-2">
