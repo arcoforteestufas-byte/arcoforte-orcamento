@@ -42,7 +42,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Proteção de rotas Admin
-  if (user && request.nextUrl.pathname.startsWith('/admin')) {
+  if (user && (request.nextUrl.pathname.startsWith('/admin') || request.nextUrl.pathname.startsWith('/produtos'))) {
     const cargo = user.user_metadata?.cargo || 'Visualizador'
     if (cargo !== 'Administrador') {
       return NextResponse.redirect(new URL('/orcamentos', request.url))
