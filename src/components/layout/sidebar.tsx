@@ -13,6 +13,7 @@ import { User as SupabaseUser } from "@supabase/supabase-js"
 const navigation = [
   { name: "Painel", href: "/", icon: Home, adminOnly: false },
   { name: "Orçamentos", href: "/orcamentos", icon: FileText, adminOnly: false },
+  { name: "Croquis", href: "/croquis", icon: FileSearch, adminOnly: false },
   { name: "Clientes", href: "/clientes", icon: Users, adminOnly: false },
   { name: "Produtos", href: "/produtos", icon: Package, adminOnly: true },
   { name: "Regras de Montagem", href: "/admin/regras", icon: Settings, adminOnly: true },
