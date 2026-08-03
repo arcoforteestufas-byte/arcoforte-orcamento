@@ -8,10 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks } from "lucide-react"
+import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks, Image as ImageIcon } from "lucide-react"
 import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo } from "@/utils/engine"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
 
@@ -29,7 +29,15 @@ type Props = {
 
 export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Props) {
   const router = useRouter()
-  const [paramsForm, setParamsForm] = useState<ParametrosEstufa>({})
+  const searchParams = useSearchParams()
+  
+  const initialCroquiUrl = searchParams.get('croqui_url') || undefined
+  const initialCroquiId = searchParams.get('croqui_id') || undefined
+
+  const [paramsForm, setParamsForm] = useState<ParametrosEstufa>({
+    croqui_url: initialCroquiUrl,
+    croqui_id: initialCroquiId
+  })
   const [resultado, setResultado] = useState<ItemOrcamento[]>([])
   
   // Controle de Cliente
@@ -268,11 +276,21 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
         <Card className="shadow-sm border-slate-200 overflow-hidden">
           <div className="h-1 w-full bg-gradient-to-r from-[#d97021] to-[#ff9e5e]" />
           <CardHeader className="bg-white pb-4 border-b border-slate-100">
-            <CardTitle className="text-xl text-slate-800 flex items-center gap-2">
-              <User className="h-5 w-5 text-[#d97021]" />
-              Cliente
-            </CardTitle>
-            <CardDescription className="text-slate-500">Selecione um cliente existente ou cadastre um novo na hora.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl text-slate-800 flex items-center gap-2">
+                  <User className="h-5 w-5 text-[#d97021]" />
+                  Cliente
+                </CardTitle>
+                <CardDescription className="text-slate-500">Selecione um cliente existente ou cadastre um novo na hora.</CardDescription>
+              </div>
+              {paramsForm.croqui_url && (
+                <Badge variant="outline" className="bg-[#d97021]/10 text-[#d97021] border-[#d97021]/20 gap-1 hidden sm:flex">
+                  <ImageIcon className="w-3 h-3" />
+                  Croqui Anexado
+                </Badge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2">
@@ -582,7 +600,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                   onClick={async () => {
                     const cliente = localClientes.find(c => c.id === selectedCliente)
                     const { gerarPDFOrcamento } = await import('@/utils/pdf-generator')
-                    gerarPDFOrcamento({ id: 'RASCUNHO', clientes: { nome: cliente?.nome || '' } }, resultado, false)
+                    gerarPDFOrcamento({ id: 'RASCUNHO', clientes: { nome: cliente?.nome || '' }, parametros_utilizados: paramsForm }, resultado, false)
                   }}
                 >
                   <Download className="h-4 w-4" />
@@ -595,7 +613,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                   onClick={async () => {
                     const cliente = localClientes.find(c => c.id === selectedCliente)
                     const { gerarPDFOrcamento } = await import('@/utils/pdf-generator')
-                    gerarPDFOrcamento({ id: 'RASCUNHO', clientes: { nome: cliente?.nome || '' } }, resultado, true)
+                    gerarPDFOrcamento({ id: 'RASCUNHO', clientes: { nome: cliente?.nome || '' }, parametros_utilizados: paramsForm }, resultado, true)
                   }}
                 >
                   <Download className="h-4 w-4" />

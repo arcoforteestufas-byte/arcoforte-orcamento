@@ -89,6 +89,17 @@ export function gerarPDFOrcamento(orcamento: any, itens: ItemOrcamento[], agrupa
     currentY += 10 + (splitDesc.length * 4)
   }
 
+  // Croqui Anexado
+  if (orcamento.parametros_utilizados?.croqui_url) {
+    doc.setFont('helvetica', 'bold')
+    doc.text('Croqui Anexado ao Projeto:', 14, currentY)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(37, 99, 235) // azul (link)
+    doc.textWithLink('Clique aqui para visualizar o modelo estrutural', 14, currentY + 5, { url: orcamento.parametros_utilizados.croqui_url })
+    doc.setTextColor(40, 40, 40) // reset
+    currentY += 12
+  }
+
   // Tabela
   const itensParaProcessar = agrupado ? agruparItensOrcamento(itens) : itens
   const tableData: any[] = []

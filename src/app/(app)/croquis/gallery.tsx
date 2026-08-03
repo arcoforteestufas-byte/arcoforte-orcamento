@@ -12,10 +12,15 @@ export function CroquisGallery({ croquis, isAdministrador }: { croquis: any[], i
   const [searchTerm, setSearchTerm] = useState("")
 
   const filteredCroquis = croquis.filter(croqui => {
-    const term = searchTerm.toLowerCase()
-    const matchTitle = croqui.titulo.toLowerCase().includes(term)
-    const matchTag = croqui.tags?.some((t: string) => t.toLowerCase().includes(term))
-    return matchTitle || matchTag
+    const terms = searchTerm.toLowerCase().trim().split(/\s+/)
+    if (terms.length === 0 || terms[0] === "") return true
+
+    // Para cada termo digitado, ele precisa existir no titulo OU em alguma tag
+    return terms.every(term => {
+      const matchTitle = croqui.titulo.toLowerCase().includes(term)
+      const matchTag = croqui.tags?.some((t: string) => t.toLowerCase().includes(term))
+      return matchTitle || matchTag
+    })
   })
 
   const handleShare = (croqui: any) => {
@@ -80,7 +85,13 @@ export function CroquisGallery({ croquis, isAdministrador }: { croquis: any[], i
                     ))}
                   </div>
                   
-                  <div className="mt-4 pt-4 border-t border-border/50">
+                  <div className="mt-4 pt-4 border-t border-border/50 flex flex-col gap-2">
+                    <Button 
+                      className="w-full gap-2 bg-[#d97021] hover:bg-[#c3631b] text-white"
+                      onClick={() => window.location.href = `/orcamentos/novo?croqui_id=${croqui.id}&croqui_url=${encodeURIComponent(croqui.imagem_url)}`}
+                    >
+                      Criar Orçamento
+                    </Button>
                     <Button 
                       variant="outline" 
                       className="w-full text-[#25D366] hover:text-[#128C7E] hover:bg-[#25D366]/10 gap-2"
