@@ -10,7 +10,7 @@ export default async function Icon() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     const supabase = createClient(supabaseUrl, supabaseKey)
-    const { data } = await supabase.from('configuracoes').select('logo_url').eq('id', 1).single()
+    const { data } = await supabase.from('configuracoes').select('logo_url').limit(1).single()
     
     if (data?.logo_url && data.logo_url.startsWith('data:image/')) {
       const matches = data.logo_url.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/)
