@@ -89,7 +89,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           estilo_pdf: updated.estilo_pdf,
           updated_at: new Date().toISOString()
         })
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .eq('id', '00000000-0000-0000-0000-000000000000')
 
     } catch (err) {
       console.error('Erro ao salvar configurações:', err)
