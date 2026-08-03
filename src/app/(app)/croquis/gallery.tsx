@@ -23,9 +23,38 @@ export function CroquisGallery({ croquis, isAdministrador }: { croquis: any[], i
     })
   })
 
-  const handleShare = (croqui: any) => {
-    const text = `*Confira este croqui:* ${croqui.titulo}\n${croqui.imagem_url}`
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+  const handleShare = async (croqui: any) => {
+    try {
+      const response = await fetch(croqui.imagem_url)
+      const blob = await response.blob()
+      const file = new File([blob], `${croqui.titulo}.jpg`, { type: blob.type || 'image/jpeg' })
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: croqui.titulo,
+          text: `Confira este croqui: ${croqui.titulo}`,
+          files: [file]
+        })
+      } else {
+        // Fallback: faz o download automático da imagem
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${croqui.titulo}.jpg`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+        
+        // Abre o WhatsApp Web com o texto para ele anexar a foto baixada
+        const text = `*Confira este croqui:* ${croqui.titulo}`
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+      }
+    } catch (error) {
+      console.error("Erro ao compartilhar:", error)
+      const text = `*Confira este croqui:* ${croqui.titulo}\n${croqui.imagem_url}`
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+    }
   }
 
   return (
