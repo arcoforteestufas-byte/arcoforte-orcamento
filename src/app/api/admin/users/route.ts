@@ -2,19 +2,22 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 // Create a Supabase client with the Service Role Key for admin tasks
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
+const getSupabaseAdmin = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
 
 // GET: List all users
 export async function GET() {
   try {
+    const supabaseAdmin = getSupabaseAdmin()
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers()
     
     if (error) throw error
@@ -34,6 +37,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'E-mail e senha são obrigatórios' }, { status: 400 })
     }
 
+    const supabaseAdmin = getSupabaseAdmin()
     const { data: { user }, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -69,6 +73,7 @@ export async function PUT(req: Request) {
       updates.password = password
     }
 
+    const supabaseAdmin = getSupabaseAdmin()
     const { data: { user }, error } = await supabaseAdmin.auth.admin.updateUserById(id, updates)
     
     if (error) throw error
@@ -87,6 +92,7 @@ export async function DELETE(req: Request) {
     
     if (!id) return NextResponse.json({ error: 'ID do usuário é obrigatório' }, { status: 400 })
 
+    const supabaseAdmin = getSupabaseAdmin()
     const { error } = await supabaseAdmin.auth.admin.deleteUser(id)
     
     if (error) throw error
