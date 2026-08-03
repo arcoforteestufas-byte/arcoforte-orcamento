@@ -37,9 +37,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/orcamentos', request.url))
   }
 
-  if (user && request.nextUrl.pathname === '/') {
-    return NextResponse.redirect(new URL('/orcamentos', request.url))
-  }
 
   // Proteção de rotas Admin
   if (user && (request.nextUrl.pathname.startsWith('/admin') || request.nextUrl.pathname.startsWith('/produtos'))) {
