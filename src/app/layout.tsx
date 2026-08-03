@@ -16,9 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ArcoForte Orçamentos",
   description: "Sistema gerador de orçamentos ArcoForte",
-  icons: {
-    icon: "/api/favicon",
-  },
 };
 
 export default function RootLayout({
