@@ -15,7 +15,6 @@ const navigation = [
   { name: "Orçamentos", href: "/orcamentos", icon: FileText, adminOnly: false },
   { name: "Clientes", href: "/clientes", icon: Users, adminOnly: false },
   { name: "Produtos", href: "/produtos", icon: Package, adminOnly: true },
-  { name: "Analisador PDF", href: "/analisador", icon: FileSearch, adminOnly: false },
   { name: "Regras de Montagem", href: "/admin/regras", icon: Settings, adminOnly: true },
   { name: "Configurações", href: "/admin/configuracoes", icon: Settings, adminOnly: true },
 ]
