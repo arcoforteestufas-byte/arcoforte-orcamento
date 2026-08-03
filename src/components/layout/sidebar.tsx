@@ -8,20 +8,27 @@ import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, File
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useSettings } from "@/contexts/SettingsContext"
+import { User as SupabaseUser } from "@supabase/supabase-js"
 
 const navigation = [
-  { name: "Painel", href: "/", icon: Home },
-  { name: "Orçamentos", href: "/orcamentos", icon: FileText },
-  { name: "Clientes", href: "/clientes", icon: Users },
-  { name: "Produtos", href: "/produtos", icon: Package },
-  { name: "Analisador PDF", href: "/analisador", icon: FileSearch },
-  { name: "Regras de Montagem", href: "/admin/regras", icon: Settings },
-  { name: "Configurações", href: "/admin/configuracoes", icon: Settings },
+  { name: "Painel", href: "/", icon: Home, adminOnly: false },
+  { name: "Orçamentos", href: "/orcamentos", icon: FileText, adminOnly: false },
+  { name: "Clientes", href: "/clientes", icon: Users, adminOnly: false },
+  { name: "Produtos", href: "/produtos", icon: Package, adminOnly: false },
+  { name: "Analisador PDF", href: "/analisador", icon: FileSearch, adminOnly: false },
+  { name: "Regras de Montagem", href: "/admin/regras", icon: Settings, adminOnly: true },
+  { name: "Configurações", href: "/admin/configuracoes", icon: Settings, adminOnly: true },
 ]
 
-export function Sidebar() {
+export function Sidebar({ user }: { user?: SupabaseUser | null }) {
   const pathname = usePathname()
   const { settings } = useSettings()
+
+  const cargo = user?.user_metadata?.cargo || 'Visualizador'
+  const isAdministrador = cargo === 'Administrador'
+  const nome = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Usuário'
+
+  const filteredNavigation = navigation.filter(item => !item.adminOnly || isAdministrador)
 
   return (
     <div className="flex h-full w-72 flex-col border-r border-slate-200 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-40">
@@ -46,7 +53,7 @@ export function Sidebar() {
       
       <div className="flex-1 overflow-auto py-6">
         <nav className="grid gap-1.5 px-4 text-sm font-medium">
-          {navigation.map((item) => {
+          {filteredNavigation.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
             return (
               <Link
@@ -69,12 +76,12 @@ export function Sidebar() {
       
       <div className="mt-auto p-4 border-t border-slate-100 bg-white">
         <div className="flex items-center gap-3 mb-4 px-2 py-2 rounded-xl bg-slate-50 border border-slate-100">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-[#ff8c42] flex items-center justify-center text-white shadow-sm">
-            <span className="font-bold text-xs">BR</span>
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-[#ff8c42] flex items-center justify-center text-white shadow-sm shrink-0">
+            <span className="font-bold text-xs">{nome.substring(0, 2).toUpperCase()}</span>
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-slate-800 leading-tight">Bruno</span>
-            <span className="text-[10px] text-primary font-bold">ADMINISTRADOR</span>
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-sm font-bold text-slate-800 leading-tight truncate" title={nome}>{nome}</span>
+            <span className="text-[10px] text-primary font-bold truncate" title={cargo.toUpperCase()}>{cargo.toUpperCase()}</span>
           </div>
         </div>
         <Button 

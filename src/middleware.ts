@@ -41,6 +41,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/orcamentos', request.url))
   }
 
+  // Proteção de rotas Admin
+  if (user && request.nextUrl.pathname.startsWith('/admin')) {
+    const cargo = user.user_metadata?.cargo || 'Visualizador'
+    if (cargo !== 'Administrador') {
+      return NextResponse.redirect(new URL('/orcamentos', request.url))
+    }
+  }
+
   return response
 }
 

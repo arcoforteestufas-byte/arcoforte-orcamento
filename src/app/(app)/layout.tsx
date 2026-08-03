@@ -3,16 +3,21 @@ import { Header } from "@/components/layout/header"
 import { ChatWidget } from "@/components/chat-widget"
 import { SettingsProvider } from "@/contexts/SettingsContext"
 
-export default function AppLayout({
+import { createClient } from "@/utils/supabase/server"
+
+export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
   return (
     <SettingsProvider>
       <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans selection:bg-primary/20 selection:text-primary">
         <div className="hidden md:block">
-        <Sidebar />
+        <Sidebar user={user} />
       </div>
       
       <div className="flex flex-1 flex-col h-full overflow-hidden relative">

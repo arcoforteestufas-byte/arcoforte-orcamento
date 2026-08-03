@@ -8,11 +8,18 @@ export const revalidate = 0
 export default async function NovoOrcamentoPage() {
   const supabase = await createClient()
 
-  const { data: parametrosDef } = await supabase
+  const { data: parametrosDef, error } = await supabase
     .from('parametros_estufa')
     .select('*')
     .eq('ativo', true)
     .order('criado_em', { ascending: true })
+
+  console.log('DEBUG VERCEL:', {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    user: (await supabase.auth.getUser()).data.user?.id,
+    parametrosCount: parametrosDef?.length,
+    error
+  })
 
   const { data: produtos } = await supabase
     .from('produtos')
