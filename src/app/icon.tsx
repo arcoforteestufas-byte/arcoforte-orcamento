@@ -1,12 +1,15 @@
 import { ImageResponse } from 'next/og'
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from '@supabase/supabase-js'
 
+export const dynamic = 'force-dynamic'
 export const size = { width: 32, height: 32 }
 export const contentType = 'image/png'
 
 export default async function Icon() {
   try {
-    const supabase = await createClient()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const supabase = createClient(supabaseUrl, supabaseKey)
     const { data } = await supabase.from('configuracoes').select('logo_url').eq('id', 1).single()
     
     if (data?.logo_url && data.logo_url.startsWith('data:image/')) {
