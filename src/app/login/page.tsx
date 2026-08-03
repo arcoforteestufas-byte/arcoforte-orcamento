@@ -26,7 +26,7 @@ export default async function LoginPage({ searchParams }: Props) {
           <div className="flex items-center justify-center mb-2">
             {config?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={config.logo_url} alt="Logo" className="h-12 w-auto object-contain" />
+              <img src={config.logo_url} alt="Logo" className="h-24 md:h-28 w-auto object-contain" />
             ) : (
               <div className="bg-[#fff3eb] p-3 rounded-2xl">
                 <LogIn className="h-6 w-6 text-[#d97021]" />
