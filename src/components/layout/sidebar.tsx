@@ -84,12 +84,15 @@ export function Sidebar() {
           <LogOut className="h-4 w-4" />
           Desconectar
         </Button>
-        <div className="mt-3 text-center">
+        <div className="mt-3 text-center flex flex-col items-center">
           <span className="text-[10px] text-slate-400 font-medium">
-            {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA 
-              ? `v.${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.substring(0, 7)}` 
-              : 'v0.1.0'}
+            v{require("../../../package.json").version}
           </span>
+          {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA && (
+            <span className="text-[9px] text-slate-300">
+              {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.substring(0, 7)}
+            </span>
+          )}
         </div>
       </div>
     </div>
