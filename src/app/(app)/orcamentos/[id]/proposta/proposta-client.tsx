@@ -75,7 +75,7 @@ export function PropostaClient({ orcamento, textoInicial }: { orcamento: any, te
                   strong: ({node, ...props}) => <strong className="font-bold text-slate-900" {...props} />,
                   p: ({node, ...props}) => {
                     // Check if the paragraph has our html signature block
-                    if (props.children && typeof props.children[0] === 'string' && props.children[0].includes('Vendedor (ArcoForte)')) {
+                    if (Array.isArray(props.children) && typeof props.children[0] === 'string' && (props.children[0] as string).includes('Vendedor (ArcoForte)')) {
                       return (
                         <div className="flex justify-between mt-24">
                           <div className="border-t border-black w-[45%] text-center pt-2">

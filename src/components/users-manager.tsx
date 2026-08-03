@@ -196,7 +196,7 @@ export function UsersManager() {
 
             <div className="grid gap-2">
               <Label htmlFor="cargo">Cargo / Nível de Acesso</Label>
-              <Select value={form.cargo} onValueChange={v => setForm({...form, cargo: v})}>
+              <Select value={form.cargo} onValueChange={v => setForm({...form, cargo: v as 'admin' | 'vendedor'})}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o cargo" />
                 </SelectTrigger>

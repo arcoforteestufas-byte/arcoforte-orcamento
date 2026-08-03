@@ -79,14 +79,14 @@ export function gerarTextoProposta(orcamento: any, itens: ItemOrcamento[]): stri
 
   // Tabela de itens (Markdown)
   const itensAgrupados = agruparItensOrcamento(itens)
-  let tabelaMarkdown = \`| Item | Descrição | Qtd | Unitário | Total |\n|---|---|:---:|---:|---:|\n\`
+  let tabelaMarkdown = `| Item | Descrição | Qtd | Unitário | Total |\n|---|---|:---:|---:|---:|\n`
   
   for (const item of itensAgrupados) {
-    const nome = item.produto_descricao.replace(/\\|/g, '') // remove pipes to not break md table
-    const qtd = \`\${item.quantidade_final} \${item.unidade}\`
+    const nome = item.produto_descricao.replace(/\|/g, '') // remove pipes to not break md table
+    const qtd = `${item.quantidade_final} ${item.unidade}`
     const unit = formatadorMoeda.format(item.preco_unitario || 0)
     const total = formatadorMoeda.format(item.valor_total || 0)
-    tabelaMarkdown += \`| \${item.produto_codigo} | \${nome} | \${qtd} | \${unit} | \${total} |\n\`
+    tabelaMarkdown += `| ${item.produto_codigo} | ${nome} | ${qtd} | ${unit} | ${total} |\n`
   }
 
   const dataValidade = orcamento.data_validade 
@@ -121,7 +121,7 @@ export function gerarTextoProposta(orcamento: any, itens: ItemOrcamento[]): stri
   texto = texto.replace('{{ENDERECO_ENTREGA}}', orcamento.endereco_entrega || 'A combinar')
 
   const descProposta = orcamento.descricao_proposta 
-    ? \`\\n## Observações da Proposta\\n\\n\${orcamento.descricao_proposta}\\n\`
+    ? `\n## Observações da Proposta\n\n${orcamento.descricao_proposta}\n`
     : ''
   texto = texto.replace('{{DESCRICAO_PROPOSTA}}', descProposta)
 

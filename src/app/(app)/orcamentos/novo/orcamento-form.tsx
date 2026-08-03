@@ -357,7 +357,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
           </CardHeader>
           <CardContent className="grid gap-6 p-6 bg-slate-100 rounded-b-lg border border-slate-200">
             {/* Primeira Linha: Comprimento, Largura e Pé-Direito */}
-            <div className="grid gap-6 sm:grid-cols-3">
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
               <div className="grid gap-2">
                 <Label className="font-bold text-slate-800 uppercase text-xs">Comprimento da Estufa (m)</Label>
                 <Input 
@@ -401,7 +401,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
             </div>
 
             {/* Segunda Linha: Módulos, Largura e Tamanho do Vão */}
-            <div className="grid gap-6 sm:grid-cols-3">
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
               {(() => {
                 const paramModulos = parametrosDef.find(p => p.nome_tecnico === 'n_modulos')
                 return paramModulos ? (
@@ -488,7 +488,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
             <CardTitle>Condições e Acessórios</CardTitle>
             <CardDescription>Preencha os demais parâmetros técnicos.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6 sm:grid-cols-2">
+          <CardContent className="grid gap-6 grid-cols-1 md:grid-cols-2">
             {parametrosDef.filter(p => !['n_modulos', 'largura_modulo', 'n_vaos', 'pe_direito', 'vao'].includes(p.nome_tecnico)).map((param) => {
               if (param.tipo === 'booleano') {
                 return (
@@ -569,7 +569,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="gap-2 border-[#d97021] text-[#d97021] hover:bg-[#fff3eb]"
+                  className="gap-2 border-[#d97021] text-[#d97021] hover:bg-[#fff3eb] hidden sm:flex"
                   onClick={async () => {
                     const cliente = localClientes.find(c => c.id === selectedCliente)
                     const { gerarPDFOrcamento } = await import('@/utils/pdf-generator')
@@ -594,10 +594,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                             <span className="font-medium">{item.produto_descricao}</span>
                             <span className="text-xs text-muted-foreground ml-2">({item.posicao_nome})</span>
                             {item.isManualChange && (
-                              <Badge variant="outline" className="ml-2 text-[10px] h-5 bg-orange-50 text-orange-600 border-orange-200">Alterado Manualmente</Badge>
+                              <Badge variant="outline" className="ml-2 mt-1 text-[10px] h-5 bg-orange-50 text-orange-600 border-orange-200 w-fit">Alterado Manualmente</Badge>
                             )}
                           </div>
-                          <div className="text-right flex flex-col items-end">
+                          <div className="text-right flex flex-col items-end min-w-[90px]">
                             <span className="font-bold">{item.quantidade_final} {item.unidade}</span>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-xs text-muted-foreground block">
@@ -702,7 +702,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
               </div>
             </div>
           </CardContent>
-          <CardFooter className="pt-6">
+          <CardFooter className="pt-6 hidden md:flex">
             <Button 
               className="w-full gap-2 bg-[#d97021] hover:bg-[#c3631b] text-white"
               onClick={handleSalvarOrcamento}
@@ -713,6 +713,24 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
             </Button>
           </CardFooter>
         </Card>
+      </div>
+
+      {/* Mobile Sticky Footer */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-zinc-900 border-t border-zinc-800 shadow-[0_-10px_40px_rgba(0,0,0,0.3)] z-50">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span className="text-zinc-400 text-sm font-medium">Total:</span>
+          <span className="text-2xl font-bold text-[#d97021]">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
+          </span>
+        </div>
+        <Button 
+          className="w-full gap-2 text-lg py-6 bg-[#d97021] hover:bg-[#c3631b] text-white"
+          onClick={handleSalvarOrcamento}
+          disabled={isLoading}
+        >
+          <Save className="h-5 w-5" />
+          {isLoading ? "Salvando..." : "Salvar Orçamento"}
+        </Button>
       </div>
     </div>
   )

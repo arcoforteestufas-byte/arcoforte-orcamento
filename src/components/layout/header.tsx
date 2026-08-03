@@ -35,10 +35,10 @@ export function Header() {
             />
           </div>
           
-          <button className="text-white/80 hover:text-white transition-colors bg-black/10 p-2 rounded-full">
+          <button className="hidden sm:block text-white/80 hover:text-white transition-colors bg-black/10 p-2 rounded-full">
             <Moon className="h-4 w-4" />
           </button>
-          <button className="text-white/80 hover:text-white transition-colors bg-black/10 p-2 rounded-full">
+          <button className="hidden sm:block text-white/80 hover:text-white transition-colors bg-black/10 p-2 rounded-full">
             <Settings className="h-4 w-4" />
           </button>
         </div>
