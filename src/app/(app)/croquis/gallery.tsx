@@ -3,13 +3,18 @@
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Image as ImageIcon } from "lucide-react"
+import { Search, Image as ImageIcon, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { FaWhatsapp } from "react-icons/fa"
+import { createClient } from "@/utils/supabase/client"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 export function CroquisGallery({ croquis, isAdministrador }: { croquis: any[], isAdministrador: boolean }) {
   const [searchTerm, setSearchTerm] = useState("")
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const router = useRouter()
 
   const filteredCroquis = croquis.filter(croqui => {
     const terms = searchTerm.toLowerCase().trim().split(/\s+/)
@@ -22,6 +27,37 @@ export function CroquisGallery({ croquis, isAdministrador }: { croquis: any[], i
       return matchTitle || matchTag
     })
   })
+
+  const handleDelete = async (croqui: any) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o croqui "${croqui.titulo}"?`)) {
+      return
+    }
+
+    setIsDeleting(croqui.id)
+    const supabase = createClient()
+    
+    try {
+      // 1. Excluir o arquivo no Storage (se for um URL do supabase, tentamos pegar o nome do arquivo)
+      if (croqui.imagem_url && croqui.imagem_url.includes('/storage/v1/object/public/croquis/')) {
+        const filePath = croqui.imagem_url.split('/storage/v1/object/public/croquis/')[1]
+        if (filePath) {
+          await supabase.storage.from('croquis').remove([filePath])
+        }
+      }
+
+      // 2. Excluir do banco
+      const { error } = await supabase.from('croquis').delete().eq('id', croqui.id)
+      if (error) throw error
+      
+      toast.success("Croqui excluído com sucesso!")
+      router.refresh()
+    } catch (e: any) {
+      console.error(e)
+      toast.error("Erro ao excluir: " + e.message)
+    } finally {
+      setIsDeleting(null)
+    }
+  }
 
   const handleShare = async (croqui: any) => {
     try {
@@ -97,6 +133,18 @@ export function CroquisGallery({ croquis, isAdministrador }: { croquis: any[], i
                     />
                   ) : (
                     <ImageIcon className="h-8 w-8 text-slate-300" />
+                  )}
+                  {isAdministrador && (
+                    <Button 
+                      variant="destructive" 
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleDelete(croqui)}
+                      disabled={isDeleting === croqui.id}
+                      title="Excluir Croqui"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
                 <div className="p-4 flex flex-col flex-1">

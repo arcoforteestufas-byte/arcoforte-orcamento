@@ -38,9 +38,9 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   const initialA = searchParams.get('a') ? Number(searchParams.get('a')) : undefined
 
   const [paramsForm, setParamsForm] = useState<ParametrosEstufa>({
-    croqui_url: initialCroquiUrl,
-    croqui_id: initialCroquiId,
-    pe_direito: initialA
+    croqui_url: initialCroquiUrl || '',
+    croqui_id: initialCroquiId || '',
+    pe_direito: initialA || ''
   })
   const [resultado, setResultado] = useState<ItemOrcamento[]>([])
   
