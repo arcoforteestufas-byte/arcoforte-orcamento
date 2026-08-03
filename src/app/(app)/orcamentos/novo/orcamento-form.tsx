@@ -248,20 +248,22 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   const valorTotal = resultado.reduce((acc, item) => acc + item.valor_total, 0)
 
   // Agrupa resultados por categoria para o resumo
-  const totalEstrutura = resultado
-    .filter(i => !i.grupo_nome.toLowerCase().includes('cobertura') && !i.grupo_nome.toLowerCase().includes('diversos'))
-    .reduce((acc, item) => acc + item.valor_total, 0)
-  
-  const totalCobertura = resultado
-    .filter(i => i.grupo_nome.toLowerCase().includes('cobertura'))
-    .reduce((acc, item) => acc + item.valor_total, 0)
-    
-  const totalDiversos = resultado
-    .filter(i => i.grupo_nome.toLowerCase().includes('diversos') || i.grupo_nome.toLowerCase().includes('parafuso'))
-    .reduce((acc, item) => acc + item.valor_total, 0)
+  const isFilme = (g: string) => {
+    const l = g.toLowerCase();
+    return l.includes('filme') || l.includes('plástico') || l.includes('plastico') || l.includes('cobertura');
+  };
+  const isTela = (g: string) => {
+    const l = g.toLowerCase();
+    return l.includes('tela') && !isFilme(g);
+  };
+  const isEstrutura = (g: string) => !isFilme(g) && !isTela(g);
+
+  const totalEstrutura = resultado.filter(i => isEstrutura(i.grupo_nome)).reduce((acc, item) => acc + item.valor_total, 0)
+  const totalFilmes = resultado.filter(i => isFilme(i.grupo_nome)).reduce((acc, item) => acc + item.valor_total, 0)
+  const totalTelas = resultado.filter(i => isTela(i.grupo_nome)).reduce((acc, item) => acc + item.valor_total, 0)
 
   return (
-    <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
+    <div className="grid gap-6 md:grid-cols-[2fr_1fr] pb-36 md:pb-0">
       <div className="flex flex-col gap-6">
         <Card className="shadow-sm border-slate-200 overflow-hidden">
           <div className="h-1 w-full bg-gradient-to-r from-[#d97021] to-[#ff9e5e]" />
@@ -713,12 +715,12 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                 <span className="text-zinc-200">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalEstrutura)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-zinc-400">Cobertura / Plásticos</span>
-                <span className="text-zinc-200">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobertura)}</span>
+                <span className="text-zinc-400">Filmes / Plásticos</span>
+                <span className="text-zinc-200">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFilmes)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-zinc-400">Diversos / Parafusos</span>
-                <span className="text-zinc-200">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDiversos)}</span>
+                <span className="text-zinc-400">Telas</span>
+                <span className="text-zinc-200">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalTelas)}</span>
               </div>
             </div>
           </CardContent>
