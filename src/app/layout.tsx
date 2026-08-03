@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { createClient } from "@/utils/supabase/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -13,10 +14,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "ArcoForte Orçamentos",
-  description: "Sistema gerador de orçamentos ArcoForte",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const supabase = await createClient();
+  const { data } = await supabase.from('configuracoes').select('logo_url').eq('id', 1).single();
+
+  return {
+    title: "ArcoForte Orçamentos",
+    description: "Sistema gerador de orçamentos ArcoForte",
+    icons: {
+      icon: data?.logo_url || "/favicon.ico",
+    },
+  };
+}
 
 export default function RootLayout({
   children,

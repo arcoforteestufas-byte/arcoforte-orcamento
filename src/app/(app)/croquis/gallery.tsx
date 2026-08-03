@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { EditModal } from "./edit-modal"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Search, Image as ImageIcon, Trash2 } from "lucide-react"
@@ -72,17 +73,26 @@ export function CroquisGallery({ croquis, isAdministrador }: { croquis: any[], i
           files: [file]
         })
       } else {
-        // Fallback: faz o download automático da imagem
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${croqui.titulo}.jpg`
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        window.URL.revokeObjectURL(url)
+        // Fallback para Desktop: tenta copiar a imagem para a área de transferência (Ctrl+C)
+        try {
+          const clipboardItem = new ClipboardItem({ [blob.type]: blob })
+          await navigator.clipboard.write([clipboardItem])
+          toast.success("Imagem copiada! Na tela do WhatsApp, basta apertar Ctrl+V (Colar) para enviar a foto junto com o texto.", { duration: 6000 })
+        } catch (clipErr) {
+          console.error("Não foi possível copiar para a área de transferência, fazendo download", clipErr)
+          // Se falhar a cópia, faz o download automático da imagem
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `${croqui.titulo}.jpg`
+          document.body.appendChild(a)
+          a.click()
+          a.remove()
+          window.URL.revokeObjectURL(url)
+          toast.info("A imagem foi baixada. Arraste-a para a tela do WhatsApp para enviá-la.", { duration: 6000 })
+        }
         
-        // Abre o WhatsApp Web com o texto para ele anexar a foto baixada
+        // Abre o WhatsApp Web com o texto
         const text = `*Confira este croqui:* ${croqui.titulo}`
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
       }
@@ -135,16 +145,19 @@ export function CroquisGallery({ croquis, isAdministrador }: { croquis: any[], i
                     <ImageIcon className="h-8 w-8 text-slate-300" />
                   )}
                   {isAdministrador && (
-                    <Button 
-                      variant="destructive" 
-                      size="icon"
-                      className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => handleDelete(croqui)}
-                      disabled={isDeleting === croqui.id}
-                      title="Excluir Croqui"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <EditModal croqui={croqui} />
+                      <Button 
+                        variant="destructive" 
+                        size="icon"
+                        className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDelete(croqui)}
+                        disabled={isDeleting === croqui.id}
+                        title="Excluir Croqui"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                 </div>
                 <div className="p-4 flex flex-col flex-1">
