@@ -1,6 +1,9 @@
 import { createClient } from "@/utils/supabase/server"
 import { OrcamentoForm } from "./orcamento-form"
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function NovoOrcamentoPage() {
   const supabase = await createClient()
 

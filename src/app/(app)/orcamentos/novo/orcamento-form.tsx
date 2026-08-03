@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Calculator, Save, Plus, Download, ArrowLeftRight } from "lucide-react"
+import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks } from "lucide-react"
 import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo } from "@/utils/engine"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
+import { toast } from "sonner"
 
 type Props = {
   parametrosDef: {
@@ -121,7 +122,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   }
 
   const handleSalvarCliente = async () => {
-    if (!novoCliente.nome) return alert("O nome é obrigatório")
+    if (!novoCliente.nome) return toast.error("O nome é obrigatório")
     
     setIsLoading(true)
     const supabase = createClient()
@@ -163,10 +164,13 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
       }
       
       // Feedback pro usuário
-      alert("Cliente salvo rapidamente!\n\nLembre-se de ir até a aba 'Clientes' mais tarde para completar o cadastro (telefone, endereço completo, etc).")
+      toast.success("Cliente salvo rapidamente!", {
+        description: "Lembre-se de ir até a aba 'Clientes' mais tarde para completar o cadastro (telefone, endereço, etc).",
+        duration: 5000,
+      })
       
     } catch (e: any) {
-      alert("Erro ao salvar cliente: " + e.message)
+      toast.error("Erro ao salvar cliente: " + e.message)
     } finally {
       setIsLoading(false)
     }
@@ -174,11 +178,11 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
 
   const handleSalvarOrcamento = async () => {
     if (!selectedCliente) {
-      alert("Selecione um cliente antes de salvar o orçamento.")
+      toast.warning("Selecione um cliente antes de salvar o orçamento.")
       return
     }
     if (resultado.length === 0) {
-      alert("Calcule a lista de materiais antes de salvar.")
+      toast.warning("Calcule a lista de materiais antes de salvar.")
       return
     }
 
@@ -232,10 +236,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
         if (fallbackError) throw fallbackError
       }
 
-      alert("Orçamento salvo com sucesso!")
+      toast.success("Orçamento salvo com sucesso!")
       router.push('/orcamentos') // Redireciona para a lista
     } catch (e: any) {
-      alert("Erro ao salvar orçamento: " + e.message)
+      toast.error("Erro ao salvar orçamento: " + e.message)
     } finally {
       setIsLoading(false)
     }
@@ -259,10 +263,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   return (
     <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
       <div className="flex flex-col gap-6">
-        <Card className="border-t-4 border-t-[#d97021] shadow-md">
-          <CardHeader>
-            <CardTitle>Cliente</CardTitle>
-            <CardDescription>Selecione um cliente existente ou cadastre um novo na hora.</CardDescription>
+        <Card className="shadow-sm border-slate-200 overflow-hidden">
+          <div className="h-1 w-full bg-gradient-to-r from-[#d97021] to-[#ff9e5e]" />
+          <CardHeader className="bg-white pb-4 border-b border-slate-100">
+            <CardTitle className="text-xl text-slate-800 flex items-center gap-2">
+              <User className="h-5 w-5 text-[#d97021]" />
+              Cliente
+            </CardTitle>
+            <CardDescription className="text-slate-500">Selecione um cliente existente ou cadastre um novo na hora.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2">
@@ -350,12 +358,16 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
           </CardContent>
         </Card>
 
-        <Card className="shadow-md">
-          <CardHeader className="bg-slate-900 text-white rounded-t-lg">
-            <CardTitle>TAMANHO DA ESTUFA</CardTitle>
-            <CardDescription className="text-slate-300">Defina as dimensões principais do projeto.</CardDescription>
+        <Card className="shadow-sm border-slate-200 overflow-hidden">
+          <div className="h-1 w-full bg-gradient-to-r from-slate-700 to-slate-900" />
+          <CardHeader className="bg-white pb-4 border-b border-slate-100">
+            <CardTitle className="text-xl text-slate-800 flex items-center gap-2">
+              <Ruler className="h-5 w-5 text-slate-700" />
+              Tamanho da Estufa
+            </CardTitle>
+            <CardDescription className="text-slate-500">Defina as dimensões principais do projeto.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6 p-6 bg-slate-100 rounded-b-lg border border-slate-200">
+          <CardContent className="grid gap-6 p-6 bg-slate-50/50">
             {/* Primeira Linha: Comprimento, Largura e Pé-Direito */}
             <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
               <div className="grid gap-2">
@@ -483,12 +495,16 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
           </CardContent>
         </Card>
 
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle>Condições e Acessórios</CardTitle>
-            <CardDescription>Preencha os demais parâmetros técnicos.</CardDescription>
+        <Card className="shadow-sm border-slate-200 overflow-hidden">
+          <div className="h-1 w-full bg-gradient-to-r from-slate-400 to-slate-600" />
+          <CardHeader className="bg-white pb-4 border-b border-slate-100">
+            <CardTitle className="text-xl text-slate-800 flex items-center gap-2">
+              <Settings2 className="h-5 w-5 text-slate-600" />
+              Condições e Acessórios
+            </CardTitle>
+            <CardDescription className="text-slate-500">Preencha os demais parâmetros técnicos.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6 grid-cols-1 md:grid-cols-2">
+          <CardContent className="grid gap-6 grid-cols-1 md:grid-cols-2 p-6">
             {parametrosDef.filter(p => !['n_modulos', 'largura_modulo', 'n_vaos', 'pe_direito', 'vao'].includes(p.nome_tecnico)).map((param) => {
               if (param.tipo === 'booleano') {
                 return (
@@ -549,9 +565,13 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
         </Card>
 
         {resultado.length > 0 && (
-          <Card className="shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle>Lista de Materiais</CardTitle>
+          <Card className="shadow-sm border-slate-200 overflow-hidden">
+            <div className="h-1 w-full bg-gradient-to-r from-emerald-500 to-emerald-700" />
+            <CardHeader className="bg-white pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <CardTitle className="text-xl text-slate-800 flex items-center gap-2">
+                <ListChecks className="h-5 w-5 text-emerald-600" />
+                Lista de Materiais
+              </CardTitle>
               <div className="flex items-center gap-2">
                 <Button 
                   variant="outline" 

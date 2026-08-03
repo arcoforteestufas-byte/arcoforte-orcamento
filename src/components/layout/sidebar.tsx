@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, FileSearch } from "lucide-react"
 
@@ -25,9 +26,14 @@ export function Sidebar() {
   return (
     <div className="flex h-full w-72 flex-col border-r border-slate-200 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-40">
       <div className="flex flex-col items-center justify-center border-b border-slate-100 px-4 py-8 bg-gradient-to-b from-slate-50/50 to-transparent">
-        <div className="w-36 max-h-24 flex items-center justify-center rounded-xl mb-1 text-primary">
+        <div className="w-36 max-h-24 flex items-center justify-center rounded-xl mb-1 text-primary relative min-h-[60px]">
           {settings.logo_url ? (
-            <img src={settings.logo_url} alt={`Logo ${settings.nome_empresa}`} className="max-w-full max-h-full object-contain" />
+            <Image 
+              src={settings.logo_url} 
+              alt={`Logo ${settings.nome_empresa}`} 
+              fill
+              className="object-contain" 
+            />
           ) : (
             <div className="flex flex-col items-center justify-center">
               <span className="font-black text-2xl tracking-tighter">AF</span>
