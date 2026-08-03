@@ -33,10 +33,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   
   const initialCroquiUrl = searchParams.get('croqui_url') || undefined
   const initialCroquiId = searchParams.get('croqui_id') || undefined
+  const initialC = searchParams.get('c') ? Number(searchParams.get('c')) : ''
+  const initialL = searchParams.get('l') ? Number(searchParams.get('l')) : ''
+  const initialA = searchParams.get('a') ? Number(searchParams.get('a')) : undefined
 
   const [paramsForm, setParamsForm] = useState<ParametrosEstufa>({
     croqui_url: initialCroquiUrl,
-    croqui_id: initialCroquiId
+    croqui_id: initialCroquiId,
+    pe_direito: initialA
   })
   const [resultado, setResultado] = useState<ItemOrcamento[]>([])
   
@@ -49,8 +53,8 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   const [swapItemIndex, setSwapItemIndex] = useState<number | null>(null)
   
   // Controle de Comprimento e Largura
-  const [comprimento, setComprimento] = useState<number | ''>('')
-  const [larguraTotal, setLarguraTotal] = useState<number | ''>('')
+  const [comprimento, setComprimento] = useState<number | ''>(initialC)
+  const [larguraTotal, setLarguraTotal] = useState<number | ''>(initialL)
   const [vaoError, setVaoError] = useState('')
   const [vaoUltimo, setVaoUltimo] = useState<number | ''>('')
 
@@ -419,7 +423,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                 return (
                   <div className="grid gap-2">
                     <Label className="font-bold text-slate-800 uppercase text-xs">{param.rotulo}</Label>
-                    <Select onValueChange={(val) => handleParamChange(param.nome_tecnico, Number(val))}>
+                    <Select value={paramsForm['pe_direito']?.toString() || ''} onValueChange={(val) => handleParamChange(param.nome_tecnico, Number(val))}>
                       <SelectTrigger className="bg-white border-slate-300 text-lg py-6"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (

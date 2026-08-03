@@ -117,7 +117,20 @@ export function CroquisGallery({ croquis, isAdministrador }: { croquis: any[], i
                   <div className="mt-4 pt-4 border-t border-border/50 flex flex-col gap-2">
                     <Button 
                       className="w-full gap-2 bg-[#d97021] hover:bg-[#c3631b] text-white"
-                      onClick={() => window.location.href = `/orcamentos/novo?croqui_id=${croqui.id}&croqui_url=${encodeURIComponent(croqui.imagem_url)}`}
+                      onClick={() => {
+                        let url = `/orcamentos/novo?croqui_id=${croqui.id}&croqui_url=${encodeURIComponent(croqui.imagem_url)}`
+                        
+                        // Extrair L (Largura), C (Comprimento) e A (Altura/Pé Direito) do título
+                        const matchL = croqui.titulo.match(/(\d+(?:[.,]\d+)?)\s*[lL]/i)
+                        const matchC = croqui.titulo.match(/(\d+(?:[.,]\d+)?)\s*[cC]/i)
+                        const matchA = croqui.titulo.match(/(\d+(?:[.,]\d+)?)\s*[aA]/i)
+
+                        if (matchL) url += `&l=${matchL[1].replace(',', '.')}`
+                        if (matchC) url += `&c=${matchC[1].replace(',', '.')}`
+                        if (matchA) url += `&a=${matchA[1].replace(',', '.')}`
+
+                        window.location.href = url
+                      }}
                     >
                       Criar Orçamento
                     </Button>
