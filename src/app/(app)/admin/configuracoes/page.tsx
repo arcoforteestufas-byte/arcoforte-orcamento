@@ -103,23 +103,39 @@ export default function ConfiguracoesPage() {
                 <p className="text-xs text-muted-foreground">Cole o link (URL) ou clique no espaço abaixo para enviar uma imagem do seu computador.</p>
                 
                 {/* Preview Logo */}
-                <div 
-                  className="mt-4 p-4 border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors rounded-xl flex items-center justify-center w-40 h-24 cursor-pointer relative group"
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Clique para selecionar uma logo"
-                >
-                  {(logo || settings.logo_url) ? (
-                    <>
-                      <img src={logo || settings.logo_url || ""} alt="Preview" className="max-w-full max-h-full object-contain" />
-                      <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <span className="text-white text-xs font-medium">Trocar Imagem</span>
+                <div className="flex items-end gap-4 mt-4">
+                  <div 
+                    className="p-4 border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors rounded-xl flex items-center justify-center w-40 h-24 cursor-pointer relative group"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Clique para selecionar uma logo"
+                  >
+                    {logo ? (
+                      <>
+                        <img src={logo} alt="Preview" className="max-w-full max-h-full object-contain" />
+                        <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <span className="text-white text-xs font-medium">Trocar Imagem</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-slate-400 group-hover:text-primary transition-colors">
+                        <ImageIcon className="w-8 h-8" />
+                        <span className="text-xs font-medium">Clique para Upload</span>
                       </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-slate-400 group-hover:text-primary transition-colors">
-                      <ImageIcon className="w-8 h-8" />
-                      <span className="text-xs font-medium">Clique para Upload</span>
-                    </div>
+                    )}
+                  </div>
+                  
+                  {logo && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50 mb-1"
+                      onClick={() => {
+                        setLogo("")
+                        if (fileInputRef.current) fileInputRef.current.value = ""
+                      }}
+                    >
+                      Remover Logo
+                    </Button>
                   )}
                 </div>
                 <input 
