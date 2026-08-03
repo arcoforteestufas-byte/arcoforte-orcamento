@@ -101,11 +101,11 @@ export function UploadModal() {
       setIsOpen(open)
       if (!open) resetForm()
     }}>
-      <DialogTrigger asChild>
-        <Button className="gap-2 bg-[#d97021] hover:bg-[#c3631b] text-white">
-          <PlusCircle className="h-4 w-4" />
-          Novo Croqui
-        </Button>
+      <DialogTrigger 
+        render={<Button className="gap-2 bg-[#d97021] hover:bg-[#c3631b] text-white" />}
+      >
+        <PlusCircle className="h-4 w-4" />
+        Novo Croqui
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
