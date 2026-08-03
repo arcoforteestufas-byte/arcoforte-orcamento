@@ -4,8 +4,9 @@ import { Search, Moon, Settings, Menu, X } from "lucide-react"
 import { useState } from "react"
 import { Sidebar } from "./sidebar"
 import { useSettings } from "@/contexts/SettingsContext"
+import { User as SupabaseUser } from "@supabase/supabase-js"
 
-export function Header() {
+export function Header({ user }: { user?: SupabaseUser | null }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { settings } = useSettings()
 
@@ -58,7 +59,7 @@ export function Header() {
             >
               <X className="h-5 w-5" />
             </button>
-            <Sidebar />
+            <Sidebar user={user} />
           </div>
         </div>
       )}
