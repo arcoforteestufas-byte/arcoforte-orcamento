@@ -13,6 +13,7 @@ import { User as SupabaseUser } from "@supabase/supabase-js"
 const navigation = [
   { name: "Painel", href: "/", icon: Home, adminOnly: false },
   { name: "Orçamentos", href: "/orcamentos", icon: FileText, adminOnly: false },
+  { name: "Propostas", href: "/propostas", icon: FileText, adminOnly: false },
   { name: "Croquis", href: "/croquis", icon: FileSearch, adminOnly: false },
   { name: "Clientes", href: "/clientes", icon: Users, adminOnly: false },
   { name: "Produtos", href: "/produtos", icon: Package, adminOnly: true },
@@ -20,7 +21,7 @@ const navigation = [
   { name: "Configurações", href: "/admin/configuracoes", icon: Settings, adminOnly: true },
 ]
 
-export function Sidebar({ user }: { user?: SupabaseUser | null }) {
+export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose?: () => void }) {
   const pathname = usePathname()
   const { settings } = useSettings()
 
@@ -65,6 +66,7 @@ export function Sidebar({ user }: { user?: SupabaseUser | null }) {
                     ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )}
+                onClick={() => onClose?.()}
               >
                 <item.icon className={cn("h-4 w-4", isActive ? "text-primary-foreground" : "text-slate-400")} />
                 {item.name}

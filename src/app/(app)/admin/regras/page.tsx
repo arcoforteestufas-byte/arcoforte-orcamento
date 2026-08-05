@@ -4,17 +4,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { PlusCircle, Settings2, TestTube2 } from "lucide-react"
-import { createClient } from "@/utils/supabase/server"
+import { createClient, createAdminClient } from "@/utils/supabase/server"
 import { CsvUploader } from "@/components/csv-uploader"
 import { RegrasTable } from "./regras-table"
 
 export default async function RegrasMontagemPage() {
-  const supabase = await createClient()
+  const supabaseAdmin = await createAdminClient()
 
-  const { data: grupos } = await supabase.from('grupos_componentes').select('*').order('ordem')
-  const { data: posicoes } = await supabase.from('posicoes').select('*')
-  const { data: regras } = await supabase.from('regras_calculo').select('*').eq('ativo', true)
-  const { data: produtos } = await supabase.from('produtos').select('codigo, descricao')
+  const { data: grupos, error: gError } = await supabaseAdmin.from('grupos_componentes').select('*').order('ordem')
+  const { data: posicoes } = await supabaseAdmin.from('posicoes').select('*')
+  const { data: regras } = await supabaseAdmin.from('regras_calculo').select('*').eq('ativo', true)
+  const { data: produtos } = await supabaseAdmin.from('produtos').select('codigo, descricao')
 
   if (!grupos) return <div>Carregando...</div>
 

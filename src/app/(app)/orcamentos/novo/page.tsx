@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server"
+import { createClient, createAdminClient } from "@/utils/supabase/server"
 import { OrcamentoForm } from "./orcamento-form"
 
 export const dynamic = 'force-dynamic'
@@ -7,8 +7,13 @@ export const revalidate = 0
 
 export default async function NovoOrcamentoPage() {
   const supabase = await createClient()
+  const supabaseAdmin = await createAdminClient()
 
-  const { data: parametrosDef, error } = await supabase
+  const { data: { user } } = await supabase.auth.getUser()
+  const cargo = user?.user_metadata?.cargo || 'Visualizador'
+  const isAdministrador = cargo === 'Administrador'
+
+  const { data: parametrosDef, error } = await supabaseAdmin
     .from('parametros_estufa')
     .select('*')
     .eq('ativo', true)
@@ -21,12 +26,12 @@ export default async function NovoOrcamentoPage() {
     error
   })
 
-  const { data: produtos } = await supabase
+  const { data: produtos } = await supabaseAdmin
     .from('produtos')
     .select('*')
     .eq('ativo', true)
 
-  const { data: regras } = await supabase
+  const { data: regras } = await supabaseAdmin
     .from('regras_calculo')
     .select(`
       id, posicao_id, produto_codigo, formula_quantidade, condicao_aplicabilidade,
@@ -35,10 +40,16 @@ export default async function NovoOrcamentoPage() {
     `)
     .eq('ativo', true)
 
-  const { data: clientes } = await supabase
+  let clientesQuery = supabaseAdmin
     .from('clientes')
     .select('id, nome, documento, cidade_uf')
     .order('nome', { ascending: true })
+
+  if (!isAdministrador && user) {
+    clientesQuery = clientesQuery.eq('vendedor_id', user.id)
+  }
+
+  const { data: clientes } = await clientesQuery
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto">

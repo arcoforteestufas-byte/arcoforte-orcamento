@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Paintbrush, Image as ImageIcon, Settings2, FileText, CheckCircle2, Users } from "lucide-react"
 import { UsersManager } from "@/components/users-manager"
+import { PropostaTopicsManager } from "./proposta-topics-manager"
 
 export default function ConfiguracoesPage() {
   const { settings, updateSettings } = useSettings()
@@ -63,11 +64,12 @@ export default function ConfiguracoesPage() {
       </div>
 
       <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 max-w-[500px]">
+        <TabsList className="grid w-full grid-cols-5 max-w-[600px]">
           <TabsTrigger value="geral" className="flex items-center gap-2"><Settings2 size={16}/> Geral</TabsTrigger>
           <TabsTrigger value="usuarios" className="flex items-center gap-2"><Users size={16}/> Usuários</TabsTrigger>
           <TabsTrigger value="designer" className="flex items-center gap-2"><Paintbrush size={16}/> Designer</TabsTrigger>
           <TabsTrigger value="pdf" className="flex items-center gap-2"><FileText size={16}/> PDF</TabsTrigger>
+          <TabsTrigger value="proposta" className="flex items-center gap-2"><FileText size={16}/> Proposta</TabsTrigger>
         </TabsList>
         
         {/* ABA GERAL */}
@@ -210,6 +212,10 @@ export default function ConfiguracoesPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        {/* ABA PROPOSTA */}
+        <TabsContent value="proposta" className="mt-6">
+          <PropostaTopicsManager />
         </TabsContent>
       </Tabs>
 

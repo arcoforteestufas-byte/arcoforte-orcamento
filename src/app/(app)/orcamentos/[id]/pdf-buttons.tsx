@@ -27,7 +27,6 @@ export function PdfButtons({ itens, orcamento }: { itens: ItemOrcamento[], orcam
         <Download className="h-4 w-4" />
         Exportar PDF (Agrupado)
       </Button>
-      {/* 
       <div className="h-px bg-zinc-800 my-2" />
       <Button 
         variant="outline" 
@@ -37,7 +36,6 @@ export function PdfButtons({ itens, orcamento }: { itens: ItemOrcamento[], orcam
         <Download className="h-4 w-4" />
         Gerar Proposta Comercial
       </Button>
-      */}
     </div>
   )
 }

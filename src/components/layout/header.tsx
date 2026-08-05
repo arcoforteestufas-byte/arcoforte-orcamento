@@ -2,6 +2,7 @@
 
 import { Search, Moon, Settings, Menu, X } from "lucide-react"
 import { useState } from "react"
+import Image from "next/image"
 import { Sidebar } from "./sidebar"
 import { useSettings } from "@/contexts/SettingsContext"
 import { User as SupabaseUser } from "@supabase/supabase-js"
@@ -13,17 +14,35 @@ export function Header({ user }: { user?: SupabaseUser | null }) {
   return (
     <>
       <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between bg-primary px-4 sm:px-6 shadow-sm border-b border-primary/20">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 z-10">
           <button 
             className="md:hidden text-white hover:text-white/80 transition-colors p-1"
             onClick={() => setMobileMenuOpen(true)}
           >
             <Menu className="h-6 w-6" />
           </button>
-          
-          <span className="text-white font-black tracking-widest text-sm hidden sm:block md:hidden">
-            {settings.nome_empresa.toUpperCase()}
-          </span>
+        </div>
+
+        {/* Logo Centralizada no Mobile */}
+        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 md:hidden flex items-center justify-center pointer-events-none z-0">
+          {settings.logo_url ? (
+            <div className="relative w-[170px] h-[48px] bg-white rounded flex items-center justify-center shadow-sm shrink-0 overflow-hidden">
+              <div className="relative w-full h-full flex items-center justify-center">
+                <Image 
+                  src={settings.logo_url} 
+                  alt={`Logo`} 
+                  fill
+                  sizes="170px"
+                  className="object-contain scale-[1.55]" 
+                  priority
+                />
+              </div>
+            </div>
+          ) : (
+            <span className="text-white font-black tracking-widest text-sm line-clamp-1 bg-primary px-2">
+              {settings.nome_empresa.toUpperCase()}
+            </span>
+          )}
         </div>
         
         <div className="flex items-center gap-4">
@@ -59,7 +78,7 @@ export function Header({ user }: { user?: SupabaseUser | null }) {
             >
               <X className="h-5 w-5" />
             </button>
-            <Sidebar user={user} />
+            <Sidebar user={user} onClose={() => setMobileMenuOpen(false)} />
           </div>
         </div>
       )}

@@ -13,7 +13,9 @@ export default async function PropostaViewPage({ params }: { params: Promise<{ i
     .from('orcamentos')
     .select(`
       *,
-      clientes ( nome, documento, cidade_uf )
+      clientes ( nome, documento, cidade_uf, contato ),
+      parametros_estufa ( * ),
+      usuarios ( nome, telefone )
     `)
     .eq('id', id)
     .single()
@@ -56,12 +58,16 @@ export default async function PropostaViewPage({ params }: { params: Promise<{ i
     manualOriginalProduto: item.descricao_customizada?.replace('Substituiu: ', '') || ''
   }))
 
-  const textoInicial = gerarTextoProposta(orcamento, itensFormatados)
+  const { data: configData } = await supabase
+    .from('configuracoes')
+    .select('proposta_topicos')
+    .single()
+
+  const textoInicial = gerarTextoProposta(orcamento, itensFormatados, configData?.proposta_topicos || [])
 
   return (
     <PropostaClient 
       orcamento={orcamento} 
-      textoInicial={textoInicial} 
     />
   )
 }

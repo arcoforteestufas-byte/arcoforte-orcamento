@@ -56,10 +56,26 @@ export type ItemOrcamento = {
  */
 export function calcularOrcamento(
   parametros: ParametrosEstufa,
-  regras: RegraCalculo[],
+  regrasRaw: RegraCalculo[],
   produtos: Produto[]
 ): ItemOrcamento[] {
   const parser = new Parser()
+  
+  // Remove regras duplicadas (prevenindo explosão de JOIN ou regras cadastradas em dobro no banco com pequenas variações)
+  const regrasMap = new Map<string, RegraCalculo>()
+  const assinaturas = new Set<string>()
+
+  for (const r of regrasRaw) {
+    if (!r) continue
+    // Assinatura restrita: 1 regra por Produto na mesma Posição. Se houver 2 regras pro mesmo produto no mesmo lugar, ignora a duplicata.
+    const assinatura = `${r.posicao_id}_${r.produto_codigo}`
+    
+    if (r.id && !regrasMap.has(r.id) && !assinaturas.has(assinatura)) {
+      regrasMap.set(r.id, r)
+      assinaturas.add(assinatura)
+    }
+  }
+  const regras = Array.from(regrasMap.values())
   
   // Funções estilo Excel
   parser.functions.IF = function(cond: any, a: any, b: any) { return cond ? a : b; }
@@ -154,17 +170,44 @@ export function calcularOrcamento(
         peso_liquido_total: pesoLiquidoTotal
       })
 
-    } catch (err) {
-      console.error(`Erro ao avaliar regra ${regra.id}:`, err)
+    } catch (err: any) {
+      console.warn(`Erro ao avaliar regra ${regra.id}: ${err.message}`)
     }
   }
 
-  // Ordena por Grupo e depois por Posição
-  return itens.sort((a, b) => {
+  // 7. Agregação Final
+  // Agrupa por grupo_id e produto_codigo para evitar itens duplicados no mesmo grupo
+  const itensAgrupados = new Map<string, ItemOrcamento>()
+
+  for (const item of itens) {
+    const key = `${item.grupo_id}_${item.produto_codigo}`
+    
+    if (itensAgrupados.has(key)) {
+      const existente = itensAgrupados.get(key)!
+      existente.quantidade_bruta += item.quantidade_bruta
+      existente.quantidade_final += item.quantidade_final
+      existente.valor_total += item.valor_total
+      existente.peso_bruto_total += item.peso_bruto_total
+      existente.peso_liquido_total += item.peso_liquido_total
+      
+      // Adiciona a posição se ainda não estiver na lista (para mostrar na UI)
+      if (!existente.posicao_nome.includes(item.posicao_nome)) {
+        existente.posicao_nome += ` / ${item.posicao_nome}`
+      }
+    } else {
+      // Fazemos uma cópia para não mutar o array original caso seja referenciado
+      itensAgrupados.set(key, { ...item })
+    }
+  }
+
+  const resultadoFinal = Array.from(itensAgrupados.values())
+
+  // Ordena por Grupo e depois por Produto
+  return resultadoFinal.sort((a, b) => {
     if (a.grupo_nome < b.grupo_nome) return -1
     if (a.grupo_nome > b.grupo_nome) return 1
-    if (a.posicao_nome < b.posicao_nome) return -1
-    if (a.posicao_nome > b.posicao_nome) return 1
+    if (a.produto_descricao < b.produto_descricao) return -1
+    if (a.produto_descricao > b.produto_descricao) return 1
     return 0
   })
 }

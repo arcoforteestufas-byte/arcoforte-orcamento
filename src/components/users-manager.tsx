@@ -16,6 +16,7 @@ type User = {
   user_metadata: {
     nome?: string
     cargo?: string
+    telefone?: string
   }
 }
 
@@ -26,7 +27,7 @@ export function UsersManager() {
   const [isSaving, setIsSaving] = useState(false)
   
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState({ email: '', password: '', nome: '', cargo: 'Visualizador' })
+  const [form, setForm] = useState({ email: '', password: '', nome: '', cargo: 'Visualizador', telefone: '' })
 
   const fetchUsers = async () => {
     setIsLoading(true)
@@ -49,7 +50,7 @@ export function UsersManager() {
 
   const handleOpenNew = () => {
     setEditingId(null)
-    setForm({ email: '', password: '', nome: '', cargo: 'Visualizador' })
+    setForm({ email: '', password: '', nome: '', cargo: 'Visualizador', telefone: '' })
     setIsOpen(true)
   }
 
@@ -59,9 +60,25 @@ export function UsersManager() {
       email: user.email, 
       password: '', // blank on edit
       nome: user.user_metadata?.nome || '', 
-      cargo: user.user_metadata?.cargo || 'Visualizador' 
+      cargo: user.user_metadata?.cargo || 'Visualizador',
+      telefone: user.user_metadata?.telefone || ''
     })
     setIsOpen(true)
+  }
+
+  const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '')
+    if (value.length > 11) value = value.slice(0, 11)
+
+    let formatted = value
+    if (value.length > 2) {
+      formatted = `(${value.slice(0, 2)}) ${value.slice(2)}`
+    }
+    if (value.length > 7) {
+      formatted = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`
+    }
+    
+    setForm({ ...form, telefone: formatted })
   }
 
   const handleSave = async () => {
@@ -182,6 +199,11 @@ export function UsersManager() {
             <div className="grid gap-2">
               <Label htmlFor="nome">Nome Completo</Label>
               <Input id="nome" value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="João Silva" />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="telefone">Telefone</Label>
+              <Input id="telefone" type="tel" value={form.telefone} onChange={handleTelefoneChange} placeholder="(00) 00000-0000" />
             </div>
             
             <div className="grid gap-2">

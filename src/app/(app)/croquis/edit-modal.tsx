@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Edit, Save, X } from "lucide-react"
+import { updateCroqui } from "@/app/actions/croquis"
 import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -69,18 +70,15 @@ export function EditModal({ croqui }: { croqui: any }) {
         publicUrl = data.publicUrl
       }
 
-      // 2. Atualiza no banco
-      const { error: dbError } = await supabase
-        .from('croquis')
-        .update({
-          titulo,
-          descricao: descricao || null,
-          imagem_url: publicUrl,
-          tags
-        })
-        .eq('id', croqui.id)
+      // 2. Atualiza no banco usando Server Action
+      const result = await updateCroqui(croqui.id, {
+        titulo,
+        descricao: descricao || null,
+        imagem_url: publicUrl,
+        tags
+      })
 
-      if (dbError) throw dbError
+      if (result.error) throw new Error(result.error)
 
       toast.success("Croqui atualizado com sucesso!")
       setIsOpen(false)
