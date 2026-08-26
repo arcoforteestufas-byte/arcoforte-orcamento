@@ -24,53 +24,55 @@ export async function importarProdutosXLSX(formData: FormData) {
     // Converte para JSON
     const rows = XLSX.utils.sheet_to_json(sheet) as any[]
 
-    let inseridos = 0
-    let atualizados = 0
+    const batch = []
 
     // Vamos ler cada linha
     for (const row of rows) {
-      // Sensio keys: "Código", "Item", "Un.", "Valor Un."
-      const codigo = String(row['Código'] || '').trim()
-      const item = String(row['Item'] || '').trim()
-      const un = String(row['Un.'] || '').trim()
+      // Novas chaves baseadas na exportação do Sensio
+      const codigo = String(row['Código SKU'] || row['Código'] || '').trim()
+      const item = String(row['Descrição'] || row['Nome'] || row['Item'] || '').trim()
+      const un = String(row['Unidade'] || row['Un.'] || '').trim()
       
-      let valorUnRaw = row['Valor Un.']
+      let valorUnRaw = row['Preço Unitário'] || row['Valor Un.'] || row['Preço']
       let preco = 0
 
       if (typeof valorUnRaw === 'number') {
         preco = valorUnRaw
       } else if (typeof valorUnRaw === 'string') {
-        preco = parseFloat(valorUnRaw.replace(',', '.'))
+        let limpo = valorUnRaw.replace(/[R$\s]/g, '')
+        if (limpo.includes(',')) {
+          limpo = limpo.replace(/\./g, '').replace(',', '.')
+        }
+        preco = parseFloat(limpo)
+      }
+
+      if (isNaN(preco)) preco = 0
+
+      if (preco >= 99999999) {
+        throw new Error(`O produto ${codigo} (${item}) tem um preço muito grande (${valorUnRaw}). Verifique a planilha.`)
       }
 
       if (!codigo || !item) continue
 
-      const { data: existing } = await supabase
-        .from('produtos')
-        .select('codigo')
-        .eq('codigo', codigo)
-        .single()
+      batch.push({
+        codigo: codigo,
+        descricao: item,
+        unidade: un || 'un',
+        preco_unitario: isNaN(preco) ? 0 : preco
+      })
+    }
 
-      if (existing) {
-        await supabase.from('produtos').update({
-          descricao: item,
-          unidade: un || 'un',
-          preco_unitario: isNaN(preco) ? 0 : preco
-        }).eq('codigo', codigo)
-        atualizados++
-      } else {
-        await supabase.from('produtos').insert({
-          codigo: codigo,
-          descricao: item,
-          unidade: un || 'un',
-          preco_unitario: isNaN(preco) ? 0 : preco
-        })
-        inseridos++
+    if (batch.length > 0) {
+      // Fazer o upsert (inserir ou atualizar) em lotes de 1000 para não estourar o limite de requisição e ser muito rápido
+      for (let i = 0; i < batch.length; i += 1000) {
+        const chunk = batch.slice(i, i + 1000)
+        const { error } = await supabase.from('produtos').upsert(chunk, { onConflict: 'codigo' })
+        if (error) throw new Error(error.message)
       }
     }
 
     revalidatePath('/produtos')
-    return { success: true, message: `Sincronização concluída: ${inseridos} novos produtos, ${atualizados} atualizados.` }
+    return { success: true, message: `Sincronização concluída: ${batch.length} produtos processados e atualizados com sucesso.` }
   } catch (error: any) {
     return { success: false, error: error.message }
   }

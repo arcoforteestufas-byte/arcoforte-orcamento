@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { PlusCircle, Settings2, TestTube2 } from "lucide-react"
 import { createClient, createAdminClient } from "@/utils/supabase/server"
 import { CsvUploader } from "@/components/csv-uploader"
+import { SeedRegrasButton } from "@/components/seed-regras-button"
+import { ClearDataButton } from "@/components/clear-data-button"
 import { RegrasTable } from "./regras-table"
 
 export default async function RegrasMontagemPage() {
@@ -32,6 +34,8 @@ export default async function RegrasMontagemPage() {
             <TestTube2 className="h-4 w-4" />
             Testar Motor
           </Button>
+          <ClearDataButton />
+          <SeedRegrasButton />
           <CsvUploader />
           <Button className="gap-2">
             <PlusCircle className="h-4 w-4" />

@@ -17,7 +17,6 @@ const navigation = [
   { name: "Croquis", href: "/croquis", icon: FileSearch, adminOnly: false },
   { name: "Clientes", href: "/clientes", icon: Users, adminOnly: false },
   { name: "Produtos", href: "/produtos", icon: Package, adminOnly: true },
-  { name: "Regras de Montagem", href: "/admin/regras", icon: Settings, adminOnly: true },
   { name: "Configurações", href: "/admin/configuracoes", icon: Settings, adminOnly: true },
 ]
 
@@ -36,11 +35,11 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
       <div className="flex flex-col items-center justify-center border-b border-slate-100 px-4 py-8 bg-gradient-to-b from-slate-50/50 to-transparent">
         <div className="w-36 max-h-24 flex items-center justify-center rounded-xl mb-1 text-primary relative min-h-[60px]">
           {settings.logo_url ? (
-            <Image 
-              src={settings.logo_url} 
-              alt={`Logo ${settings.nome_empresa}`} 
+            <Image
+              src={settings.logo_url}
+              alt={`Logo ${settings.nome_empresa}`}
               fill
-              className="object-contain" 
+              className="object-contain"
             />
           ) : (
             <div className="flex flex-col items-center justify-center">
@@ -51,7 +50,7 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
         <span className="font-black text-base tracking-tight text-slate-800">{settings.nome_empresa.toUpperCase()}</span>
         <span className="text-[10px] text-primary uppercase tracking-widest mt-0.5 font-bold">Orçamento</span>
       </div>
-      
+
       <div className="flex-1 overflow-auto py-6">
         <nav className="grid gap-1.5 px-4 text-sm font-medium">
           {filteredNavigation.map((item) => {
@@ -62,8 +61,8 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
                 href={item.href}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all",
-                  isActive 
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )}
                 onClick={() => onClose?.()}
@@ -75,7 +74,7 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
           })}
         </nav>
       </div>
-      
+
       <div className="mt-auto p-4 border-t border-slate-100 bg-white">
         <div className="flex items-center gap-3 mb-4 px-2 py-2 rounded-xl bg-slate-50 border border-slate-100">
           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-[#ff8c42] flex items-center justify-center text-white shadow-sm shrink-0">
@@ -86,8 +85,8 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
             <span className="text-[10px] text-primary font-bold truncate" title={cargo.toUpperCase()}>{cargo.toUpperCase()}</span>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="w-full justify-start gap-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
           onClick={async () => {
             const { createClient } = await import('@/utils/supabase/client')

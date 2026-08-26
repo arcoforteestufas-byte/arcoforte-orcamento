@@ -1,13 +1,13 @@
 {
   "name": "arcoforte-orcamento",
-  "version": "0.1.30",
+  "version": "0.1.48",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "deploy": "npm version patch --no-git-tag-version && npx vercel --prod"
+    "lint": "next lint",
+    "deploy": "npm version patch --no-git-tag-version && npx vercel@58.7.1 --prod"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.25",

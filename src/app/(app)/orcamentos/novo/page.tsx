@@ -13,11 +13,36 @@ export default async function NovoOrcamentoPage() {
   const cargo = user?.user_metadata?.cargo || 'Visualizador'
   const isAdministrador = cargo === 'Administrador'
 
-  const { data: parametrosDef, error } = await supabaseAdmin
+  let { data: parametrosDef, error } = await supabaseAdmin
     .from('parametros_estufa')
     .select('*')
     .eq('ativo', true)
     .order('criado_em', { ascending: true })
+
+  const peDireito = parametrosDef?.find(p => p.nome_tecnico === 'pe_direito');
+  const postesFrontais = parametrosDef?.find(p => p.nome_tecnico === 'postes_frontais_duplos');
+  const nDivisas = parametrosDef?.find(p => p.nome_tecnico === 'n_divisas');
+  const caboAco = parametrosDef?.find(p => p.nome_tecnico === 'modelo_cabo');
+  const caboDesatualizado = caboAco && typeof caboAco.opcoes === 'string' && !caboAco.opcoes.includes('LATERAL 1"');
+  const tipoCobertura = parametrosDef?.find(p => p.nome_tecnico === 'tipo_cobertura');
+  const coberturaDesatualizada = tipoCobertura && typeof tipoCobertura.opcoes === 'string' && !tipoCobertura.opcoes.includes('TELA');
+  const fixacaoInferior = parametrosDef?.find(p => p.nome_tecnico === 'fixacao_inferior');
+  const tipoFixacaoInferior = parametrosDef?.find(p => p.nome_tecnico === 'tipo_fixacao_inferior');
+  const arcoDivisa = parametrosDef?.find(p => p.nome_tecnico === 'arco_divisa');
+  
+  if (parametrosDef && (!peDireito || !postesFrontais || nDivisas || !fixacaoInferior || !tipoFixacaoInferior || !arcoDivisa || caboDesatualizado || coberturaDesatualizada || (typeof peDireito.opcoes === 'string' && peDireito.opcoes.includes("6")))) {
+    const { syncParametrosArcoforte } = await import('@/app/actions/sync-parametros');
+    await syncParametrosArcoforte();
+    
+    const refetch = await supabaseAdmin
+      .from('parametros_estufa')
+      .select('*')
+      .eq('ativo', true)
+      .order('criado_em', { ascending: true })
+    
+    parametrosDef = refetch.data;
+    error = refetch.error;
+  }
 
   console.log('DEBUG VERCEL:', {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL,

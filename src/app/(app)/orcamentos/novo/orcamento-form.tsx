@@ -52,11 +52,28 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   const [novoCliente, setNovoCliente] = useState({ nome: '', documento: '', cidade_uf: '' })
   const [swapItemIndex, setSwapItemIndex] = useState<number | null>(null)
   
-  // Controle de Comprimento e Largura
   const [comprimento, setComprimento] = useState<number | ''>(initialC)
   const [larguraTotal, setLarguraTotal] = useState<number | ''>(initialL)
   const [vaoError, setVaoError] = useState('')
   const [vaoUltimo, setVaoUltimo] = useState<number | ''>('')
+  
+  const [portasConfig, setPortasConfig] = useState<{ id: string, quantidade: number | '', tipo: string }[]>([{ id: 'init', quantidade: '', tipo: '' }])
+
+  // Efeito para sincronizar portasConfig com qtd_portas_abrir e qtd_portas_correr
+  useEffect(() => {
+    let abrir = 0;
+    let correr = 0;
+    portasConfig.forEach(p => {
+      const q = Number(p.quantidade) || 0;
+      if (p.tipo === 'abrir') abrir += q;
+      if (p.tipo === 'correr') correr += q;
+    });
+    setParamsForm(prev => ({
+      ...prev,
+      portas_abrir: abrir > 0 ? abrir : '',
+      portas_correr: correr > 0 ? correr : ''
+    }));
+  }, [portasConfig])
 
 
   // Mantém a lista atualizada caso o Next.js mande novos props do servidor
@@ -127,6 +144,18 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
       }
     }
   }, [larguraTotal])
+
+  // Efeito reverso: Atualizar larguraTotal se os módulos mudarem manualmente
+  useEffect(() => {
+    const n = Number(paramsForm['n_modulos']) || 0
+    const w = Number(paramsForm['largura_modulo']) || 0
+    if (n > 0 && w > 0) {
+      const calc = n * w
+      if (calc !== Number(larguraTotal)) {
+        setLarguraTotal(calc)
+      }
+    }
+  }, [paramsForm['n_modulos'], paramsForm['largura_modulo']])
 
   const handleCalcular = () => {
     const itens = calcularOrcamento(paramsForm, regras, produtos)
@@ -392,19 +421,8 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
             <CardDescription className="text-slate-500">Defina as dimensões principais do projeto.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6 p-6 bg-slate-50/50">
-            {/* Primeira Linha: Comprimento, Largura e Pé-Direito */}
+            {/* Primeira Linha: Largura, Comprimento e Altura */}
             <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
-              <div className="grid gap-2">
-                <Label className="font-bold text-slate-800 uppercase text-xs">Comprimento da Estufa (m)</Label>
-                <Input 
-                  type="number"
-                  value={comprimento}
-                  placeholder="Ex: 50"
-                  className="bg-white border-slate-300 text-lg py-6"
-                  onChange={(e) => setComprimento(Number(e.target.value) || '')}
-                />
-              </div>
-
               <div className="grid gap-2">
                 <Label className="font-bold text-slate-800 uppercase text-xs">Largura da Estufa (m)</Label>
                 <Input 
@@ -416,13 +434,24 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                 />
               </div>
 
+              <div className="grid gap-2">
+                <Label className="font-bold text-slate-800 uppercase text-xs">Comprimento da Estufa (m)</Label>
+                <Input 
+                  type="number"
+                  value={comprimento}
+                  placeholder="Ex: 50"
+                  className="bg-white border-slate-300 text-lg py-6"
+                  onChange={(e) => setComprimento(Number(e.target.value) || '')}
+                />
+              </div>
+
               {(() => {
                 const param = parametrosDef.find(p => p.nome_tecnico === 'pe_direito')
                 if (!param) return null
                 const opcoes: string[] = Array.isArray(param.opcoes) ? param.opcoes : JSON.parse(param.opcoes as string || '[]')
                 return (
                   <div className="grid gap-2">
-                    <Label className="font-bold text-slate-800 uppercase text-xs">{param.rotulo}</Label>
+                    <Label className="font-bold text-slate-800 uppercase text-xs">Altura (m)</Label>
                     <Select value={paramsForm['pe_direito']?.toString() || ''} onValueChange={(val) => handleParamChange(param.nome_tecnico, Number(val))}>
                       <SelectTrigger className="bg-white border-slate-300 text-lg py-6"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
@@ -529,18 +558,420 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
             <CardDescription className="text-slate-500">Preencha os demais parâmetros técnicos.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6 grid-cols-1 md:grid-cols-2 p-6">
-            {parametrosDef.filter(p => !['n_modulos', 'largura_modulo', 'n_vaos', 'pe_direito', 'vao'].includes(p.nome_tecnico)).map((param) => {
+            {parametrosDef
+              .filter(p => !['n_modulos', 'largura_modulo', 'n_vaos', 'pe_direito', 'vao', 'portas_abrir', 'portas_correr'].includes(p.nome_tecnico))
+              .sort((a, b) => {
+                const getWeight = (nome: string) => {
+                  if (nome === 'tipo_arco') return 1;
+                  if (nome === 'tipo_poste') return 2;
+                  if (nome === 'calha_lateral') return 3;
+                  if (nome.includes('poste')) return 4;
+                  if (nome === 'fechamento_lateral') return 99;
+                  if (nome === 'fixacao_inferior') return 100;
+                  if (nome === 'arco_divisa') return 101;
+                  return 50;
+                };
+                return getWeight(a.nome_tecnico) - getWeight(b.nome_tecnico);
+              })
+              .map((param) => {
+              if (param.nome_tecnico === 'postes_topo_duplos' || param.nome_tecnico === 'postes_divisa_duplos' || param.nome_tecnico === 'tipo_fixacao_inferior') return null;
+
+              if (param.nome_tecnico === 'postes_frontais_duplos') {
+                const p2 = parametrosDef.find(p => p.nome_tecnico === 'postes_topo_duplos');
+                const p3 = parametrosDef.find(p => p.nome_tecnico === 'postes_divisa_duplos');
+                
+                return (
+                  <div key="master_postes_duplos" className="col-span-2 flex flex-col mt-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="master_postes_duplos" 
+                        checked={!!paramsForm['master_postes_duplos']}
+                        onCheckedChange={(c) => {
+                          handleParamChange('master_postes_duplos', c)
+                          if (!c) {
+                              handleParamChange('postes_frontais_duplos', false)
+                              if (p2) handleParamChange('postes_topo_duplos', false)
+                              if (p3) handleParamChange('postes_divisa_duplos', false)
+                          }
+                        }}
+                      />
+                      <Label htmlFor="master_postes_duplos" className="text-sm font-bold leading-none cursor-pointer">
+                        Poste de canto - frontal - divisas duplos?
+                      </Label>
+                    </div>
+                    {paramsForm['master_postes_duplos'] && (
+                      <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id={param.nome_tecnico} checked={!!paramsForm[param.nome_tecnico]} onCheckedChange={(c) => handleParamChange(param.nome_tecnico, c)} />
+                            <Label htmlFor={param.nome_tecnico} className="text-sm font-medium leading-none cursor-pointer">{param.rotulo}</Label>
+                          </div>
+                          {p2 && (
+                            <div className="flex items-center space-x-2">
+                              <Checkbox id={p2.nome_tecnico} checked={!!paramsForm[p2.nome_tecnico]} onCheckedChange={(c) => handleParamChange(p2.nome_tecnico, c)} />
+                              <Label htmlFor={p2.nome_tecnico} className="text-sm font-medium leading-none cursor-pointer">{p2.rotulo}</Label>
+                            </div>
+                          )}
+                          {p3 && (
+                            <div className="flex items-center space-x-2">
+                              <Checkbox id={p3.nome_tecnico} checked={!!paramsForm[p3.nome_tecnico]} onCheckedChange={(c) => handleParamChange(p3.nome_tecnico, c)} />
+                              <Label htmlFor={p3.nome_tecnico} className="text-sm font-medium leading-none cursor-pointer">{p3.rotulo}</Label>
+                            </div>
+                          )}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              if (param.nome_tecnico === 'fixacao_inferior') {
+                const tipoFixacaoInferior = parametrosDef.find(p => p.nome_tecnico === 'tipo_fixacao_inferior');
+                return (
+                  <div key="master_fixacao_inferior" className="col-span-1 md:col-span-2 flex flex-col mt-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="fixacao_inferior" 
+                        checked={!!paramsForm['fixacao_inferior']}
+                        onCheckedChange={(c) => {
+                          handleParamChange('fixacao_inferior', c)
+                          if (!c) handleParamChange('tipo_fixacao_inferior', '')
+                        }}
+                      />
+                      <Label htmlFor="fixacao_inferior" className="text-sm font-bold leading-none cursor-pointer">
+                        {param.rotulo}
+                      </Label>
+                    </div>
+                    {paramsForm['fixacao_inferior'] && tipoFixacaoInferior && (
+                      <div className="grid gap-2 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
+                        <Label className="uppercase text-xs font-semibold text-slate-600">{tipoFixacaoInferior.rotulo}</Label>
+                        <Select 
+                          value={paramsForm['tipo_fixacao_inferior']?.toString() || ''}
+                          onValueChange={(val) => handleParamChange('tipo_fixacao_inferior', val)}
+                        >
+                          <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectContent>
+                            {JSON.parse(tipoFixacaoInferior.opcoes as string || '[]').map((op: string) => (
+                              <SelectItem key={op} value={op}>{op}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              if (param.nome_tecnico === 'travamentos_x') {
+                return (
+                  <div key="master_travamentos_x" className="col-span-1 md:col-span-2 flex flex-col mt-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="master_travamentos_x" 
+                        checked={!!paramsForm['master_travamentos_x']}
+                        onCheckedChange={(c) => {
+                          handleParamChange('master_travamentos_x', c)
+                          if (!c) {
+                              handleParamChange('travamentos_x', '')
+                          }
+                        }}
+                      />
+                      <Label htmlFor="master_travamentos_x" className="text-sm font-bold leading-none cursor-pointer">
+                        Possui travamento em X nas linhas de poste?
+                      </Label>
+                    </div>
+                    {paramsForm['master_travamentos_x'] && (
+                      <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[300px] max-w-full">
+                        <div className="grid gap-2">
+                          <Label className="uppercase text-xs font-semibold text-slate-600">Quantos X por linha?</Label>
+                          <Input 
+                            type="number"
+                            placeholder="Ex: 1"
+                            value={paramsForm['travamentos_x']?.toString() || ''}
+                            onChange={(e) => handleParamChange('travamentos_x', Number(e.target.value) || '')}
+                            className="bg-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              if (param.nome_tecnico === 'modelo_cabo') {
+                const opcoes: string[] = Array.isArray(param.opcoes) ? param.opcoes : JSON.parse(param.opcoes as string || '[]')
+                const dropdownOpcoes = opcoes.filter(o => o !== "SEM CABO DE AÇO" && o !== "COMPLETO")
+                
+                const atuais = paramsForm['modelo_cabo'] ? String(paramsForm['modelo_cabo']).split(',').map(s => s.trim()).filter(Boolean) : []
+                const isCompleto = dropdownOpcoes.length > 0 && dropdownOpcoes.every(op => atuais.includes(op))
+                
+                const toggleOpcao = (op: string, checked: boolean) => {
+                  let novos = [...atuais].filter(x => x !== 'COMPLETO')
+                  
+                  if (op === 'COMPLETO') {
+                    if (checked) novos = [...dropdownOpcoes]
+                    else novos = []
+                  } else {
+                    if (checked) novos.push(op)
+                    else novos = novos.filter(x => x !== op)
+                  }
+                  
+                  if (dropdownOpcoes.length > 0 && dropdownOpcoes.every(o => novos.includes(o))) {
+                    novos.push('COMPLETO')
+                  }
+
+                  handleParamChange('modelo_cabo', novos.join(','))
+                }
+
+                return (
+                  <div key="master_modelo_cabo" className="col-span-1 md:col-span-2 flex flex-col mt-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="master_modelo_cabo" 
+                        checked={!!paramsForm['master_modelo_cabo']}
+                        onCheckedChange={(c) => {
+                          handleParamChange('master_modelo_cabo', c)
+                          if (!c) handleParamChange('modelo_cabo', '')
+                        }}
+                      />
+                      <Label htmlFor="master_modelo_cabo" className="text-sm font-bold leading-none cursor-pointer">
+                        Possui cabo de aço na estrutura?
+                      </Label>
+                    </div>
+                    {paramsForm['master_modelo_cabo'] && (
+                      <div className="grid gap-3 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
+                        <Label className="uppercase text-xs font-semibold text-slate-600 mb-1">Em quais lugares vai o cabo de aço? (Selecione um ou mais)</Label>
+                        
+                        <div className="flex items-center space-x-2 mb-2 pb-3 border-b border-slate-200">
+                          <Checkbox 
+                            id="cabo_COMPLETO" 
+                            checked={isCompleto}
+                            onCheckedChange={(c) => toggleOpcao('COMPLETO', !!c)}
+                          />
+                          <Label htmlFor="cabo_COMPLETO" className="text-sm font-bold leading-none cursor-pointer">
+                            COMPLETO (Selecionar Todos)
+                          </Label>
+                        </div>
+
+                        {dropdownOpcoes.map(op => (
+                          <div key={op} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`cabo_${op}`} 
+                              checked={atuais.includes(op)}
+                              onCheckedChange={(c) => toggleOpcao(op, !!c)}
+                            />
+                            <Label htmlFor={`cabo_${op}`} className="text-sm font-medium leading-none cursor-pointer">
+                              {op}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              if (param.nome_tecnico === 'tipo_cobertura') {
+                const isFilme = paramsForm['tipo_cobertura'] === 'FILME'
+                const isTela = paramsForm['tipo_cobertura'] === 'TELA'
+                const showProducts = isFilme || isTela
+                
+                return (
+                  <div key="master_tipo_cobertura" className="col-span-1 md:col-span-2 flex flex-col mt-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="master_tipo_cobertura" 
+                        checked={!!paramsForm['master_tipo_cobertura']}
+                        onCheckedChange={(c) => {
+                          handleParamChange('master_tipo_cobertura', c)
+                          if (!c) {
+                            handleParamChange('tipo_cobertura', '')
+                            handleParamChange('produto_filme_cobertura', '')
+                          }
+                        }}
+                      />
+                      <Label htmlFor="master_tipo_cobertura" className="text-sm font-bold leading-none cursor-pointer">
+                        Possui Cobertura?
+                      </Label>
+                    </div>
+
+                    {paramsForm['master_tipo_cobertura'] && (
+                      <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
+                        <div className="grid gap-2">
+                          <Label className="uppercase text-xs font-semibold text-slate-600">Qual o tipo de cobertura?</Label>
+                          <Select 
+                            value={paramsForm['tipo_cobertura']?.toString() || ''}
+                            onValueChange={(val) => {
+                              handleParamChange('tipo_cobertura', val)
+                              handleParamChange('produto_filme_cobertura', '') // reseta o produto ao mudar
+                            }}
+                          >
+                            <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="FILME">FILME</SelectItem>
+                              <SelectItem value="TELA">TELA</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {showProducts && (
+                          <div className="grid gap-2 pt-2 border-t border-slate-200">
+                            <Label className="uppercase text-xs font-semibold text-slate-600">
+                              {isFilme ? 'Qual Filme / Plástico?' : 'Qual Tela?'}
+                            </Label>
+                            <Select 
+                              value={paramsForm['produto_filme_cobertura']?.toString() || ''}
+                              onValueChange={(val) => handleParamChange('produto_filme_cobertura', val)}
+                            >
+                              <SelectTrigger className="bg-white w-full">
+                                <SelectValue placeholder="Selecione o produto...">
+                                  {paramsForm['produto_filme_cobertura']
+                                    ? (() => {
+                                      const prod = produtos.find(p => p.codigo.toString() === paramsForm['produto_filme_cobertura']?.toString());
+                                      return prod ? `${prod.codigo} - ${prod.descricao}` : paramsForm['produto_filme_cobertura']?.toString();
+                                    })()
+                                    : undefined
+                                  }
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="min-w-[300px] md:min-w-[500px] max-w-[90vw] max-h-[400px]">
+                                {produtos
+                                  .filter(p => {
+                                    const desc = p.descricao.toUpperCase()
+                                    if (isFilme) {
+                                      return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
+                                    } else {
+                                      return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
+                                    }
+                                  })
+                                  .map(p => (
+                                    <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
+                                  ))
+                                }
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
               if (param.tipo === 'booleano') {
                 return (
-                  <div key={param.nome_tecnico} className="col-span-2 flex items-center space-x-2 mt-2">
-                    <Checkbox 
-                      id={param.nome_tecnico} 
-                      checked={!!paramsForm[param.nome_tecnico]}
-                      onCheckedChange={(c) => handleParamChange(param.nome_tecnico, c)}
-                    />
-                    <Label htmlFor={param.nome_tecnico} className="text-sm font-medium leading-none">
-                      {param.rotulo}
-                    </Label>
+                  <div key={param.nome_tecnico} className="col-span-2 flex flex-col mt-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={param.nome_tecnico} 
+                        checked={!!paramsForm[param.nome_tecnico]}
+                        onCheckedChange={(c) => handleParamChange(param.nome_tecnico, c)}
+                      />
+                      <Label htmlFor={param.nome_tecnico} className="text-sm font-medium leading-none cursor-pointer">
+                        {param.rotulo}
+                      </Label>
+                    </div>
+
+
+                    {param.nome_tecnico === 'fechamento_lateral' && paramsForm['fechamento_lateral'] && (
+                      <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
+                        <div className="grid gap-2">
+                          <Label className="uppercase text-xs font-semibold text-slate-600">O que será usado no fechamento lateral?</Label>
+                          <Select 
+                            value={paramsForm['tipo_fechamento_material']?.toString() || ''}
+                            onValueChange={(val) => {
+                              handleParamChange('tipo_fechamento_material', val)
+                              handleParamChange('produto_filme_fechamento', '') // reseta o produto ao mudar
+                            }}
+                          >
+                            <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="filme">Filme / Plástico</SelectItem>
+                              <SelectItem value="tela">Tela</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {paramsForm['tipo_fechamento_material'] && (
+                          <div className="grid gap-2 pt-2 border-t border-slate-200">
+                            <Label className="uppercase text-xs font-semibold text-slate-600">
+                              {paramsForm['tipo_fechamento_material'] === 'filme' ? 'Qual Filme / Plástico?' : 'Qual Tela?'}
+                            </Label>
+                            <Select 
+                              value={paramsForm['produto_filme_fechamento']?.toString() || ''}
+                              onValueChange={(val) => handleParamChange('produto_filme_fechamento', val)}
+                            >
+                              <SelectTrigger className="bg-white w-full">
+                                <SelectValue placeholder="Selecione o produto...">
+                                  {paramsForm['produto_filme_fechamento']
+                                    ? (() => {
+                                      const prod = produtos.find(p => p.codigo.toString() === paramsForm['produto_filme_fechamento']?.toString());
+                                      return prod ? `${prod.codigo} - ${prod.descricao}` : paramsForm['produto_filme_fechamento']?.toString();
+                                    })()
+                                    : undefined
+                                  }
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="max-w-[90vw] md:max-w-[600px] max-h-[400px]">
+                                {produtos
+                                  .filter(p => {
+                                    const desc = p.descricao.toUpperCase()
+                                    if (paramsForm['tipo_fechamento_material'] === 'filme') {
+                                      return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
+                                    } else {
+                                      return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
+                                    }
+                                  })
+                                  .map(p => (
+                                    <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
+                                  ))
+                                }
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {param.nome_tecnico === 'possui_anticamara' && paramsForm['possui_anticamara'] && (
+                      <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
+                        <div className="grid gap-2">
+                          <Label className="uppercase text-xs font-semibold text-slate-600">Quantas anticâmaras?</Label>
+                          <Input 
+                            type="number"
+                            placeholder="Ex: 1"
+                            value={paramsForm['qtd_anticamara']?.toString() || ''}
+                            onChange={(e) => handleParamChange('qtd_anticamara', Number(e.target.value) || '')}
+                            className="bg-white"
+                          />
+                        </div>
+                        <div className="grid gap-2 pt-2 border-t border-slate-200">
+                          <Label className="uppercase text-xs font-semibold text-slate-600">Qual o modelo da anticâmara?</Label>
+                          <Select 
+                            value={paramsForm['modelo_anticamara']?.toString() || ''}
+                            onValueChange={(val) => handleParamChange('modelo_anticamara', val)}
+                          >
+                            <SelectTrigger className="bg-white w-full">
+                              <SelectValue placeholder="Selecione o produto...">
+                                {paramsForm['modelo_anticamara']
+                                  ? (() => {
+                                      const prod = produtos.find(p => p.codigo.toString() === paramsForm['modelo_anticamara']?.toString());
+                                      return prod ? `${prod.codigo} - ${prod.descricao}` : paramsForm['modelo_anticamara']?.toString();
+                                    })()
+                                  : undefined
+                                }
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="max-w-[90vw] md:max-w-[600px] max-h-[400px]">
+                              {produtos
+                                .filter(p => p.descricao.toUpperCase().includes('ANTICAMARA') || p.descricao.toUpperCase().includes('ANTICÂMARA') || p.descricao.toUpperCase().includes('ANTI CAMARA'))
+                                .map(p => (
+                                  <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
+                                ))
+                              }
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               }
@@ -554,7 +985,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                       const num = Number(val)
                       handleParamChange(param.nome_tecnico, isNaN(num) ? val : num)
                     }}>
-                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
                           <SelectItem key={op} value={op}>{op}</SelectItem>
@@ -579,6 +1010,64 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                 </div>
               )
             })}
+
+            {/* Secao de Portas Customizada */}
+            <div className="col-span-1 md:col-span-2 grid gap-4 mt-6 border-t border-slate-200 pt-6">
+              <Label className="uppercase text-xs font-bold text-slate-800">Portas da Estufa</Label>
+              {portasConfig.map((porta, index) => (
+                <div key={porta.id} className="flex flex-col sm:flex-row items-end gap-4 p-4 bg-slate-50 border border-slate-200 rounded-md relative pr-12">
+                  <div className="grid gap-2 flex-1 w-full">
+                    <Label className="uppercase text-[10px] font-semibold text-slate-600">Quantas Portas?</Label>
+                    <Input 
+                      type="number"
+                      placeholder="Ex: 2"
+                      value={porta.quantidade}
+                      onChange={(e) => {
+                        const newConfig = [...portasConfig];
+                        newConfig[index].quantidade = e.target.value === '' ? '' : Number(e.target.value);
+                        setPortasConfig(newConfig);
+                      }}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="grid gap-2 flex-[2] w-full">
+                    <Label className="uppercase text-[10px] font-semibold text-slate-600">Qual o modelo da porta?</Label>
+                    <Select 
+                      value={porta.tipo}
+                      onValueChange={(val) => {
+                        const newConfig = [...portasConfig];
+                        newConfig[index].tipo = val ?? "";
+                        setPortasConfig(newConfig);
+                      }}
+                    >
+                      <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione o modelo..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="correr">Porta de Correr</SelectItem>
+                        <SelectItem value="abrir">Porta de Abrir</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {portasConfig.length > 1 && (
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setPortasConfig(portasConfig.filter((_, i) => i !== index))}
+                      className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 rounded-full"
+                      title="Remover Porta"
+                    >
+                      <span className="sr-only">Remover</span>
+                      ✕
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button 
+                variant="outline"
+                className="w-full border-dashed border-[#d97021] text-[#d97021] hover:bg-[#fff3eb]"
+                onClick={() => setPortasConfig([...portasConfig, { id: Math.random().toString(36).substr(2, 9), quantidade: '', tipo: '' }])}
+              >
+                + Adicionar outro modelo de porta
+              </Button>
+            </div>
           </CardContent>
           <CardFooter className="bg-muted/30 pt-6">
             <Button onClick={handleCalcular} className="w-full gap-2 text-lg py-6 bg-[#d97021] hover:bg-[#c3631b] text-white">
