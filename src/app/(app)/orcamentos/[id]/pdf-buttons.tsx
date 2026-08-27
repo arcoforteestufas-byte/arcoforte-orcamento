@@ -1,10 +1,13 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
+import { Download, FileText } from "lucide-react"
 import { ItemOrcamento } from "@/utils/engine"
+import { useRouter } from "next/navigation"
 
 export function PdfButtons({ itens, orcamento }: { itens: ItemOrcamento[], orcamento: any }) {
+  const router = useRouter()
+
   const handleDownload = async (agrupado: boolean) => {
     const { gerarPDFOrcamento } = await import('@/utils/pdf-generator')
     gerarPDFOrcamento(orcamento, itens, agrupado)
@@ -31,9 +34,9 @@ export function PdfButtons({ itens, orcamento }: { itens: ItemOrcamento[], orcam
       <Button 
         variant="outline" 
         className="w-full justify-start gap-2 border-zinc-700 hover:bg-zinc-800 text-zinc-300 hover:text-white"
-        onClick={() => window.open(`/orcamentos/${orcamento.id}/proposta`, '_blank')}
+        onClick={() => router.push(`/orcamentos/${orcamento.id}/proposta`)}
       >
-        <Download className="h-4 w-4" />
+        <FileText className="h-4 w-4" />
         Gerar Proposta Comercial
       </Button>
     </div>

@@ -17,6 +17,13 @@ const groups: Record<string, string> = {
   '11': 'b0000000-0000-0000-0000-000000000011',
 }
 
+// Normaliza texto pra comparação: remove espaços nas pontas, colapsa espaços duplos e ignora maiúsculas/minúsculas.
+// Evita que uma posição/produto já existente deixe de ser encontrado (e seja duplicado) só por causa de
+// uma diferença de espaço ou capitalização entre o arquivo MD e o que já está salvo no banco.
+function normalizar(s: string | null | undefined): string {
+  return (s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
 export async function seedRegrasFromMD(formData: FormData) {
   try {
     const supabase = await createClient()
@@ -57,6 +64,7 @@ export async function seedRegrasFromMD(formData: FormData) {
     }
 
     let count = 0;
+    let duplicatasEvitadas = 0;
     for (const row of rows) {
       if (!row['Grupo']) continue
 
@@ -75,7 +83,7 @@ export async function seedRegrasFromMD(formData: FormData) {
       // 1. Cadastra o Produto se não existir
       if (prodCode !== 'TELA-XXX' && prodCode !== 'FILME-XXX' && prodCode !== 'MANUAL') {
         const codigos = prodCode.includes(' ou ') ? prodCode.split(' ou ') : [prodCode]
-        
+
         for (const cod of codigos) {
           const cleanCod = cod.trim()
           const { data: existingProd } = await supabase
@@ -96,38 +104,75 @@ export async function seedRegrasFromMD(formData: FormData) {
       }
 
       // 2. Busca ou cadastra a Posição
+      // Busca TODAS as posições do grupo e compara normalizado (trim + case-insensitive) em vez de usar
+      // .single() com match exato — .single() falha (erro "multiple rows"/"no rows") tanto quando a posição
+      // realmente não existe quanto quando já existe MAIS DE UMA posição com esse nome no grupo (o banco de
+      // dev tinha posições "Chumbador"/"Teto" duplicadas desde antes deste importador existir), e nos dois
+      // casos o código antigo caía no "senão cria uma nova", piorando a duplicata a cada upload.
+      //
+      // IMPORTANTE: quando há mais de uma posição com o mesmo nome (dado pré-existente duplicado), guardamos
+      // TODOS os ids que batem — não só o primeiro — pra usar no passo 3. Se a busca de Regra usasse só um
+      // id "escolhido arbitrariamente", ela podia cair bem na posição-duplicata errada (uma que nunca teve
+      // Regra associada) e criar uma Regra NOVA ali, mesmo já existindo uma Regra idêntica noutra posição
+      // duplicada — foi exatamente isso que causou uma 3ª linha de "Chumbador"/"Teto" ao testar essa correção.
       let posId = ''
-      const { data: existingPos } = await supabase
+      let posIdsComEsseNome: string[] = []
+      const { data: posicoesDoGrupo } = await supabase
         .from('posicoes')
-        .select('id')
+        .select('id, nome')
         .eq('grupo_id', groupId)
-        .eq('nome', posName)
-        .single()
 
-      if (existingPos) {
-        posId = existingPos.id
+      const posicoesEncontradas = posicoesDoGrupo?.filter(p => normalizar(p.nome) === normalizar(posName)) || []
+
+      if (posicoesEncontradas.length > 0) {
+        posId = posicoesEncontradas[0].id
+        posIdsComEsseNome = posicoesEncontradas.map(p => p.id)
+        if (posicoesEncontradas.length > 1) {
+          console.warn(
+            `Aviso: ${posicoesEncontradas.length} posições chamadas "${posName}" já existiam no grupo ${groupStr} (dado duplicado pré-existente, não criado por este upload) — usando todas pra achar a Regra certa.`
+          )
+        }
       } else {
         const { data: newPos, error: posError } = await supabase
           .from('posicoes')
           .insert({ grupo_id: groupId, nome: posName })
           .select('id')
           .single()
-        
+
         if (posError) {
           console.error("Erro ao criar posicao", posError)
           continue
         }
-        if (newPos) posId = newPos.id
+        if (newPos) {
+          posId = newPos.id
+          posIdsComEsseNome = [newPos.id]
+        }
       }
 
       // 3. Cadastra ou atualiza a Regra
       if (formula && formula !== 'PENDENTE' && cond && cond !== 'PENDENTE') {
-        const { data: existingRule } = await supabase
+        // Busca a Regra em QUALQUER uma das posições com esse nome (posIdsComEsseNome), não só em posId —
+        // assim, mesmo com posições duplicadas no banco, uma Regra já existente é sempre encontrada e
+        // atualizada, em vez de nascer uma cópia nova numa posição-duplicata que ainda não tinha Regra.
+        const { data: regrasDasPosicoes } = await supabase
           .from('regras_calculo')
-          .select('id')
-          .eq('posicao_id', posId)
-          .eq('produto_codigo', prodCode)
-          .single()
+          .select('id, produto_codigo, condicao_aplicabilidade')
+          .in('posicao_id', posIdsComEsseNome)
+
+        const regrasCorrespondentes = regrasDasPosicoes?.filter(
+          r => normalizar(r.produto_codigo) === normalizar(prodCode)
+        ) || []
+
+        if (regrasCorrespondentes.length > 1) {
+          duplicatasEvitadas++
+          console.warn(
+            `Aviso: mais de uma Regra encontrada para posição "${posName}" + produto "${prodCode}" — atualizando a ativa (ou a primeira, se todas estiverem desativadas) em vez de criar outra.`
+          )
+        }
+
+        const existingRule =
+          regrasCorrespondentes.find(r => !(r.condicao_aplicabilidade || '').includes('and 1 == 2')) ||
+          regrasCorrespondentes[0]
 
         if (existingRule) {
           await supabase.from('regras_calculo').update({
@@ -149,8 +194,12 @@ export async function seedRegrasFromMD(formData: FormData) {
     }
 
     revalidatePath('/admin/regras')
-    
-    return { success: true, message: `Foram carregadas ${count} regras do arquivo markdown com sucesso!` }
+
+    const avisoDuplicatas = duplicatasEvitadas > 0
+      ? ` (${duplicatasEvitadas} posição/produto com Regras duplicadas pré-existentes — verifique a tabela.)`
+      : ''
+
+    return { success: true, message: `Foram carregadas ${count} regras do arquivo markdown com sucesso!${avisoDuplicatas}` }
 
   } catch (error: any) {
     return { success: false, error: error.message }

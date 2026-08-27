@@ -57,7 +57,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   const [vaoError, setVaoError] = useState('')
   const [vaoUltimo, setVaoUltimo] = useState<number | ''>('')
   
-  const [portasConfig, setPortasConfig] = useState<{ id: string, quantidade: number | '', tipo: string }[]>([{ id: 'init', quantidade: '', tipo: '' }])
+  const [portasConfig, setPortasConfig] = useState<{ id: string, quantidade: number | '', tipo: string }[]>([])
 
   // Efeito para sincronizar portasConfig com qtd_portas_abrir e qtd_portas_correr
   useEffect(() => {
@@ -157,8 +157,27 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
     }
   }, [paramsForm['n_modulos'], paramsForm['largura_modulo']])
 
+  // Limpar configurações de postes duplos se o poste mudar para EUCALIPTO
+  useEffect(() => {
+    if (paramsForm['tipo_poste'] === 'EUCALIPTO') {
+      setParamsForm(prev => ({
+        ...prev,
+        master_postes_duplos: false,
+        postes_frontais_duplos: false,
+        postes_topo_duplos: false,
+        postes_divisa_duplos: false
+      }))
+    }
+  }, [paramsForm['tipo_poste']])
+
   const handleCalcular = () => {
-    const itens = calcularOrcamento(paramsForm, regras, produtos)
+    const nDivisasPorModulo = Number(paramsForm['n_divisas_por_modulo']) || 0
+    const nModulosCalc = Number(paramsForm['n_modulos']) || 0
+    const paramsCalculo = {
+      ...paramsForm,
+      n_divisas: nDivisasPorModulo * nModulosCalc // total de arcos de divisa = por modulo x numero de modulos
+    }
+    const itens = calcularOrcamento(paramsCalculo, regras, produtos)
     setResultado(itens)
   }
 
@@ -566,9 +585,9 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                   if (nome === 'tipo_poste') return 2;
                   if (nome === 'calha_lateral') return 3;
                   if (nome.includes('poste')) return 4;
+                  if (nome === 'arco_divisa') return 5;
                   if (nome === 'fechamento_lateral') return 99;
                   if (nome === 'fixacao_inferior') return 100;
-                  if (nome === 'arco_divisa') return 101;
                   return 50;
                 };
                 return getWeight(a.nome_tecnico) - getWeight(b.nome_tecnico);
@@ -580,11 +599,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                 const p2 = parametrosDef.find(p => p.nome_tecnico === 'postes_topo_duplos');
                 const p3 = parametrosDef.find(p => p.nome_tecnico === 'postes_divisa_duplos');
                 
+                const isEucalipto = paramsForm['tipo_poste'] === 'EUCALIPTO';
+
                 return (
-                  <div key="master_postes_duplos" className="col-span-2 flex flex-col mt-2">
+                  <div key="master_postes_duplos" className={`col-span-2 flex flex-col mt-2 ${isEucalipto ? 'opacity-50 pointer-events-none' : ''}`}>
                     <div className="flex items-center space-x-2">
                       <Checkbox 
                         id="master_postes_duplos" 
+                        disabled={isEucalipto}
                         checked={!!paramsForm['master_postes_duplos']}
                         onCheckedChange={(c) => {
                           handleParamChange('master_postes_duplos', c)
@@ -863,7 +885,12 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                       <Checkbox 
                         id={param.nome_tecnico} 
                         checked={!!paramsForm[param.nome_tecnico]}
-                        onCheckedChange={(c) => handleParamChange(param.nome_tecnico, c)}
+                        onCheckedChange={(c) => {
+                          handleParamChange(param.nome_tecnico, c)
+                          if (param.nome_tecnico === 'arco_divisa' && !c) {
+                            handleParamChange('n_divisas_por_modulo', '') // reseta a quantidade ao desmarcar
+                          }
+                        }}
                       />
                       <Label htmlFor={param.nome_tecnico} className="text-sm font-medium leading-none cursor-pointer">
                         {param.rotulo}
@@ -928,6 +955,21 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                             </Select>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {param.nome_tecnico === 'arco_divisa' && paramsForm['arco_divisa'] && (
+                      <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
+                        <div className="grid gap-2">
+                          <Label className="uppercase text-xs font-semibold text-slate-600">Quantos arcos de divisa por módulo?</Label>
+                          <Input 
+                            type="number"
+                            placeholder="Ex: 1"
+                            value={paramsForm['n_divisas_por_modulo']?.toString() || ''}
+                            onChange={(e) => handleParamChange('n_divisas_por_modulo', Number(e.target.value) || '')}
+                            className="bg-white"
+                          />
+                        </div>
                       </div>
                     )}
 
@@ -1012,61 +1054,82 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
             })}
 
             {/* Secao de Portas Customizada */}
-            <div className="col-span-1 md:col-span-2 grid gap-4 mt-6 border-t border-slate-200 pt-6">
-              <Label className="uppercase text-xs font-bold text-slate-800">Portas da Estufa</Label>
-              {portasConfig.map((porta, index) => (
-                <div key={porta.id} className="flex flex-col sm:flex-row items-end gap-4 p-4 bg-slate-50 border border-slate-200 rounded-md relative pr-12">
-                  <div className="grid gap-2 flex-1 w-full">
-                    <Label className="uppercase text-[10px] font-semibold text-slate-600">Quantas Portas?</Label>
-                    <Input 
-                      type="number"
-                      placeholder="Ex: 2"
-                      value={porta.quantidade}
-                      onChange={(e) => {
-                        const newConfig = [...portasConfig];
-                        newConfig[index].quantidade = e.target.value === '' ? '' : Number(e.target.value);
-                        setPortasConfig(newConfig);
-                      }}
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="grid gap-2 flex-[2] w-full">
-                    <Label className="uppercase text-[10px] font-semibold text-slate-600">Qual o modelo da porta?</Label>
-                    <Select 
-                      value={porta.tipo}
-                      onValueChange={(val) => {
-                        const newConfig = [...portasConfig];
-                        newConfig[index].tipo = val ?? "";
-                        setPortasConfig(newConfig);
-                      }}
-                    >
-                      <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione o modelo..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="correr">Porta de Correr</SelectItem>
-                        <SelectItem value="abrir">Porta de Abrir</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {portasConfig.length > 1 && (
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => setPortasConfig(portasConfig.filter((_, i) => i !== index))}
-                      className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 rounded-full"
-                      title="Remover Porta"
-                    >
-                      <span className="sr-only">Remover</span>
-                      ✕
-                    </Button>
-                  )}
+            <div className="col-span-1 md:col-span-2 flex flex-col mt-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="master_portas" 
+                  checked={!!paramsForm['master_portas']}
+                  onCheckedChange={(c) => {
+                    handleParamChange('master_portas', c)
+                    if (!c) {
+                      setPortasConfig([])
+                    } else if (portasConfig.length === 0) {
+                      setPortasConfig([{ id: Math.random().toString(36).substring(2, 9), quantidade: '', tipo: '' }])
+                    }
+                  }}
+                />
+                <Label htmlFor="master_portas" className="text-sm font-bold leading-none cursor-pointer">
+                  Possui Portas?
+                </Label>
+              </div>
+
+              {paramsForm['master_portas'] && (
+                <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
+                  {portasConfig.map((porta, index) => (
+                    <div key={porta.id} className="flex flex-col sm:flex-row items-end gap-4 relative pr-12">
+                      <div className="grid gap-2 flex-1 w-full">
+                        <Label className="uppercase text-[10px] font-semibold text-slate-600">Quantas Portas?</Label>
+                        <Input 
+                          type="number"
+                          placeholder="Ex: 2"
+                          value={porta.quantidade}
+                          onChange={(e) => {
+                            const newConfig = [...portasConfig];
+                            newConfig[index].quantidade = e.target.value === '' ? '' : Number(e.target.value);
+                            setPortasConfig(newConfig);
+                          }}
+                          className="bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 flex-[2] w-full">
+                        <Label className="uppercase text-[10px] font-semibold text-slate-600">Qual o modelo da porta?</Label>
+                        <Select 
+                          value={porta.tipo}
+                          onValueChange={(val) => {
+                            const newConfig = [...portasConfig];
+                            newConfig[index].tipo = val ?? "";
+                            setPortasConfig(newConfig);
+                          }}
+                        >
+                          <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione o modelo..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="correr">Porta de Correr</SelectItem>
+                            <SelectItem value="abrir">Porta de Abrir</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {portasConfig.length > 1 && (
+                        <Button 
+                          variant="ghost" 
+                          onClick={() => setPortasConfig(portasConfig.filter((_, i) => i !== index))}
+                          className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 rounded-full"
+                          title="Remover Porta"
+                        >
+                          <span className="sr-only">Remover</span>
+                          ✕
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button 
+                    variant="outline"
+                    className="w-full border-dashed border-[#d97021] text-[#d97021] hover:bg-[#fff3eb] mt-2"
+                    onClick={() => setPortasConfig([...portasConfig, { id: Math.random().toString(36).substring(2, 9), quantidade: '', tipo: '' }])}
+                  >
+                    + Adicionar outro modelo de porta
+                  </Button>
                 </div>
-              ))}
-              <Button 
-                variant="outline"
-                className="w-full border-dashed border-[#d97021] text-[#d97021] hover:bg-[#fff3eb]"
-                onClick={() => setPortasConfig([...portasConfig, { id: Math.random().toString(36).substr(2, 9), quantidade: '', tipo: '' }])}
-              >
-                + Adicionar outro modelo de porta
-              </Button>
+              )}
             </div>
           </CardContent>
           <CardFooter className="bg-muted/30 pt-6">

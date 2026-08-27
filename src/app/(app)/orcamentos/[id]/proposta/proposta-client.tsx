@@ -31,7 +31,12 @@ export function PropostaClient({ orcamento }: { orcamento: any }) {
     dataEmissao: new Date(orcamento.criado_em).toLocaleDateString('pt-BR'),
     dataValidade: orcamento.data_validade ? new Date(orcamento.data_validade).toLocaleDateString('pt-BR') : '',
     clienteNome: orcamento.clientes?.nome || '',
-    clienteContato: orcamento.clientes?.contato || '',
+    clienteContato: orcamento.clientes?.contato || orcamento.clientes?.telefone || '',
+    clienteTelefone: orcamento.clientes?.telefone || '',
+    clienteEmail: orcamento.clientes?.email || '',
+    clienteEndereco: orcamento.clientes?.endereco || '',
+    clienteCidade: orcamento.clientes?.cidade_uf || '',
+    clienteDocumento: orcamento.clientes?.documento || '',
     
     cultura: param.cultura === '**' ? '' : param.cultura || '',
     largura: param.largura_total === '**' ? '' : param.largura_total || '',

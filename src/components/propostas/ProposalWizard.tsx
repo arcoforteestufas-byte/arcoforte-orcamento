@@ -188,30 +188,62 @@ export function ProposalWizard({ initialData, onSubmit, isSaving }: { initialDat
         {currentStep === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <h2 className="text-xl font-bold text-slate-800 border-b pb-2">Informações da Capa e Contato</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Vendedor (Nome)</Label>
-                <Input value={formData.vendedorNome} onChange={e => handleChange('vendedorNome', e.target.value)} placeholder="Ex: Ronilson" />
+
+            <div>
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Vendedor</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nome do Vendedor</Label>
+                  <Input value={formData.vendedorNome} onChange={e => handleChange('vendedorNome', e.target.value)} placeholder="Ex: Ronilson" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefone do Vendedor</Label>
+                  <Input value={formData.vendedorTelefone} onChange={e => handleChange('vendedorTelefone', e.target.value)} placeholder="(62) 99999-9999" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Vendedor (Telefone)</Label>
-                <Input value={formData.vendedorTelefone} onChange={e => handleChange('vendedorTelefone', e.target.value)} placeholder="(62) 99999-9999" />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Cliente / Contratante</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Nome / Razão Social *</Label>
+                  <Input value={formData.clienteNome} onChange={e => handleChange('clienteNome', e.target.value)} placeholder="Ex: João da Silva" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefone / WhatsApp</Label>
+                  <Input value={formData.clienteTelefone || ''} onChange={e => handleChange('clienteTelefone', e.target.value)} placeholder="(00) 00000-0000" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input value={formData.clienteEmail || ''} onChange={e => handleChange('clienteEmail', e.target.value)} placeholder="email@exemplo.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label>CPF / CNPJ</Label>
+                  <Input value={formData.clienteDocumento || ''} onChange={e => handleChange('clienteDocumento', e.target.value)} placeholder="000.000.000-00" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cidade / UF</Label>
+                  <Input value={formData.clienteCidade || ''} onChange={e => handleChange('clienteCidade', e.target.value)} placeholder="Ex: Holambra / SP" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Endereço</Label>
+                  <Input value={formData.clienteEndereco || ''} onChange={e => handleChange('clienteEndereco', e.target.value)} placeholder="Rua, Número, Bairro" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Nome do Cliente / Contratante</Label>
-                <Input value={formData.clienteNome} onChange={e => handleChange('clienteNome', e.target.value)} placeholder="Ex: João da Silva" />
-              </div>
-              <div className="space-y-2">
-                <Label>Contato do Cliente</Label>
-                <Input value={formData.clienteContato} onChange={e => handleChange('clienteContato', e.target.value)} placeholder="Telefone ou e-mail" />
-              </div>
-              <div className="space-y-2">
-                <Label>Nº do Pedido</Label>
-                <Input value={formData.orcamentoId} onChange={e => handleChange('orcamentoId', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Validade da Proposta</Label>
-                <Input value={formData.dataValidade} onChange={e => handleChange('dataValidade', e.target.value)} placeholder="Ex: 5 dias" />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Proposta</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nº do Pedido</Label>
+                  <Input value={formData.orcamentoId} onChange={e => handleChange('orcamentoId', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Validade da Proposta</Label>
+                  <Input value={formData.dataValidade} onChange={e => handleChange('dataValidade', e.target.value)} placeholder="Ex: 5 dias" />
+                </div>
               </div>
             </div>
           </div>

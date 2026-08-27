@@ -18,7 +18,8 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
     .from('orcamentos')
     .select(`
       *,
-      clientes ( nome, documento, cidade_uf )
+      clientes ( nome, documento, cidade_uf, telefone, email, endereco, contato ),
+      usuarios ( nome, telefone )
     `)
     .eq('id', id)
     .single()
