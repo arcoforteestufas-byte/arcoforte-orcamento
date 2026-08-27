@@ -84,6 +84,9 @@ export function calcularOrcamento(
   parser.functions.SUM = function(...args: any[]) { return args.reduce((acc, v) => acc + (Number(v) || 0), 0); }
   parser.functions.ROUNDUP = function(val: any, digits: any=0) { return Math.ceil(val); }
   parser.functions.FLOOR = function(val: any, factor: any) { return Math.floor(val); }
+  // CONTAINS: usado para checar se uma posição está selecionada em campos multi-select
+  // salvos como string separada por vírgula (ex.: modelo_cabo = 'INTERNOS,LATERAL 1,COMPLETO')
+  parser.functions.CONTAINS = function(haystack: any, needle: any) { return String(haystack ?? '').split(',').map(s => s.trim()).includes(String(needle).trim()); }
   const itens: ItemOrcamento[] = []
 
   // Prepara o dicionário de produtos para acesso rápido O(1)
