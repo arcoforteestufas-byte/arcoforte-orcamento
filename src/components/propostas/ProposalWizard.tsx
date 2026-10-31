@@ -37,7 +37,12 @@ export function ProposalWizard({ initialData, onSubmit, isSaving }: { initialDat
     dataValidade: initialData.dataValidade || '',
     clienteNome: initialData.clienteNome || '',
     clienteContato: initialData.clienteContato || '',
-    
+    clienteTelefone: initialData.clienteTelefone || '',
+    clienteEmail: initialData.clienteEmail || '',
+    clienteDocumento: initialData.clienteDocumento || '',
+    clienteCidade: initialData.clienteCidade || '',
+    clienteEndereco: initialData.clienteEndereco || '',
+
     // Dimensões e Ficha Técnica
     cultura: initialData.cultura || '',
     larguraTotal: initialData.larguraTotal || '',
@@ -59,17 +64,17 @@ export function ProposalWizard({ initialData, onSubmit, isSaving }: { initialDat
     colunasCentral: initialData.colunasCentral || 'POSTE CENTRAL 6,75X100X50 2MM GALV',
     filmeCobertura: initialData.filmeCobertura || 'FILME DIFUSOR 120 MIC 10,00 GINEGAR',
     fechamentoLateral: initialData.fechamentoLateral || 'TELA OPTINET 40 MESH 4,0MTS GINEGAR',
-    portaAcesso: initialData.portaAcesso || 'PORTA DE ABRIR 2,00X1,00 MT GALV',
+    portaAcesso: initialData.portaAcesso || 'KIT PORTA DE ABRIR 2,00X1,00 MT GALV',
     lateralTubo: initialData.lateralTubo || 'LATERAL 50X30MTS C/ MOLAS SEPARADAS GALV 1,25MM 6MTS',
-    centralCalha: initialData.centralCalha || 'CALHA MAXX ALUMÍNIO 10A X17L 6MTS',
-    travasInternas: initialData.travasInternas || 'ESTICADOR O-O M8 EXTRA FORTE INTERNO CABO AÇO GALV 3/16 4,8 MM',
-    travasExternas: initialData.travasExternas || 'CABO AÇO GALV 3/16 4,8 MM ESTICADOR O-O M10 EXTRA FORTE EXTERNO',
-    
+    centralCalha: initialData.centralCalha || 'CALHA BIG EXTRA FORTE DE ALUMÍNIO 8 MTS',
+    travasInternas: initialData.travasInternas || 'ESTICADOR O-O M8 EXTRA FORTE INTERNO C/CLIPS 3/16 + CABO',
+    travasExternas: initialData.travasExternas || 'ESTICADOR O-O M10 EXTRA FORTE EXTERNO C/ CHUMBADOR CLIPS 3/16',
+
     // Características Técnicas
     profundidadeFundacao: initialData.profundidadeFundacao || '0,80 metr.',
     alturaArco: initialData.alturaArco || '1,80',
-    materialTravessa: initialData.materialTravessa || 'tubo de 2 polegadas',
-    
+    materialTravessa: initialData.materialTravessa || 'tubo retangular 50/30',
+
     // Preço, Frete e Pagamento
     valorTotal: initialData.valorTotal || '0',
     frete: initialData.frete || '0',

@@ -1,7 +1,9 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { generateText, tool, convertToModelMessages } from 'ai';
+import { streamText, tool, convertToModelMessages } from 'ai';
 import { z } from 'zod';
 import { createClient } from '@/utils/supabase/server';
+
+import { obterManuaisOficiais } from '@/app/actions/documentacao';
 
 // Permitir execução de até 30 segundos no vercel
 export const maxDuration = 30;
@@ -126,9 +128,22 @@ export async function POST(req: Request) {
   });
 
   try {
-    const result = await generateText({
+    const { humano, tecnico } = await obterManuaisOficiais();
+    const systemPromptAtualizado = `${SYSTEM_PROMPT}
+
+## 2.1 MANUAL TÉCNICO OFICIAL DE VARIÁVEIS, REGRAS E FÓRMULAS (Versão ${tecnico.versao})
+Esta é a fonte de verdade absoluta e matemática da engenharia ArcoForte para todos os cálculos, nomes técnicos de variáveis e regras R001-R069:
+
+${tecnico.conteudo}
+
+## 2.2 MANUAL DIDÁTICO EM LINGUAGEM NATURAL (Versão ${humano.versao})
+Este é o guia explicativo para ajudar os vendedores com conceitos simples, exemplos práticos e orientações de montagem:
+
+${humano.conteudo}`;
+
+    const result = streamText({
       model: google('gemini-flash-latest'),
-      system: SYSTEM_PROMPT,
+      system: systemPromptAtualizado,
       messages: coreMessages,
       temperature: 0.7,
       // @ts-ignore
@@ -187,9 +202,7 @@ export async function POST(req: Request) {
       }
     });
 
-    return new Response(JSON.stringify({ text: result.text }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return result.toTextStreamResponse();
   } catch (error: any) {
     console.error('Erro na API de Chat:', error);
     require('fs').writeFileSync('chat-error.log', (error.stack || error.message) + '\n\n' + JSON.stringify(error, null, 2));

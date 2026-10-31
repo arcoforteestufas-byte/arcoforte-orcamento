@@ -89,6 +89,29 @@ export function calcularOrcamento(
   parser.functions.CONTAINS = function(haystack: any, needle: any) { return String(haystack ?? '').split(',').map(s => s.trim()).includes(String(needle).trim()); }
   const itens: ItemOrcamento[] = []
 
+  // Resolve códigos de produto "placeholder" (FILME-XXX / TELA-XXX) para o produto
+  // real escolhido pelo vendedor no formulário. Essas duas posições (Teto/cobertura e
+  // Fechamento Lateral em filme ou tela) não têm produto fixo -- variam por pedido -- então
+  // as Regras usam um código genérico soh pra existir uma posição na lista, e aqui a gente
+  // troca pelo produto de verdade antes de buscar o preço. Sem isso o item aparece na lista
+  // com o nome genérico e preço R$ 0,00 (bug corrigido em 03/09/2026, ver manual seção 11).
+  function resolverProdutoCodigo(regra: RegraCalculo): string {
+    const codigo = regra.produto_codigo
+    if (codigo !== 'FILME-XXX' && codigo !== 'TELA-XXX') return codigo
+
+    const posicaoNome = regra.posicoes?.nome || ''
+    if (codigo === 'FILME-XXX' && posicaoNome === 'Teto') {
+      // Cobertura (topo do arco) -- produto escolhido em "Qual Filme / Plástico?" da cobertura
+      const real = parametros['produto_filme_cobertura']
+      return real ? String(real) : codigo
+    }
+
+    // Fechamento lateral (filme OU tela, mesmo campo pros dois) -- produto escolhido em
+    // "Qual Filme / Plástico?" ou "Qual Tela?" do fechamento lateral
+    const real = parametros['produto_filme_fechamento']
+    return real ? String(real) : codigo
+  }
+
   // Prepara o dicionário de produtos para acesso rápido O(1)
   const produtosDict = produtos.reduce((acc, p) => {
     acc[p.codigo] = p
@@ -143,9 +166,10 @@ export function calcularOrcamento(
       }
 
       // 5. Preço e Total
-      const produto = produtosDict[regra.produto_codigo]
+      const produtoCodigoResolvido = resolverProdutoCodigo(regra)
+      const produto = produtosDict[produtoCodigoResolvido]
       if (!produto) {
-        console.warn(`Produto ${regra.produto_codigo} não encontrado para a regra ${regra.id}`)
+        console.warn(`Produto ${produtoCodigoResolvido} não encontrado para a regra ${regra.id}`)
         continue
       }
 

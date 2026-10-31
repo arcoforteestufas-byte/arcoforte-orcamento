@@ -43,11 +43,32 @@ export function ChatWidget() {
       });
       
       if (!res.ok) throw new Error(await res.text() || 'Falha ao comunicar com servidor');
+      if (!res.body) throw new Error('Sem resposta do servidor');
       
-      const data = await res.json();
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let botMessage = '';
       
-      setMessages(prev => [...prev, { id: Date.now().toString() + 'bot', role: 'assistant', content: data.text }]);
+      const botMsgId = Date.now().toString() + 'bot';
+      setMessages(prev => [...prev, { id: botMsgId, role: 'assistant', content: '' }]);
       
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        botMessage += chunk;
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { id: botMsgId, role: 'assistant', content: botMessage };
+          return updated;
+        });
+      }
+      
+      if (!botMessage.trim()) {
+        setMessages(prev => prev.slice(0, -1)); // Remover a bolha vazia
+        throw new Error("A Inteligência Artificial (Google Gemini) está com os servidores sobrecarregados no momento. Por favor, tente novamente em alguns instantes.");
+      }
     } catch (err: any) {
       console.error(err);
       setError(err);

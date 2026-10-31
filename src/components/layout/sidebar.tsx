@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, FileSearch } from "lucide-react"
+import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, FileSearch, BookOpen } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"

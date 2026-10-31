@@ -230,7 +230,7 @@ export function PropostaDocument({ dados }: { dados: any }) {
             <View style={{ marginTop: 10 }}>
               <Text style={styles.capaText}><Text style={styles.capaLabel}>Contratante:</Text></Text>
               <Text style={styles.capaText}>Nome: {dados.cabecalho.clienteNome}</Text>
-              <Text style={styles.capaText}>CONTATO: {dados.cabecalho.clienteContato}</Text>
+              <Text style={styles.capaText}>Contato: {dados.cabecalho.clienteContato}</Text>
             </View>
           </View>
         </View>
@@ -251,8 +251,7 @@ export function PropostaDocument({ dados }: { dados: any }) {
         
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
-            <Text style={[styles.tableCol, {width: '50%', textAlign: 'center'}]}>DESCRIÇÃO DA ESTRUTURA E SUAS MEDIDAS</Text>
-            <Text style={[styles.tableCol, {width: '50%', textAlign: 'center', borderRight: 'none'}]}>IMAGEM MERAMENTE ILUSTRATIVA</Text>
+            <Text style={[styles.tableCol, {width: '100%', textAlign: 'center', borderRight: 'none'}]}>DESCRIÇÃO DA ESTRUTURA E SUAS MEDIDAS</Text>
           </View>
           <View style={styles.tableRow}>
             <View style={{ width: '50%', borderRight: '1pt solid #000' }}>
@@ -274,21 +273,22 @@ export function PropostaDocument({ dados }: { dados: any }) {
               <View style={styles.tableRow}>
                 <Text style={[styles.tableCol, {width: '50%'}]}>ALTURA LATERAL (A)</Text>
                 <Text style={[styles.tableCol, {width: '25%'}]}>{dados.fichaTecnica.medidas.peDireito}</Text>
-                <Text style={[styles.tableCol, {width: '25%', borderRight: 'none'}]}>{dados.fichaTecnica.medidas.peDireito} M</Text>
+                <Text style={[styles.tableCol, {width: '25%', borderRight: 'none'}]}></Text>
               </View>
               <View style={styles.tableRow}>
                 <Text style={[styles.tableCol, {width: '50%'}]}>ALTURA CENTRAL</Text>
                 <Text style={[styles.tableCol, {width: '25%'}]}>{dados.fichaTecnica.medidas.alturaArco}</Text>
-                <Text style={[styles.tableCol, {width: '25%', borderRight: 'none'}]}>{dados.fichaTecnica.medidas.alturaArco} M</Text>
+                <Text style={[styles.tableCol, {width: '25%', borderRight: 'none'}]}></Text>
               </View>
               <View style={styles.tableRow}>
                 <Text style={[styles.tableCol, {width: '50%', borderBottom: 'none'}]}>ÁREA TOTAL (M2)</Text>
-                <Text style={[styles.tableCol, {width: '25%', borderBottom: 'none'}]}>=</Text>
+                <Text style={[styles.tableCol, {width: '25%', borderBottom: 'none'}]}></Text>
                 <Text style={[styles.tableCol, {width: '25%', borderRight: 'none', borderBottom: 'none'}]}>{dados.fichaTecnica.medidas.areaTotal} M²</Text>
               </View>
             </View>
-            <View style={{ width: '50%' }}>
-              <Image src={dados.fichaTecnica.croquiUrl || "/assets/capa-estufa.jpg"} style={{ width: '100%', height: 160, objectFit: 'contain', padding: 2 }} />
+            <View style={{ width: '50%', justifyContent: 'center', alignItems: 'center' }}>
+              <Image src={dados.fichaTecnica.croquiUrl || "/assets/capa-estufa.jpg"} style={{ width: '100%', height: 130, objectFit: 'contain', padding: 2 }} />
+              <Text style={{ fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>IMAGEM MERAMENTE ILUSTRATIVA</Text>
             </View>
           </View>
           <View style={[styles.tableRow, styles.tableHeader]}>
@@ -319,44 +319,43 @@ export function PropostaDocument({ dados }: { dados: any }) {
           }
           return <Text key={`carac-${i}`} style={styles.paragraph}>{p}</Text>
         })}
-        {/* REVESTIMENTOS E FINANCEIRO */}
-        <Text style={[styles.sectionTitle, { marginTop: 15 }]}>{dados.titulos?.revestimentos || "I - REVESTIMENTOS"}</Text>
-        <View style={{ marginBottom: 15, paddingLeft: 10 }}>
-          <Text style={styles.paragraph}>• COBERTURAS: {dados.revestimentos.cobertura}</Text>
-          <Text style={styles.paragraph}>• LATERAL: {dados.revestimentos.lateral}</Text>
-          <Text style={styles.paragraph}>• FRONTAL: {dados.revestimentos.frontal}</Text>
-          <Text style={styles.paragraph}>• MEIA LUA: {dados.revestimentos.meiaLua}</Text>
-        </View>
+        {/* REVESTIMENTOS E FINANCEIRO — mesmo estilo dos itens G/H acima (não é um título de seção novo) */}
+        <Text style={styles.paragraph}>
+          <Text style={styles.orangeLetter}>{dados.titulos?.revestimentos || "I - "}</Text>
+          {!dados.titulos?.revestimentos && "REVESTIMENTOS"}
+        </Text>
+        <Text style={styles.paragraph}>•COBERTURAS: {dados.revestimentos.cobertura}</Text>
+        <Text style={styles.paragraph}>• LATERAL: {dados.revestimentos.lateral}</Text>
+        <Text style={styles.paragraph}>•FRONTAL: {dados.revestimentos.frontal}</Text>
+        <Text style={styles.paragraph}>• MEIA LUA: {dados.revestimentos.meiaLua}</Text>
 
-        <Text style={styles.sectionTitle}>Resumo Financeiro</Text>
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
-            <Text style={[styles.tableCol, styles.col1]}>Código</Text>
-            <Text style={[styles.tableCol, styles.col2]}>Descrição</Text>
-            <Text style={[styles.tableCol, styles.col3]}>Qtd</Text>
-            <Text style={[styles.tableCol, styles.col4]}>Unitário</Text>
-            <Text style={[styles.tableCol, styles.col5, { borderRight: 'none' }]}>Total</Text>
-          </View>
-          {dados.itensFormatados.map((item: any, i: number) => (
-            <View key={i} style={styles.tableRow}>
-              <Text style={[styles.tableCol, styles.col1]}>{item.codigo}</Text>
-              <Text style={[styles.tableCol, styles.col2]}>{item.nome}</Text>
-              <Text style={[styles.tableCol, styles.col3]}>{item.qtd}</Text>
-              <Text style={[styles.tableCol, styles.col4]}>{item.unitStr}</Text>
-              <Text style={[styles.tableCol, styles.col5, { borderRight: 'none' }]}>{item.totalStr}</Text>
+            <View style={[styles.tableCol, { width: '55%' }]}>
+              <Text>DESCRIÇÃO</Text>
+              <Text>ESTUFA COMPLETA</Text>
             </View>
-          ))}
-          
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>SUBTOTAL</Text>
-            <Text style={styles.totalValue}>{dados.financeiro.subtotalStr}</Text>
+            <Text style={[styles.tableCol, { width: '15%', textAlign: 'center' }]}>QTD</Text>
+            <Text style={[styles.tableCol, { width: '30%', textAlign: 'center', borderRight: 'none' }]}>VALOR</Text>
+          </View>
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCol, { width: '55%', alignItems: 'center' }]}>
+              <Text>{dados.fichaTecnica.subtitulo}</Text>
+              <Text>{dados.fichaTecnica.medidas.areaTotal} M²</Text>
+            </View>
+            <Text style={[styles.tableCol, { width: '15%', textAlign: 'center' }]}>1</Text>
+            <View style={[styles.tableCol, { width: '30%', alignItems: 'center', borderRight: 'none' }]}>
+              <Text style={{ color: '#d97021', fontWeight: 'bold' }}>{dados.financeiro.valorEstruturaStr}</Text>
+              <Text style={{ fontSize: 8 }}>*MONTAGEM NÃO INCLUSA*</Text>
+            </View>
+          </View>
+          <View style={styles.tableRow}>
+            <Text style={[styles.tableCol, { width: '55%' }]}>FRETE{dados.cabecalho.clienteCidade ? ` ATÉ A CIDADE (${dados.cabecalho.clienteCidade})` : ''}</Text>
+            <Text style={[styles.tableCol, { width: '15%', textAlign: 'center' }]}>1</Text>
+            <Text style={[styles.tableCol, { width: '30%', textAlign: 'center', borderRight: 'none' }]}>{dados.financeiro.freteStr}</Text>
           </View>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>DESCONTOS / ACRÉSCIMOS</Text>
-            <Text style={styles.totalValue}>{dados.financeiro.descontoStr}</Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>VALOR TOTAL DO INVESTIMENTO</Text>
+            <Text style={styles.totalLabel}>VALOR TOTAL</Text>
             <Text style={[styles.totalValue, { color: '#d97021' }]}>{dados.financeiro.totalLiquidoStr}</Text>
           </View>
         </View>
@@ -369,21 +368,35 @@ export function PropostaDocument({ dados }: { dados: any }) {
           <Text key={`clausulas-${i}`} style={styles.paragraph}>{p}</Text>
         ))}
         {/* RESPONSABILIDADES */}
-        <Text style={[styles.sectionTitle, { marginTop: 15 }]}>{dados.titulos?.responsabilidades || "Responsabilidades das Partes"}</Text>
-        {dados.responsabilidadesPartesArray.map((p: string, i: number) => (
-          <Text key={`resp-${i}`} style={styles.paragraph}>{p}</Text>
-        ))}
-        {/* GARANTIAS */}
-        <Text style={[styles.sectionTitle, { marginTop: 15 }]}>{dados.titulos?.garantias || "Garantias"}</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 15 }]}>{dados.titulos?.responsabilidades || "RESPONSABILIDADES DAS PARTES:"}</Text>
+        {dados.responsabilidadesPartesArray.map((p: string, i: number) => {
+          // Subtítulos ("RESPONSABILIDADES DA CONTRATANTE" / "...DA ARCO FORTE") ficam centralizados e em negrito
+          if (p === p.toUpperCase() && p.startsWith('RESPONSABILIDADES DA')) {
+            return <Text key={`resp-${i}`} style={styles.subTitle}>{p}</Text>
+          }
+          const match = p.match(/^([A-Z]\s?-|.[A-Z]\s?-)/);
+          if (match) {
+            const prefix = match[0];
+            const rest = p.substring(prefix.length);
+            return (
+              <Text key={`resp-${i}`} style={styles.paragraph}>
+                <Text style={styles.orangeLetter}>{prefix}</Text>{rest}
+              </Text>
+            );
+          }
+          return <Text key={`resp-${i}`} style={styles.paragraph}>{p}</Text>
+        })}
+        {/* GARANTIAS + EXCLUSÕES (mesma seção contínua, igual à proposta padrão) */}
+        <Text style={[styles.sectionTitle, { marginTop: 15 }]}>{dados.titulos?.garantias || "GARANTIAS"}</Text>
         {dados.garantiasArray.map((p: string, i: number) => (
           <Text key={`garantia-${i}`} style={styles.paragraph}>{p}</Text>
         ))}
-        {/* EXCLUSÕES DE GARANTIA E ASSINATURAS */}
-        <Text style={[styles.sectionTitle, { marginTop: 15 }]}>{dados.titulos?.exclusoes || "Exclusões de garantia"}</Text>
         {dados.exclusoesGarantiaArray.map((p: string, i: number) => (
-          <Text key={`exclusao-${i}`} style={styles.paragraph}>{p}</Text>
+          i === 0
+            ? <Text key={`exclusao-${i}`} style={[styles.paragraph, styles.bold]}>{p}</Text>
+            : <Text key={`exclusao-${i}`} style={styles.paragraph}>{p}</Text>
         ))}
-        
+
         {/* Assinaturas */}
         <View style={styles.signatureContainer} wrap={false}>
           <View style={styles.signatureLine}>
@@ -395,8 +408,8 @@ export function PropostaDocument({ dados }: { dados: any }) {
           </View>
         </View>
 
-        <Text style={{ textAlign: 'center', marginTop: 40, fontSize: 16, fontWeight: 'bold', color: '#0a3a2a' }}>
-          "DEUS É FIEL"
+        <Text style={{ textAlign: 'center', marginTop: 40, fontSize: 16, fontWeight: 'bold', color: '#000' }}>
+          DEUS É FIEL
         </Text>
       </Page>
     </Document>

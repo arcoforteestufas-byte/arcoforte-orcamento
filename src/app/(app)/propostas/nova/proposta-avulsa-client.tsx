@@ -6,7 +6,8 @@ import { createClient } from "@/utils/supabase/client"
 import { useRouter } from "next/navigation"
 import { ProposalWizard } from "@/components/propostas/ProposalWizard"
 import { construirDadosJsonParaPDF } from "@/utils/construir-dados-pdf"
-import { gerarTextoProposta } from "@/utils/proposta-template"
+import { construirVariaveisDocx } from "@/utils/construir-variaveis-docx"
+import { preencherDocxTemplate } from "@/utils/preencher-docx"
 
 export function PropostaAvulsaClient() {
   const { settings, isLoading } = useSettings()
@@ -43,12 +44,34 @@ export function PropostaAvulsaClient() {
       // Criamos um texto markdown fake apenas por compatibilidade com a visualizacao web, se precisar
       const textoGerado = `# Proposta para ${formData.clienteNome}\n\nGerada via formulário avulso.`
 
+      // Se tem um modelo Word configurado, preenche ele também e guarda o
+      // arquivo .docx pronto pra download.
+      let arquivoDocxUrl: string | null = null
+      if (settings.modelo_word_url) {
+        const formatCurrency = (v: any) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(String(v ?? '').replace(',', '.')) || 0)
+        const variaveisDocx = construirVariaveisDocx(formData, itensMock, formatCurrency)
+
+        const templateResp = await fetch(settings.modelo_word_url)
+        if (!templateResp.ok) throw new Error('Não foi possível baixar o modelo Word configurado em Configurações → Proposta.')
+        const templateBuffer = await templateResp.arrayBuffer()
+
+        const docxBlob = preencherDocxTemplate(templateBuffer, variaveisDocx)
+        const nomeArquivo = `proposta_avulsa_${Date.now()}.docx`
+
+        const { error: uploadError } = await supabase.storage.from('assets').upload(nomeArquivo, docxBlob)
+        if (uploadError) throw new Error('Erro ao salvar o Word gerado: ' + uploadError.message)
+
+        const { data: publicUrlData } = supabase.storage.from('assets').getPublicUrl(nomeArquivo)
+        arquivoDocxUrl = publicUrlData?.publicUrl || null
+      }
+
       const { data, error } = await supabase.from('propostas').insert({
         cliente_nome: formData.clienteNome,
         vendedor_nome: formData.vendedorNome,
         valor_total: parsedValor,
         texto_conteudo: textoGerado,
         dados_json: dadosResolvidos,
+        arquivo_docx_url: arquivoDocxUrl,
         status: 'Gerada'
       }).select().single()
 
@@ -57,9 +80,9 @@ export function PropostaAvulsaClient() {
       if (data) {
         router.push(`/propostas/${data.id}`)
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao salvar proposta:', err)
-      alert('Erro ao salvar proposta. Tente novamente.')
+      alert('Erro ao salvar proposta: ' + (err?.message || 'tente novamente.'))
     } finally {
       setIsSaving(false)
     }

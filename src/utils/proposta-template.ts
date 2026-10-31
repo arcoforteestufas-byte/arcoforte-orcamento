@@ -27,7 +27,7 @@ export function resolverDadosProposta(orcamento: any, itens: ItemOrcamento[], to
   const vendedorNome = orcamento.usuarios?.nome || '**'
   const vendedorTelefone = orcamento.usuarios?.telefone || '**'
 
-  const params = orcamento.parametros_estufa?.[0] || {}
+  const params = orcamento.parametros_utilizados || {}
   const cultura = params.cultura || '**'
   const comprimento = Number(params.comprimento_total) || 0
   const largura = Number(params.largura_total) || 0

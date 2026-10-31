@@ -1,23 +1,26 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useSettings } from "@/contexts/SettingsContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Paintbrush, Image as ImageIcon, Settings2, FileText, CheckCircle2, Users } from "lucide-react"
+import { Paintbrush, Image as ImageIcon, Settings2, FileText, CheckCircle2, Users, Bot, BookOpen } from "lucide-react"
 import { UsersManager } from "@/components/users-manager"
 import { PropostaTopicsManager } from "./proposta-topics-manager"
+import { ClaudeSyncManager } from "./claude-sync-manager"
 import { ReactNode } from "react"
 
 export function ConfiguracoesClient({ 
   regrasNode, 
-  parametrosNode 
+  parametrosNode,
+  documentacaoNode
 }: { 
   regrasNode: ReactNode, 
-  parametrosNode: ReactNode 
+  parametrosNode: ReactNode,
+  documentacaoNode?: ReactNode
 }) {
   const { settings, updateSettings } = useSettings()
   
@@ -35,11 +38,21 @@ export function ConfiguracoesClient({
   }
 
   // Estados locais para o formulário
+  const [tabAtiva, setTabAtiva] = useState("geral")
   const [nome, setNome] = useState(settings.nome_empresa)
   const [logo, setLogo] = useState(settings.logo_url || "")
   const [cor, setCor] = useState(settings.cor_primaria)
   const [isSaving, setIsSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
+
+  // Lê a aba indicada na URL (ex: /admin/configuracoes?tab=claude)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      const tabParam = params.get("tab")
+      if (tabParam) setTabAtiva(tabParam)
+    }
+  }, [])
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -70,8 +83,8 @@ export function ConfiguracoesClient({
         <p className="text-muted-foreground mt-2">Personalize a identidade visual, usuários e parâmetros globais do aplicativo.</p>
       </div>
 
-      <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="grid w-full grid-cols-7 max-w-[900px]">
+      <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="w-full">
+        <TabsList className="flex flex-wrap w-full max-w-[1150px] gap-1 p-1 bg-slate-100/80 rounded-xl">
           <TabsTrigger value="geral" className="flex items-center gap-2"><Settings2 size={16}/> Geral</TabsTrigger>
           <TabsTrigger value="usuarios" className="flex items-center gap-2"><Users size={16}/> Usuários</TabsTrigger>
           <TabsTrigger value="designer" className="flex items-center gap-2"><Paintbrush size={16}/> Designer</TabsTrigger>
@@ -79,6 +92,12 @@ export function ConfiguracoesClient({
           <TabsTrigger value="proposta" className="flex items-center gap-2"><FileText size={16}/> Proposta</TabsTrigger>
           <TabsTrigger value="regras" className="flex items-center gap-2"><Settings2 size={16}/> Regras</TabsTrigger>
           <TabsTrigger value="parametros" className="flex items-center gap-2"><Settings2 size={16}/> Parâmetros</TabsTrigger>
+          <TabsTrigger value="claude" className="flex items-center gap-2 text-purple-700 bg-purple-50 hover:bg-purple-100 data-[state=active]:bg-purple-700 data-[state=active]:text-white font-semibold">
+            <Bot size={16}/> Claude Sync
+          </TabsTrigger>
+          <TabsTrigger value="documentacao" className="flex items-center gap-2 text-amber-800 bg-amber-50 hover:bg-amber-100 data-[state=active]:bg-[#d97021] data-[state=active]:text-white font-semibold">
+            <BookOpen size={16}/> Documentação
+          </TabsTrigger>
         </TabsList>
         
         {/* ABA GERAL */}
@@ -239,6 +258,16 @@ export function ConfiguracoesClient({
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             {parametrosNode}
           </div>
+        </TabsContent>
+
+        {/* ABA CLAUDE SYNC */}
+        <TabsContent value="claude" className="mt-6">
+          <ClaudeSyncManager />
+        </TabsContent>
+
+        {/* ABA DOCUMENTACAO */}
+        <TabsContent value="documentacao" className="mt-6">
+          {documentacaoNode}
         </TabsContent>
       </Tabs>
 

@@ -1,8 +1,11 @@
 import { createClient } from "@/utils/supabase/server"
 import { notFound } from "next/navigation"
+import Link from "next/link"
+import { AlertTriangle } from "lucide-react"
+import { buttonVariants } from "@/components/ui/button"
 import { ItemOrcamento } from "@/utils/engine"
 import { PropostaClient } from "./proposta-client"
-import { gerarTextoProposta } from "@/utils/proposta-template"
+import { getCamposFaltando } from "@/utils/proposta-requisitos"
 
 export default async function PropostaViewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,15 +16,48 @@ export default async function PropostaViewPage({ params }: { params: Promise<{ i
     .from('orcamentos')
     .select(`
       *,
-      clientes ( nome, documento, cidade_uf, contato ),
-      parametros_estufa ( * ),
+      clientes ( nome, documento, cidade_uf, telefone, email, endereco, contato ),
       usuarios ( nome, telefone )
     `)
     .eq('id', id)
     .single()
 
   if (orcError || !orcamento) {
+    console.error('Erro ao buscar orçamento para proposta', {
+      id,
+      message: orcError?.message,
+      code: orcError?.code,
+      details: orcError?.details,
+      hint: orcError?.hint,
+      temOrcamento: !!orcamento,
+    })
     notFound()
+  }
+
+  // 1.1 Confere se os campos obrigatórios da proposta foram preenchidos
+  // no orçamento (aba "Detalhes Comerciais & Logística"). Se faltar algo,
+  // avisa o usuário em vez de abrir o formulário com dados incompletos.
+  const camposFaltando = getCamposFaltando(orcamento)
+
+  if (camposFaltando.length > 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+        <AlertTriangle className="h-10 w-10 text-orange-500" />
+        <h2 className="text-2xl font-bold tracking-tight">Faltam informações para gerar a proposta</h2>
+        <p className="text-muted-foreground max-w-md">
+          Antes de gerar a proposta comercial, preencha os campos abaixo na aba
+          &quot;Detalhes Comerciais &amp; Logística&quot; deste orçamento e clique em &quot;Salvar Fechamento&quot;:
+        </p>
+        <ul className="text-sm font-medium text-slate-700 list-disc list-inside">
+          {camposFaltando.map(({ campo, label }) => (
+            <li key={campo}>{label}</li>
+          ))}
+        </ul>
+        <Link href={`/orcamentos/${id}`} className={buttonVariants({ variant: "default", className: "gap-2 bg-[#d97021] hover:bg-[#c3631b] mt-2" })}>
+          Voltar para o Orçamento
+        </Link>
+      </div>
+    )
   }
 
   // 2. Fetch Itens
@@ -58,16 +94,10 @@ export default async function PropostaViewPage({ params }: { params: Promise<{ i
     manualOriginalProduto: item.descricao_customizada?.replace('Substituiu: ', '') || ''
   }))
 
-  const { data: configData } = await supabase
-    .from('configuracoes')
-    .select('proposta_topicos')
-    .single()
-
-  const textoInicial = gerarTextoProposta(orcamento, itensFormatados, configData?.proposta_topicos || [])
-
   return (
-    <PropostaClient 
-      orcamento={orcamento} 
+    <PropostaClient
+      orcamento={orcamento}
+      itens={itensFormatados}
     />
   )
 }

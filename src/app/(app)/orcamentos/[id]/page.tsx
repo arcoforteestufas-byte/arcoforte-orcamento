@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, ChevronDown } from "lucide-react"
 import { PdfButtons } from "./pdf-buttons"
 import { ItemOrcamento } from "@/utils/engine"
 import { OrcamentoComercial } from "./orcamento-comercial-client"
+import { CompletarClienteDialog } from "./completar-cliente-dialog"
 
 export default async function OrcamentoViewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -25,6 +26,14 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
     .single()
 
   if (orcError || !orcamento) {
+    console.error('Erro ao buscar orçamento', {
+      id,
+      message: orcError?.message,
+      code: orcError?.code,
+      details: orcError?.details,
+      hint: orcError?.hint,
+      temOrcamento: !!orcamento,
+    })
     notFound()
   }
 
@@ -87,9 +96,12 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
                 {orcamento.clientes?.cidade_uf ? `Local: ${orcamento.clientes.cidade_uf}` : "Local não informado"}
               </CardDescription>
             </div>
-            <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 uppercase tracking-wider">
-              {orcamento.status}
-            </Badge>
+            <div className="flex flex-col items-end gap-2">
+              <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 uppercase tracking-wider">
+                {orcamento.status}
+              </Badge>
+              <CompletarClienteDialog clienteId={orcamento.cliente_id} cliente={orcamento.clientes} />
+            </div>
           </CardHeader>
           <CardContent className="text-sm text-slate-500 mt-4">
             Gerado em {dataCriacao}
@@ -110,11 +122,14 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Materiais Salva</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <OrcamentoComercial orcamento={orcamento} />
+
+      <details className="group flex flex-col overflow-hidden rounded-xl bg-card text-sm text-card-foreground ring-1 ring-foreground/10">
+        <summary className="cursor-pointer select-none list-none flex items-center justify-between px-4 py-4 font-medium text-base [&::-webkit-details-marker]:hidden">
+          <span>Lista de Materiais Salva</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="px-4 pb-4">
           <div className="space-y-6">
             {Array.from(new Set(itensFormatados.map(i => i.grupo_nome))).map(grupo => (
               <div key={grupo}>
@@ -143,10 +158,8 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      <OrcamentoComercial orcamento={orcamento} />
+        </div>
+      </details>
     </div>
   )
 }

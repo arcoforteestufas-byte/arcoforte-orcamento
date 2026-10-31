@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Printer, ArrowLeft } from "lucide-react"
+import { Printer, ArrowLeft, FileText } from "lucide-react"
 import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import dynamic from "next/dynamic"
@@ -38,6 +38,14 @@ export function PropostaViewerClient({ proposta }: { proposta: any }) {
         </div>
 
         <div className="flex gap-2">
+          {proposta.arquivo_docx_url && (
+            <a href={proposta.arquivo_docx_url} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="gap-2">
+                <FileText className="h-4 w-4" />
+                Baixar Word
+              </Button>
+            </a>
+          )}
           {hasDadosJson ? (
             <PDFDownloadLink document={<PropostaDocument dados={proposta.dados_json} />} fileName={`proposta_${proposta.cliente_nome.replace(/\s+/g, '_')}.pdf`}>
               <Button className="gap-2 bg-[#d97021] hover:bg-[#c3631b] text-white">

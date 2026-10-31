@@ -62,13 +62,16 @@ export async function importarProdutosXLSX(formData: FormData) {
       })
     }
 
-    if (batch.length > 0) {
-      // Fazer o upsert (inserir ou atualizar) em lotes de 1000 para não estourar o limite de requisição e ser muito rápido
-      for (let i = 0; i < batch.length; i += 1000) {
-        const chunk = batch.slice(i, i + 1000)
-        const { error } = await supabase.from('produtos').upsert(chunk, { onConflict: 'codigo' })
-        if (error) throw new Error(error.message)
-      }
+    if (batch.length === 0) {
+      const colunasEncontradas = rows.length > 0 ? Object.keys(rows[0]).join(', ') : '(planilha vazia)'
+      throw new Error(`Nenhuma linha reconhecida. Colunas encontradas na planilha: ${colunasEncontradas}`)
+    }
+
+    // Fazer o upsert (inserir ou atualizar) em lotes de 1000 para não estourar o limite de requisição e ser muito rápido
+    for (let i = 0; i < batch.length; i += 1000) {
+      const chunk = batch.slice(i, i + 1000)
+      const { error } = await supabase.from('produtos').upsert(chunk, { onConflict: 'codigo' })
+      if (error) throw new Error(error.message)
     }
 
     revalidatePath('/produtos')

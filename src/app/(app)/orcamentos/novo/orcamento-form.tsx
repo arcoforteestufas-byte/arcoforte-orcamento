@@ -58,6 +58,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   const [vaoUltimo, setVaoUltimo] = useState<number | ''>('')
   
   const [portasConfig, setPortasConfig] = useState<{ id: string, quantidade: number | '', tipo: string }[]>([])
+  const [anticamaraConfig, setAnticamaraConfig] = useState<{ id: string, quantidade: number | '', modelo: string }[]>([])
 
   // Efeito para sincronizar portasConfig com qtd_portas_abrir e qtd_portas_correr
   useEffect(() => {
@@ -74,6 +75,23 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
       portas_correr: correr > 0 ? correr : ''
     }));
   }, [portasConfig])
+
+  // Efeito para sincronizar anticamaraConfig com anticamara_frontal e anticamara_lateral
+  // (3150 = Anti-Camara Frontal, 3160 = Anti-Camara Lateral)
+  useEffect(() => {
+    let frontal = 0;
+    let lateral = 0;
+    anticamaraConfig.forEach(a => {
+      const q = Number(a.quantidade) || 0;
+      if (a.modelo === '3150') frontal += q;
+      if (a.modelo === '3160') lateral += q;
+    });
+    setParamsForm(prev => ({
+      ...prev,
+      anticamara_frontal: frontal > 0 ? frontal : '',
+      anticamara_lateral: lateral > 0 ? lateral : ''
+    }));
+  }, [anticamaraConfig])
 
 
   // Mantém a lista atualizada caso o Next.js mande novos props do servidor
@@ -890,6 +908,13 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                           if (param.nome_tecnico === 'arco_divisa' && !c) {
                             handleParamChange('n_divisas_por_modulo', '') // reseta a quantidade ao desmarcar
                           }
+                          if (param.nome_tecnico === 'possui_anticamara') {
+                            if (!c) {
+                              setAnticamaraConfig([])
+                            } else if (anticamaraConfig.length === 0) {
+                              setAnticamaraConfig([{ id: Math.random().toString(36).substring(2, 9), quantidade: '', modelo: '' }])
+                            }
+                          }
                         }}
                       />
                       <Label htmlFor={param.nome_tecnico} className="text-sm font-medium leading-none cursor-pointer">
@@ -975,43 +1000,73 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
 
                     {param.nome_tecnico === 'possui_anticamara' && paramsForm['possui_anticamara'] && (
                       <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
-                        <div className="grid gap-2">
-                          <Label className="uppercase text-xs font-semibold text-slate-600">Quantas anticâmaras?</Label>
-                          <Input 
-                            type="number"
-                            placeholder="Ex: 1"
-                            value={paramsForm['qtd_anticamara']?.toString() || ''}
-                            onChange={(e) => handleParamChange('qtd_anticamara', Number(e.target.value) || '')}
-                            className="bg-white"
-                          />
-                        </div>
-                        <div className="grid gap-2 pt-2 border-t border-slate-200">
-                          <Label className="uppercase text-xs font-semibold text-slate-600">Qual o modelo da anticâmara?</Label>
-                          <Select 
-                            value={paramsForm['modelo_anticamara']?.toString() || ''}
-                            onValueChange={(val) => handleParamChange('modelo_anticamara', val)}
-                          >
-                            <SelectTrigger className="bg-white w-full">
-                              <SelectValue placeholder="Selecione o produto...">
-                                {paramsForm['modelo_anticamara']
-                                  ? (() => {
-                                      const prod = produtos.find(p => p.codigo.toString() === paramsForm['modelo_anticamara']?.toString());
-                                      return prod ? `${prod.codigo} - ${prod.descricao}` : paramsForm['modelo_anticamara']?.toString();
-                                    })()
-                                  : undefined
-                                }
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent className="max-w-[90vw] md:max-w-[600px] max-h-[400px]">
-                              {produtos
-                                .filter(p => p.descricao.toUpperCase().includes('ANTICAMARA') || p.descricao.toUpperCase().includes('ANTICÂMARA') || p.descricao.toUpperCase().includes('ANTI CAMARA'))
-                                .map(p => (
-                                  <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
-                                ))
-                              }
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        {anticamaraConfig.map((item, index) => (
+                          <div key={item.id} className="flex flex-col sm:flex-row items-end gap-4 relative pr-12">
+                            <div className="grid gap-2 flex-1 w-full">
+                              <Label className="uppercase text-[10px] font-semibold text-slate-600">Quantas?</Label>
+                              <Input 
+                                type="number"
+                                placeholder="Ex: 2"
+                                value={item.quantidade}
+                                onChange={(e) => {
+                                  const newConfig = [...anticamaraConfig];
+                                  newConfig[index].quantidade = e.target.value === '' ? '' : Number(e.target.value);
+                                  setAnticamaraConfig(newConfig);
+                                }}
+                                className="bg-white"
+                              />
+                            </div>
+                            <div className="grid gap-2 flex-[2] w-full">
+                              <Label className="uppercase text-[10px] font-semibold text-slate-600">Qual o modelo da anticâmara?</Label>
+                              <Select 
+                                value={item.modelo}
+                                onValueChange={(val) => {
+                                  const newConfig = [...anticamaraConfig];
+                                  newConfig[index].modelo = val ?? "";
+                                  setAnticamaraConfig(newConfig);
+                                }}
+                              >
+                                <SelectTrigger className="bg-white w-full">
+                                  <SelectValue placeholder="Selecione o produto...">
+                                    {item.modelo
+                                      ? (() => {
+                                          const prod = produtos.find(p => p.codigo.toString() === item.modelo);
+                                          return prod ? `${prod.codigo} - ${prod.descricao}` : item.modelo;
+                                        })()
+                                      : undefined
+                                    }
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="max-w-[90vw] md:max-w-[600px] max-h-[400px]">
+                                  {produtos
+                                    .filter(p => p.descricao.toUpperCase().includes('ANTICAMARA') || p.descricao.toUpperCase().includes('ANTICÂMARA') || p.descricao.toUpperCase().includes('ANTI CAMARA'))
+                                    .map(p => (
+                                      <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
+                                    ))
+                                  }
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {anticamaraConfig.length > 1 && (
+                              <Button 
+                                variant="ghost" 
+                                onClick={() => setAnticamaraConfig(anticamaraConfig.filter((_, i) => i !== index))}
+                                className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 rounded-full"
+                                title="Remover"
+                              >
+                                <span className="sr-only">Remover</span>
+                                ✕
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button 
+                          variant="outline"
+                          className="w-full border-dashed border-[#d97021] text-[#d97021] hover:bg-[#fff3eb] mt-2"
+                          onClick={() => setAnticamaraConfig([...anticamaraConfig, { id: Math.random().toString(36).substring(2, 9), quantidade: '', modelo: '' }])}
+                        >
+                          + Adicionar outro modelo de anticâmara
+                        </Button>
                       </div>
                     )}
                   </div>

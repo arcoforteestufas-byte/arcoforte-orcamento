@@ -15,6 +15,7 @@ type Settings = {
   capa_pdf_url?: string | null
   fundo_pdf_url?: string | null
   frase_final?: string
+  modelo_word_url?: string | null
 }
 
 type SettingsContextType = {
@@ -34,6 +35,7 @@ const defaultSettings: Settings = {
   capa_pdf_url: null,
   fundo_pdf_url: null,
   frase_final: 'DEUS É FIEL',
+  modelo_word_url: null,
   proposta_topicos: [
     {
       id: "ficha_tecnica",
@@ -114,7 +116,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             endereco: data.endereco || defaultSettings.endereco,
             capa_pdf_url: data.capa_pdf_url,
             fundo_pdf_url: data.fundo_pdf_url,
-            frase_final: data.frase_final || defaultSettings.frase_final
+            frase_final: data.frase_final || defaultSettings.frase_final,
+            modelo_word_url: data.modelo_word_url
           }
           setSettings(loadedSettings)
           
@@ -164,6 +167,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           capa_pdf_url: updated.capa_pdf_url,
           fundo_pdf_url: updated.fundo_pdf_url,
           frase_final: updated.frase_final,
+          modelo_word_url: updated.modelo_word_url,
           updated_at: new Date().toISOString()
         })
         .eq('id', '00000000-0000-0000-0000-000000000000')

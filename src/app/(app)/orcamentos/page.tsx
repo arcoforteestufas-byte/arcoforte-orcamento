@@ -6,12 +6,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { PlusCircle, Search, FileText } from "lucide-react"
 import Link from "next/link"
+import { ExcluirOrcamentoButton } from "./excluir-orcamento-button"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function OrcamentosPage() {
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  const isAdministrador = user?.user_metadata?.cargo === 'Administrador'
 
   // Busca os orçamentos no banco com os dados do cliente
   const { data: orcamentos, error } = await supabase
@@ -116,6 +120,12 @@ export default async function OrcamentosPage() {
                       >
                         <FileText className="h-4 w-4 text-slate-500" />
                       </Link>
+                      {isAdministrador && (
+                        <ExcluirOrcamentoButton
+                          id={orc.id}
+                          label={`#ORC-${orc.id.split('-')[0].toUpperCase()}`}
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

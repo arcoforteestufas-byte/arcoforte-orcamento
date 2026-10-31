@@ -38,7 +38,7 @@ AX NA MONTAGEM COM VÍDEOS E MANUAIS DE MONTAGEM.`,
   gerarCaracteristicas: (profundidadeFundacao: string, alturaArco: string, tipoLateral: string) => {
     return [
       `A – FUNDAÇÃO: Para cada poste será necessário escavar um buraco no solo de aproximadamente 25 cm de diâmetro com ${profundidadeFundacao} de profundidade onde serão concretados.`,
-      `B – GALVANIZAÇÃO: postes, são fabricados em chapas de aço. Depois de fabricados são galvanizados em Banho de zinco fundente (a fogo). Restante da estrutura: metalon, tubos, arcos são pré galvanizados e Metalizados na costura, encaixes fabricados com solda mig e depois galvanizados conforme normas da ABNT.`,
+      `B – GALVANIZAÇÃO: postes, são fabricados em eucalipto tratado. Restante da estrutura: metalon, tubos, arcos são pré galvanizados e metalizados na costura, encaixes fabricados com solda mig e depois galvanizados conforme normas da ABNT.`,
       `C - PARTES METÁLICAS EM AÇO: Arcos galvanizados conforme normas. Os contraventos em tubos 2 polegadas. A barra dorsal será em tubo 2 polegadas, também galvanizados conforme normas. Também será utilizado encaixes galvanizados para apoio dos arcos nos pilares.`,
       `D - ARCOS, CONTRAVENTOS, DORSAL E METALON: Arcos calandrados de aproximadamente ${alturaArco} de altura em chapa 1,25mm.\nNa frente e no fundo, travessa 50x30 chapa 125mm, ${tipoLateral}, tubo de 2 polegadas galvanizados de 6 metros compondo a barra DORSAL para apoio dos arcos. E, tubos de 2 polegadas galvanizados de 4 a 5 metros fazendo o contraventamento que serão ligados no primeiro arco na parte cumeeira e no pé do segundo arco, fazendo a função de mão-francesa ou contraventamento.`,
       `E - FIXAÇÃO DOS REVESTIMENTOS SUPERIOR E INFERIOR.\n. SUPERIOR: A fixação dos revestimentos (filmes e telas) deverá ser feita com molas de aço 2,10mm, encaixadas em perfis de alumínio e demais peças já projetadas para esta fixação.\n. INFERIOR (TELA): Lateral será fixada no perfil duplo superior e na mureta com perfil simples e mola.`,
@@ -50,7 +50,7 @@ AX NA MONTAGEM COM VÍDEOS E MANUAIS DE MONTAGEM.`,
 
   gerarClausulasFixas: (prazoEntrega: string) => {
     return [
-      `1 - A Arco Forte irá realizar a entrega dos produtos no prazo de até ${prazoEntrega.toUpperCase()} DIAS UTEIS, a contar do efetivo pagamento da primeira parcela do valor ajustado.`,
+      `1 - A Arco Forte irá realizar a entrega dos produtos no prazo de até ${prazoEntrega.toUpperCase()}DIAS UTEIS, a contar do efetivo pagamento da primeira parcela do valor ajustado.`,
       `2 - O prazo de vigência deste Contrato será até a entrega do produto e o pagamento integral correspondente.`,
       `3 - Acontecimentos extraordinários como por exemplo, incêndio, guerra, greves, falta de matéria –prima, ações militares, catástrofes naturais como inundações, relâmpagos não serão considerados como descumprimento de obrigação, possibilitando às partes a renegociação do prazo de entrega dos bens e conclusão do serviço.`
     ]

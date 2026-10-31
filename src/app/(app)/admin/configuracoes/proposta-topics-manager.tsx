@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Trash2, Plus, GripVertical, CheckCircle2, FileText, Image as ImageIcon, Edit, Loader2 } from "lucide-react"
+import { Trash2, Plus, GripVertical, CheckCircle2, FileText, Image as ImageIcon, Edit, Loader2, FileType2, X } from "lucide-react"
 import { createClient } from "@/utils/supabase/client"
 import { useRef } from "react"
+import { DESCRICAO_VARIAVEIS_DOCX } from "@/utils/construir-variaveis-docx"
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,42 @@ export function PropostaTopicsManager() {
   
   const [capaUrl, setCapaUrl] = useState(settings.capa_pdf_url || "")
   const [fundoUrl, setFundoUrl] = useState(settings.fundo_pdf_url || "")
+
+  const modeloWordInputRef = useRef<HTMLInputElement>(null)
+  const [isUploadingModeloWord, setIsUploadingModeloWord] = useState(false)
+  const [modeloWordUrl, setModeloWordUrl] = useState(settings.modelo_word_url || "")
+  const [mostrarVariaveis, setMostrarVariaveis] = useState(false)
+
+  const handleUploadModeloWord = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      setIsUploadingModeloWord(true)
+      const supabase = createClient()
+      const filename = `modelo_proposta_${Date.now()}.docx`
+
+      const { error: uploadError } = await supabase.storage.from('assets').upload(filename, file)
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from('assets').getPublicUrl(filename)
+      if (data?.publicUrl) {
+        setModeloWordUrl(data.publicUrl)
+        await updateSettings({ modelo_word_url: data.publicUrl })
+      }
+    } catch (err: any) {
+      console.error('Erro ao fazer upload do modelo Word:', err)
+      alert('Erro ao fazer upload do arquivo: ' + (err?.message || 'erro desconhecido'))
+    } finally {
+      setIsUploadingModeloWord(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  const handleRemoverModeloWord = async () => {
+    setModeloWordUrl("")
+    await updateSettings({ modelo_word_url: null })
+  }
 
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -130,7 +167,8 @@ export function PropostaTopicsManager() {
       endereco,
       frase_final: fraseFinal,
       capa_pdf_url: capaUrl,
-      fundo_pdf_url: fundoUrl
+      fundo_pdf_url: fundoUrl,
+      modelo_word_url: modeloWordUrl || null
     })
     setTopicos(ordenados)
     setIsSaving(false)
@@ -321,8 +359,87 @@ export function PropostaTopicsManager() {
                 )}
               </div>
             </div>
-            
+
           </div>
+        </div>
+
+        {/* MODELO WORD (.DOCX) */}
+        <div className="mb-10">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Modelo Word (.docx)</h3>
+          <p className="text-sm text-slate-500 mb-4">
+            Suba um arquivo Word com "tags" (marcadores) nos lugares onde os dados devem entrar, tipo <code className="bg-slate-100 px-1 rounded">{'{cliente_nome}'}</code>.
+            Quando esse modelo estiver configurado, toda proposta gerada preenche esse Word automaticamente e disponibiliza pra download.
+          </p>
+
+          <input
+            type="file"
+            ref={modeloWordInputRef}
+            className="hidden"
+            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={handleUploadModeloWord}
+          />
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div
+              onClick={() => modeloWordInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl h-24 w-full max-w-xs flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors ${
+                modeloWordUrl
+                  ? 'border-green-400 bg-green-50 hover:bg-green-100'
+                  : 'border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300'
+              }`}
+            >
+              {isUploadingModeloWord ? (
+                <Loader2 className="w-7 h-7 text-slate-400 animate-spin" />
+              ) : modeloWordUrl ? (
+                <>
+                  <CheckCircle2 className="w-7 h-7 text-green-500" />
+                  <span className="text-xs font-medium text-green-700">MODELO CONFIGURADO</span>
+                </>
+              ) : (
+                <>
+                  <FileType2 className="w-7 h-7 text-blue-400" />
+                  <span className="text-xs font-medium text-slate-600">ENVIAR ARQUIVO .DOCX</span>
+                </>
+              )}
+            </div>
+
+            {modeloWordUrl && (
+              <div className="flex flex-col gap-2">
+                <a href={modeloWordUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+                  Ver modelo atual
+                </a>
+                <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 gap-1 w-fit" onClick={handleRemoverModeloWord}>
+                  <X className="w-3.5 h-3.5" /> Remover modelo (volta a gerar só o PDF padrão)
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mt-4 text-primary hover:text-primary hover:bg-primary/10 gap-1 text-xs px-2"
+            onClick={() => setMostrarVariaveis(v => !v)}
+          >
+            {mostrarVariaveis ? "Esconder" : "Ver"} variáveis disponíveis pro Word
+          </Button>
+
+          {mostrarVariaveis && (
+            <div className="mt-3 border border-slate-200 rounded-lg overflow-hidden">
+              <div className="bg-slate-50 px-4 py-2 text-xs text-slate-500">
+                Para a lista de materiais (tabela de itens), use um loop no Word: <code className="bg-white px-1 rounded border">{'{#itens}'}</code> ... <code className="bg-white px-1 rounded border">{'{codigo}'} {'{descricao}'} {'{quantidade}'} {'{unitario}'} {'{total}'}</code> ... <code className="bg-white px-1 rounded border">{'{/itens}'}</code> dentro de uma linha de tabela.
+              </div>
+              <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                {DESCRICAO_VARIAVEIS_DOCX.map(v => (
+                  <div key={v.tag} className="flex items-center gap-3 px-4 py-1.5 text-sm">
+                    <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono text-slate-700 shrink-0">{`{${v.tag}}`}</code>
+                    <span className="text-slate-500 text-xs">{v.descricao}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* VISIBILIDADE DAS SEÇÕES */}

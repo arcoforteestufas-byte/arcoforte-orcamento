@@ -13,20 +13,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { saveCliente, updateCliente } from "@/app/actions/clientes"
+import { ClienteFormFields, ClienteFormData, CLIENTE_FORM_DATA_VAZIO, inferirTipoDocumento } from "@/components/clientes/cliente-form-fields"
 
 export function ClientesClient({ initialClientes }: { initialClientes: any[] }) {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingClienteId, setEditingClienteId] = useState<string | null>(null)
-  
-  const [formData, setFormData] = useState({
-    nome: '',
-    documento: '',
-    cidade_uf: '',
-    telefone: '',
-    endereco: '',
-    email: '',
+
+  const [formData, setFormData] = useState<ClienteFormData & { observacoes: string }>({
+    ...CLIENTE_FORM_DATA_VAZIO,
     observacoes: ''
   })
 
@@ -37,15 +33,7 @@ export function ClientesClient({ initialClientes }: { initialClientes: any[] }) 
 
   const handleOpenNew = () => {
     setEditingClienteId(null)
-    setFormData({
-      nome: '',
-      documento: '',
-      cidade_uf: '',
-      telefone: '',
-      endereco: '',
-      email: '',
-      observacoes: ''
-    })
+    setFormData({ ...CLIENTE_FORM_DATA_VAZIO, observacoes: '' })
     setIsModalOpen(true)
   }
 
@@ -53,17 +41,25 @@ export function ClientesClient({ initialClientes }: { initialClientes: any[] }) 
     setEditingClienteId(cliente.id)
     setFormData({
       nome: cliente.nome || '',
+      tipo_documento: cliente.tipo_documento || inferirTipoDocumento(cliente.documento),
       documento: cliente.documento || '',
       cidade_uf: cliente.cidade_uf || '',
       telefone: cliente.telefone || '',
       endereco: cliente.endereco || '',
       email: cliente.email || '',
+      contato: cliente.contato || '',
+      contato_telefone: cliente.contato_telefone || '',
+      nome_fantasia: cliente.nome_fantasia || '',
       observacoes: cliente.observacoes || ''
     })
     setIsModalOpen(true)
   }
 
   const handleSave = async () => {
+    if (!formData.tipo_documento) {
+      toast.error('Selecione se o cliente é CNPJ ou CPF')
+      return
+    }
     if (!formData.nome.trim()) {
       toast.error('O nome é obrigatório')
       return
@@ -72,11 +68,15 @@ export function ClientesClient({ initialClientes }: { initialClientes: any[] }) 
     try {
       const dataToSave = {
         nome: formData.nome,
+        tipo_documento: formData.tipo_documento || null,
         documento: formData.documento || null,
         cidade_uf: formData.cidade_uf || null,
         telefone: formData.telefone || null,
         endereco: formData.endereco || null,
         email: formData.email || null,
+        contato: formData.contato || null,
+        contato_telefone: formData.contato_telefone || null,
+        nome_fantasia: formData.nome_fantasia || null,
         observacoes: formData.observacoes || null
       }
 
@@ -177,7 +177,7 @@ export function ClientesClient({ initialClientes }: { initialClientes: any[] }) 
       </Card>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingClienteId ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
             <DialogDescription>
@@ -185,72 +185,14 @@ export function ClientesClient({ initialClientes }: { initialClientes: any[] }) 
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="nome">Nome / Razão Social *</Label>
-              <Input 
-                id="nome" 
-                value={formData.nome} 
-                onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                placeholder="Ex: João Batista" 
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="documento">CPF / CNPJ</Label>
-                <Input 
-                  id="documento" 
-                  value={formData.documento} 
-                  onChange={(e) => setFormData({...formData, documento: e.target.value})}
-                  placeholder="Somente números" 
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="telefone">Telefone / WhatsApp</Label>
-                <Input 
-                  id="telefone" 
-                  value={formData.telefone} 
-                  onChange={(e) => setFormData({...formData, telefone: e.target.value})}
-                  placeholder="(00) 00000-0000" 
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email"
-                  value={formData.email} 
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  placeholder="email@exemplo.com" 
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="cidade">Cidade / UF</Label>
-                <Input 
-                  id="cidade" 
-                  value={formData.cidade_uf} 
-                  onChange={(e) => setFormData({...formData, cidade_uf: e.target.value})}
-                  placeholder="Ex: Holambra / SP" 
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="endereco">Endereço Completo</Label>
-              <Input 
-                id="endereco" 
-                value={formData.endereco} 
-                onChange={(e) => setFormData({...formData, endereco: e.target.value})}
-                placeholder="Rua, Número, Bairro" 
-              />
-            </div>
+            <ClienteFormFields formData={formData} setFormData={(data) => setFormData({ ...data, observacoes: formData.observacoes })} />
             <div className="grid gap-2">
               <Label htmlFor="observacoes">Observações</Label>
-              <Textarea 
-                id="observacoes" 
-                value={formData.observacoes} 
+              <Textarea
+                id="observacoes"
+                value={formData.observacoes}
                 onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
-                placeholder="Informações adicionais sobre o cliente..." 
+                placeholder="Informações adicionais sobre o cliente..."
               />
             </div>
           </div>
