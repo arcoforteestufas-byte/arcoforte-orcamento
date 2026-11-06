@@ -115,6 +115,10 @@ export function calcularOrcamento(
       return real ? String(real) : codigo
     }
 
+    if (posicaoNome.toLowerCase().includes('meia lua') && parametros['produto_meia_lua']) {
+      return String(parametros['produto_meia_lua'])
+    }
+
     // Fechamento lateral (filme OU tela, mesmo campo pros dois) -- produto escolhido em
     // "Qual Filme / Plástico?" ou "Qual Tela?" do fechamento lateral
     const real = parametros['produto_filme_fechamento']

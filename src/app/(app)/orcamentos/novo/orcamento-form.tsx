@@ -61,19 +61,24 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   const [portasConfig, setPortasConfig] = useState<{ id: string, quantidade: number | '', tipo: string }[]>([])
   const [anticamaraConfig, setAnticamaraConfig] = useState<{ id: string, quantidade: number | '', modelo: string }[]>([])
 
-  // Efeito para sincronizar portasConfig com qtd_portas_abrir e qtd_portas_correr
+  // Efeito para sincronizar portasConfig com portas_abrir, portas_correr_pequena, portas_correr_grande e portas_correr
   useEffect(() => {
     let abrir = 0;
-    let correr = 0;
+    let correrPequena = 0;
+    let correrGrande = 0;
     portasConfig.forEach(p => {
       const q = Number(p.quantidade) || 0;
       if (p.tipo === 'abrir') abrir += q;
-      if (p.tipo === 'correr') correr += q;
+      if (p.tipo === 'correr_pequena') correrPequena += q;
+      if (p.tipo === 'correr_grande') correrGrande += q;
     });
+    const correrTotal = correrPequena + correrGrande;
     setParamsForm(prev => ({
       ...prev,
       portas_abrir: abrir > 0 ? abrir : '',
-      portas_correr: correr > 0 ? correr : ''
+      portas_correr_pequena: correrPequena > 0 ? correrPequena : '',
+      portas_correr_grande: correrGrande > 0 ? correrGrande : '',
+      portas_correr: correrTotal > 0 ? correrTotal : ''
     }));
   }, [portasConfig])
 
@@ -188,6 +193,77 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
       }))
     }
   }, [paramsForm['tipo_poste']])
+
+  // Efeito para sincronizar divisas de frente/fundo, perfil na divisa, largura do rolo de tela e meia lua
+  useEffect(() => {
+    const fechamentoAtivo = Boolean(paramsForm['fechamento_lateral'])
+    const material = String(paramsForm['tipo_fechamento_material'] || '')
+    const nModulos = Number(paramsForm['n_modulos']) || 0
+    const maxDivisas = Math.max(0, nModulos - 1)
+    const masterDivisas = Boolean(paramsForm['master_divisas_frente_fundo'])
+
+    let nextMasterDivisas = masterDivisas
+    let nextDivisasFrente = Number(paramsForm['divisas_frente']) || 0
+    let nextDivisasFundo = Number(paramsForm['divisas_fundo']) || 0
+
+    if (!fechamentoAtivo || !material || nModulos <= 1) {
+      nextMasterDivisas = false
+      nextDivisasFrente = 0
+      nextDivisasFundo = 0
+    } else if (!masterDivisas) {
+      nextDivisasFrente = 0
+      nextDivisasFundo = 0
+    } else {
+      nextDivisasFrente = Math.min(maxDivisas, Math.max(0, nextDivisasFrente))
+      nextDivisasFundo = Math.min(maxDivisas, Math.max(0, nextDivisasFundo))
+    }
+
+    const nDivisasPorModulo = Number(paramsForm['n_divisas_por_modulo']) || 0
+    const temDivisa = fechamentoAtivo && Boolean(material) && (nDivisasPorModulo > 0 || nextDivisasFrente > 0 || nextDivisasFundo > 0)
+    const atualPerfil = String(paramsForm['fechamento_divisa_perfil'] || '')
+    const nextPerfil = temDivisa ? (atualPerfil || 'MOLAS JUNTAS') : ''
+
+    const atualLarguraRolo = paramsForm['tela_largura_rolo'] ?? ''
+    const nextLarguraRolo = fechamentoAtivo && material === 'tela' ? atualLarguraRolo : ''
+
+    const atualMeiaLua = String(paramsForm['meia_lua_material'] || '')
+    const nextMeiaLua = fechamentoAtivo && material ? (atualMeiaLua || material) : ''
+    const atualProdMeiaLua = String(paramsForm['produto_meia_lua'] || '')
+    const nextProdMeiaLua = fechamentoAtivo && material && nextMeiaLua && nextMeiaLua !== material ? atualProdMeiaLua : ''
+
+    if (
+      Boolean(paramsForm['master_divisas_frente_fundo']) !== nextMasterDivisas ||
+      paramsForm['divisas_frente'] !== nextDivisasFrente ||
+      paramsForm['divisas_fundo'] !== nextDivisasFundo ||
+      (paramsForm['fechamento_divisa_perfil'] ?? '') !== nextPerfil ||
+      (paramsForm['tela_largura_rolo'] ?? '') !== nextLarguraRolo ||
+      (paramsForm['meia_lua_material'] ?? '') !== nextMeiaLua ||
+      (paramsForm['produto_meia_lua'] ?? '') !== nextProdMeiaLua
+    ) {
+      setParamsForm(prev => ({
+        ...prev,
+        master_divisas_frente_fundo: nextMasterDivisas,
+        divisas_frente: nextDivisasFrente,
+        divisas_fundo: nextDivisasFundo,
+        fechamento_divisa_perfil: nextPerfil,
+        tela_largura_rolo: nextLarguraRolo,
+        meia_lua_material: nextMeiaLua,
+        produto_meia_lua: nextProdMeiaLua
+      }))
+    }
+  }, [
+    paramsForm['fechamento_lateral'],
+    paramsForm['tipo_fechamento_material'],
+    paramsForm['n_modulos'],
+    paramsForm['master_divisas_frente_fundo'],
+    paramsForm['divisas_frente'],
+    paramsForm['divisas_fundo'],
+    paramsForm['n_divisas_por_modulo'],
+    paramsForm['fechamento_divisa_perfil'],
+    paramsForm['tela_largura_rolo'],
+    paramsForm['meia_lua_material'],
+    paramsForm['produto_meia_lua']
+  ])
 
   const handleCalcular = () => {
     const nDivisasPorModulo = Number(paramsForm['n_divisas_por_modulo']) || 0
@@ -597,7 +673,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
           </CardHeader>
           <CardContent className="grid gap-6 grid-cols-1 md:grid-cols-2 p-6">
             {parametrosDef
-              .filter(p => !['n_modulos', 'largura_modulo', 'n_vaos', 'pe_direito', 'vao', 'portas_abrir', 'portas_correr'].includes(p.nome_tecnico))
+              .filter(p => !['n_modulos', 'largura_modulo', 'n_vaos', 'pe_direito', 'vao', 'portas_abrir', 'portas_correr', 'portas_correr_pequena', 'portas_correr_grande'].includes(p.nome_tecnico))
               .sort((a, b) => {
                 const getWeight = (nome: string) => {
                   if (nome === 'tipo_arco') return 1;
@@ -906,6 +982,17 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                         checked={!!paramsForm[param.nome_tecnico]}
                         onCheckedChange={(c) => {
                           handleParamChange(param.nome_tecnico, c)
+                          if (param.nome_tecnico === 'fechamento_lateral' && !c) {
+                            handleParamChange('tipo_fechamento_material', '')
+                            handleParamChange('produto_filme_fechamento', '')
+                            handleParamChange('master_divisas_frente_fundo', false)
+                            handleParamChange('divisas_frente', 0)
+                            handleParamChange('divisas_fundo', 0)
+                            handleParamChange('fechamento_divisa_perfil', '')
+                            handleParamChange('tela_largura_rolo', '')
+                            handleParamChange('meia_lua_material', '')
+                            handleParamChange('produto_meia_lua', '')
+                          }
                           if (param.nome_tecnico === 'arco_divisa' && !c) {
                             handleParamChange('n_divisas_por_modulo', '') // reseta a quantidade ao desmarcar
                           }
@@ -933,6 +1020,11 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                             onValueChange={(val) => {
                               handleParamChange('tipo_fechamento_material', val)
                               handleParamChange('produto_filme_fechamento', '') // reseta o produto ao mudar
+                              handleParamChange('meia_lua_material', val || '')
+                              handleParamChange('produto_meia_lua', '')
+                              if (val !== 'tela') {
+                                handleParamChange('tela_largura_rolo', '')
+                              }
                             }}
                           >
                             <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -944,42 +1036,231 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                         </div>
 
                         {paramsForm['tipo_fechamento_material'] && (
-                          <div className="grid gap-2 pt-2 border-t border-slate-200">
-                            <Label className="uppercase text-xs font-semibold text-slate-600">
-                              {paramsForm['tipo_fechamento_material'] === 'filme' ? 'Qual Filme / Plástico?' : 'Qual Tela?'}
-                            </Label>
-                            <Select 
-                              value={paramsForm['produto_filme_fechamento']?.toString() || ''}
-                              onValueChange={(val) => handleParamChange('produto_filme_fechamento', val)}
-                            >
-                              <SelectTrigger className="bg-white w-full">
-                                <SelectValue placeholder="Selecione o produto...">
-                                  {paramsForm['produto_filme_fechamento']
-                                    ? (() => {
-                                      const prod = produtos.find(p => p.codigo.toString() === paramsForm['produto_filme_fechamento']?.toString());
-                                      return prod ? `${prod.codigo} - ${prod.descricao}` : paramsForm['produto_filme_fechamento']?.toString();
-                                    })()
-                                    : undefined
-                                  }
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent className="max-w-[90vw] md:max-w-[600px] max-h-[400px]">
-                                {produtos
-                                  .filter(p => {
-                                    const desc = p.descricao.toUpperCase()
-                                    if (paramsForm['tipo_fechamento_material'] === 'filme') {
-                                      return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
-                                    } else {
-                                      return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
+                          <>
+                            <div className="grid gap-2 pt-2 border-t border-slate-200">
+                              <Label className="uppercase text-xs font-semibold text-slate-600">
+                                {paramsForm['tipo_fechamento_material'] === 'filme' ? 'Qual Filme / Plástico?' : 'Qual Tela?'}
+                              </Label>
+                              <Select 
+                                value={paramsForm['produto_filme_fechamento']?.toString() || ''}
+                                onValueChange={(val) => handleParamChange('produto_filme_fechamento', val)}
+                              >
+                                <SelectTrigger className="bg-white w-full">
+                                  <SelectValue placeholder="Selecione o produto...">
+                                    {paramsForm['produto_filme_fechamento']
+                                      ? (() => {
+                                        const prod = produtos.find(p => p.codigo.toString() === paramsForm['produto_filme_fechamento']?.toString());
+                                        return prod ? `${prod.codigo} - ${prod.descricao}` : paramsForm['produto_filme_fechamento']?.toString();
+                                      })()
+                                      : undefined
                                     }
-                                  })
-                                  .map(p => (
-                                    <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
-                                  ))
-                                }
-                              </SelectContent>
-                            </Select>
-                          </div>
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="max-w-[90vw] md:max-w-[600px] max-h-[400px]">
+                                  {produtos
+                                    .filter(p => {
+                                      const desc = p.descricao.toUpperCase()
+                                      if (paramsForm['tipo_fechamento_material'] === 'filme') {
+                                        return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
+                                      } else {
+                                        return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
+                                      }
+                                    })
+                                    .map(p => (
+                                      <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
+                                    ))
+                                  }
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {paramsForm['tipo_fechamento_material'] === 'tela' && (
+                              <div className="grid gap-2 pt-2 border-t border-slate-200">
+                                <Label className="uppercase text-xs font-semibold text-slate-600">
+                                  Largura do rolo da tela escolhida (m)
+                                </Label>
+                                <Input
+                                  type="number"
+                                  step="any"
+                                  min={0}
+                                  placeholder="Ex: 3 ou 4,2"
+                                  value={paramsForm['tela_largura_rolo']?.toString() || ''}
+                                  onChange={(e) => {
+                                    const raw = e.target.value.replace(',', '.')
+                                    handleParamChange('tela_largura_rolo', raw === '' ? '' : Number(raw))
+                                  }}
+                                  className="bg-white"
+                                />
+                              </div>
+                            )}
+
+                            {(Number(paramsForm['n_modulos']) || 0) > 1 && (() => {
+                              const maxDivisas = Math.max(0, (Number(paramsForm['n_modulos']) || 0) - 1)
+                              return (
+                                <div className="grid gap-3 pt-2 border-t border-slate-200">
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id="master_divisas_frente_fundo"
+                                      checked={!!paramsForm['master_divisas_frente_fundo']}
+                                      onCheckedChange={(c) => {
+                                        handleParamChange('master_divisas_frente_fundo', !!c)
+                                        if (!c) {
+                                          handleParamChange('divisas_frente', 0)
+                                          handleParamChange('divisas_fundo', 0)
+                                        }
+                                      }}
+                                    />
+                                    <Label htmlFor="master_divisas_frente_fundo" className="text-sm font-bold leading-none cursor-pointer">
+                                      {paramsForm['tipo_fechamento_material'] === 'filme'
+                                        ? 'Vai ter divisa de FILME na frente e no fundo?'
+                                        : 'Vai ter divisa de TELA na frente e no fundo?'}
+                                    </Label>
+                                  </div>
+
+                                  {paramsForm['master_divisas_frente_fundo'] && (
+                                    <div className="grid gap-3 pl-6">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="grid gap-1.5">
+                                          <Label className="uppercase text-xs font-semibold text-slate-600">
+                                            Quantas divisas na FRENTE?
+                                          </Label>
+                                          <Input
+                                            type="number"
+                                            min={0}
+                                            max={maxDivisas}
+                                            value={Number(paramsForm['divisas_frente'] ?? 0)}
+                                            onChange={(e) => {
+                                              const v = Math.min(maxDivisas, Math.max(0, Math.floor(Number(e.target.value) || 0)))
+                                              handleParamChange('divisas_frente', v)
+                                            }}
+                                            className="bg-white"
+                                          />
+                                          <span className="text-[11px] text-slate-500">
+                                            máximo {maxDivisas} nesta estufa
+                                          </span>
+                                        </div>
+                                        <div className="grid gap-1.5">
+                                          <Label className="uppercase text-xs font-semibold text-slate-600">
+                                            Quantas divisas no FUNDO?
+                                          </Label>
+                                          <Input
+                                            type="number"
+                                            min={0}
+                                            max={maxDivisas}
+                                            value={Number(paramsForm['divisas_fundo'] ?? 0)}
+                                            onChange={(e) => {
+                                              const v = Math.min(maxDivisas, Math.max(0, Math.floor(Number(e.target.value) || 0)))
+                                              handleParamChange('divisas_fundo', v)
+                                            }}
+                                            className="bg-white"
+                                          />
+                                          <span className="text-[11px] text-slate-500">
+                                            máximo {maxDivisas} nesta estufa
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <p className="text-xs text-slate-500">
+                                        A divisa só pode ser feita em poste frontal de divisa modular.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })()}
+
+                            {((Number(paramsForm['n_divisas_por_modulo']) || 0) > 0 ||
+                              (Number(paramsForm['divisas_frente']) || 0) > 0 ||
+                              (Number(paramsForm['divisas_fundo']) || 0) > 0) && (
+                              <div className="grid gap-2 pt-2 border-t border-slate-200">
+                                <Label className="uppercase text-xs font-semibold text-slate-600">
+                                  Perfil na divisa:
+                                </Label>
+                                <Select
+                                  value={paramsForm['fechamento_divisa_perfil']?.toString() || 'MOLAS JUNTAS'}
+                                  onValueChange={(val) => handleParamChange('fechamento_divisa_perfil', val)}
+                                >
+                                  <SelectTrigger className="bg-white w-full">
+                                    <SelectValue placeholder="Selecione...">
+                                      {paramsForm['fechamento_divisa_perfil'] === 'MOLAS SEPARADAS'
+                                        ? 'Molas separadas (5078)'
+                                        : 'Molas juntas (5084)'}
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="MOLAS JUNTAS">Molas juntas (5084)</SelectItem>
+                                    <SelectItem value="MOLAS SEPARADAS">Molas separadas (5078)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+
+                            <div className="grid gap-3 pt-2 border-t border-slate-200">
+                              <div className="grid gap-2">
+                                <Label className="uppercase text-xs font-semibold text-slate-600">
+                                  Material da meia lua (arcos frontais):
+                                </Label>
+                                <Select
+                                  value={paramsForm['meia_lua_material']?.toString() || paramsForm['tipo_fechamento_material']?.toString() || ''}
+                                  onValueChange={(val) => {
+                                    handleParamChange('meia_lua_material', val)
+                                    handleParamChange('produto_meia_lua', '')
+                                  }}
+                                >
+                                  <SelectTrigger className="bg-white w-full">
+                                    <SelectValue placeholder="Selecione...">
+                                      {(paramsForm['meia_lua_material'] || paramsForm['tipo_fechamento_material']) === 'tela'
+                                        ? 'Tela'
+                                        : 'Filme'}
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="filme">Filme</SelectItem>
+                                    <SelectItem value="tela">Tela</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {paramsForm['meia_lua_material'] &&
+                                paramsForm['meia_lua_material'] !== paramsForm['tipo_fechamento_material'] && (
+                                <div className="grid gap-2">
+                                  <Label className="uppercase text-xs font-semibold text-slate-600">
+                                    {paramsForm['meia_lua_material'] === 'filme' ? 'Qual filme da meia lua?' : 'Qual tela da meia lua?'}
+                                  </Label>
+                                  <Select
+                                    value={paramsForm['produto_meia_lua']?.toString() || ''}
+                                    onValueChange={(val) => handleParamChange('produto_meia_lua', val)}
+                                  >
+                                    <SelectTrigger className="bg-white w-full">
+                                      <SelectValue placeholder="Selecione o produto...">
+                                        {paramsForm['produto_meia_lua']
+                                          ? (() => {
+                                            const prod = produtos.find(p => p.codigo.toString() === paramsForm['produto_meia_lua']?.toString());
+                                            return prod ? `${prod.codigo} - ${prod.descricao}` : paramsForm['produto_meia_lua']?.toString();
+                                          })()
+                                          : undefined
+                                        }
+                                      </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent className="max-w-[90vw] md:max-w-[600px] max-h-[400px]">
+                                      {produtos
+                                        .filter(p => {
+                                          const desc = p.descricao.toUpperCase()
+                                          if (paramsForm['meia_lua_material'] === 'filme') {
+                                            return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
+                                          } else {
+                                            return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
+                                          }
+                                        })
+                                        .map(p => (
+                                          <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
+                                        ))
+                                      }
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                            </div>
+                          </>
                         )}
                       </div>
                     )}
@@ -1192,10 +1473,21 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                             setPortasConfig(newConfig);
                           }}
                         >
-                          <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione o modelo..." /></SelectTrigger>
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="Selecione o modelo...">
+                              {porta.tipo === 'abrir'
+                                ? 'Porta de Abrir 2,00 x 1,00 m'
+                                : porta.tipo === 'correr_pequena'
+                                  ? 'Porta de Correr 1,20 x 2,00 m'
+                                  : porta.tipo === 'correr_grande'
+                                    ? 'Porta de Correr 2,10 x 3,00 m'
+                                    : undefined}
+                            </SelectValue>
+                          </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="correr">Porta de Correr</SelectItem>
-                            <SelectItem value="abrir">Porta de Abrir</SelectItem>
+                            <SelectItem value="abrir">Porta de Abrir 2,00 x 1,00 m</SelectItem>
+                            <SelectItem value="correr_pequena">Porta de Correr 1,20 x 2,00 m</SelectItem>
+                            <SelectItem value="correr_grande">Porta de Correr 2,10 x 3,00 m</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
