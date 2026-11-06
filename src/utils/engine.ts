@@ -52,6 +52,25 @@ export type ItemOrcamento = {
 }
 
 /**
+ * Cria o interpretador de fórmulas usado pelo motor (com as funções estilo Excel).
+ * Exportado para que o validador de pacotes de regras use EXATAMENTE o mesmo interpretador.
+ */
+export function criarParser(): Parser {
+  const parser = new Parser()
+  // Funções estilo Excel
+  parser.functions.IF = function(cond: any, a: any, b: any) { return cond ? a : b; }
+  parser.functions.AND = function(...args: any[]) { return args.every(Boolean); }
+  parser.functions.OR = function(...args: any[]) { return args.some(Boolean); }
+  parser.functions.SUM = function(...args: any[]) { return args.reduce((acc, v) => acc + (Number(v) || 0), 0); }
+  parser.functions.ROUNDUP = function(val: any, digits: any=0) { return Math.ceil(val); }
+  parser.functions.FLOOR = function(val: any, factor: any) { return Math.floor(val); }
+  // CONTAINS: usado para checar se uma posição está selecionada em campos multi-select
+  // salvos como string separada por vírgula (ex.: modelo_cabo = 'INTERNOS,LATERAL 1,COMPLETO')
+  parser.functions.CONTAINS = function(haystack: any, needle: any) { return String(haystack ?? '').split(',').map(s => s.trim()).includes(String(needle).trim()); }
+  return parser
+}
+
+/**
  * Motor Matemático Principal
  */
 export function calcularOrcamento(
@@ -59,7 +78,7 @@ export function calcularOrcamento(
   regrasRaw: RegraCalculo[],
   produtos: Produto[]
 ): ItemOrcamento[] {
-  const parser = new Parser()
+  const parser = criarParser()
   
   // Remove regras duplicadas (prevenindo explosão de JOIN ou regras cadastradas em dobro no banco com pequenas variações)
   const regrasMap = new Map<string, RegraCalculo>()
@@ -77,16 +96,6 @@ export function calcularOrcamento(
   }
   const regras = Array.from(regrasMap.values())
   
-  // Funções estilo Excel
-  parser.functions.IF = function(cond: any, a: any, b: any) { return cond ? a : b; }
-  parser.functions.AND = function(...args: any[]) { return args.every(Boolean); }
-  parser.functions.OR = function(...args: any[]) { return args.some(Boolean); }
-  parser.functions.SUM = function(...args: any[]) { return args.reduce((acc, v) => acc + (Number(v) || 0), 0); }
-  parser.functions.ROUNDUP = function(val: any, digits: any=0) { return Math.ceil(val); }
-  parser.functions.FLOOR = function(val: any, factor: any) { return Math.floor(val); }
-  // CONTAINS: usado para checar se uma posição está selecionada em campos multi-select
-  // salvos como string separada por vírgula (ex.: modelo_cabo = 'INTERNOS,LATERAL 1,COMPLETO')
-  parser.functions.CONTAINS = function(haystack: any, needle: any) { return String(haystack ?? '').split(',').map(s => s.trim()).includes(String(needle).trim()); }
   const itens: ItemOrcamento[] = []
 
   // Resolve códigos de produto "placeholder" (FILME-XXX / TELA-XXX) para o produto
