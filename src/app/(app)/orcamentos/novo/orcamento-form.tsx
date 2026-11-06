@@ -194,6 +194,16 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
     }
   }, [paramsForm['tipo_poste']])
 
+  // Voltar tipo_poste para 100X50 GALVANIZADO se estiver 75X40 GALVANIZADO e o pé-direito deixar de ser 4
+  useEffect(() => {
+    if (paramsForm['tipo_poste'] === '75X40 GALVANIZADO' && Number(paramsForm['pe_direito']) !== 4) {
+      setParamsForm(prev => ({
+        ...prev,
+        tipo_poste: '100X50 GALVANIZADO'
+      }))
+    }
+  }, [paramsForm['pe_direito'], paramsForm['tipo_poste']])
+
   // Efeito para sincronizar divisas de frente/fundo, perfil na divisa, largura do rolo de tela e meia lua
   useEffect(() => {
     const fechamentoAtivo = Boolean(paramsForm['fechamento_lateral'])
@@ -1356,6 +1366,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
               }
 
               if (param.nome_tecnico === 'tipo_poste') {
+                const permite75x40 = Number(paramsForm['pe_direito']) === 4
                 return (
                   <div key="tipo_poste" className="grid gap-2">
                     <div className="flex items-center justify-between">
@@ -1375,8 +1386,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                         <SelectItem value="100X50 GALVANIZADO">
                           100x50 Galvanizado (Padrão Homologado ArcoForte)
                         </SelectItem>
-                        <SelectItem value="75X40 GALVANIZADO" disabled className="opacity-50 text-slate-400">
-                          75x40 Galvanizado (Aguardando aprovação de regras)
+                        <SelectItem
+                          value="75X40 GALVANIZADO"
+                          disabled={!permite75x40}
+                          className={!permite75x40 ? "opacity-50 text-slate-400" : undefined}
+                        >
+                          {permite75x40
+                            ? "75x40 Galvanizado (somente pé-direito 4 m)"
+                            : "75x40 Galvanizado (disponível só com pé-direito 4 m)"}
                         </SelectItem>
                         <SelectItem value="EUCALIPTO" disabled className="opacity-50 text-slate-400">
                           Eucalipto Tratado (Aguardando aprovação de regras)
@@ -1384,7 +1401,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground leading-tight">
-                      * As regras de cálculo oficiais da ArcoForte geram exclusivamente os postes 100x50 Galvanizados. As opções 75x40 e Eucalipto estão desabilitadas no momento até que a Engenharia cadastre suas fórmulas correspondentes.
+                      * Postes 100x50 Galvanizados são o padrão. Com pé-direito de 4 m é possível usar 75x40 Galvanizado (poste 3300) nos postes de canto, laterais e de divisa modular; os postes centrais de topo de arco continuam 100x50. Eucalipto aguarda aprovação de regras.
                     </p>
                   </div>
                 )
