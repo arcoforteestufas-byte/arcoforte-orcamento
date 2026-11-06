@@ -10,12 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Parser } from "expr-eval"
-import { Play, Save, CheckCircle2, XCircle, History, Calculator, Sliders, Clock, User, ArrowRight, Loader2 } from "lucide-react"
-import { updateRegraCalculo, obterHistoricoRegra, HistoricoRegraItem } from "@/app/actions/regras"
-import { ConditionBuilder } from "./condition-builder"
-import { toast } from "sonner"
+import { Play, CheckCircle2, XCircle, History, Calculator, Sliders, Clock, User, Loader2 } from "lucide-react"
+import { obterHistoricoRegra, HistoricoRegraItem } from "@/app/actions/regras"
 
 type EditRegraModalProps = {
   isOpen: boolean;
@@ -36,8 +33,7 @@ const LABELS_CAMPOS: Record<string, string> = {
   margem_perda: "Margem de Perda (%)"
 }
 
-export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, regras }: EditRegraModalProps) {
-  const [isSaving, setIsSaving] = useState(false)
+export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos }: EditRegraModalProps) {
   const [activeTab, setActiveTab] = useState<"editor" | "historico">("editor")
   
   // Histórico state
@@ -71,7 +67,7 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
     error?: string;
   } | null>(null)
 
-  const { register, handleSubmit, setValue, watch, reset } = useForm({
+  const { register, watch, reset } = useForm({
     defaultValues: {
       posicao_id: "",
       produto_codigo: "",
@@ -111,19 +107,6 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
       console.error("Erro ao carregar histórico:", err)
     } finally {
       setIsLoadingHistorico(false)
-    }
-  }
-
-  const onSubmit = async (data: any) => {
-    if (!regra) return
-    setIsSaving(true)
-    const res = await updateRegraCalculo(regra.id, data)
-    setIsSaving(false)
-    if (res && res.success === true) {
-      toast.success("Regra salva com sucesso e alteração registrada no histórico!")
-      onClose()
-    } else {
-      toast.error("Erro ao salvar regra: " + (res?.error || "Falha na comunicação com o Supabase"))
     }
   }
 
@@ -216,10 +199,10 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
             <div>
               <DialogTitle className="text-lg font-bold flex items-center gap-2">
                 <Sliders className="h-5 w-5 text-[#d97021]" />
-                Editor Avançado de Regra
+                Detalhes da Regra
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Ajuste a matemática, simule o cálculo com variáveis reais e consulte o histórico de alterações.
+                Para alterar esta regra use Configurações → Pacote de Regras.
               </DialogDescription>
             </div>
             
@@ -232,7 +215,7 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
                 className={`text-xs gap-1.5 ${activeTab === "editor" ? "bg-[#d97021] text-white hover:bg-[#c3631b]" : ""}`}
               >
                 <Calculator className="h-3.5 w-3.5" />
-                Editor & Testador
+                Detalhes & Simulador
               </Button>
               <Button
                 type="button"
@@ -252,9 +235,9 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
         </DialogHeader>
 
         {activeTab === "editor" ? (
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-2 grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="mt-2 grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            {/* LADO ESQUERDO: CONFIGURAÇÃO DA REGRA (7 colunas em telas grandes) */}
+            {/* LADO ESQUERDO: VISUALIZAÇÃO DA REGRA (6 colunas em telas grandes) */}
             <div className="lg:col-span-6 space-y-4">
               <div className="flex items-center justify-between border-b pb-2">
                 <h3 className="font-bold text-sm text-slate-800">Parâmetros da Regra</h3>
@@ -266,10 +249,7 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Produto Associado</Label>
-                  <Select 
-                    value={watch("produto_codigo")} 
-                    onValueChange={(v) => setValue("produto_codigo", v || "")}
-                  >
+                  <Select value={watch("produto_codigo")} disabled>
                     <SelectTrigger className="h-9 text-xs">
                       <SelectValue placeholder="Selecione um produto...">
                         {watch("produto_codigo") 
@@ -289,10 +269,7 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Posição na Estrutura</Label>
-                  <Select 
-                    value={watch("posicao_id")} 
-                    onValueChange={(v) => setValue("posicao_id", v || "")}
-                  >
+                  <Select value={watch("posicao_id")} disabled>
                     <SelectTrigger className="h-9 text-xs">
                       <SelectValue placeholder="Selecione a posição...">
                         {watch("posicao_id") 
@@ -317,9 +294,9 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
                   </span>
                 </div>
                 <Textarea 
-                  {...register("formula_quantidade", { required: true })}
-                  className="font-mono text-xs bg-slate-50 border-zinc-300 focus:bg-white"
-                  placeholder="Ex: (n_vaos - 1) * 2"
+                  {...register("formula_quantidade")}
+                  readOnly
+                  className="font-mono text-xs bg-slate-50 border-zinc-300"
                   rows={3}
                 />
                 <p className="text-[10px] text-slate-500">
@@ -328,20 +305,24 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
               </div>
 
               <div className="space-y-1.5">
-                <ConditionBuilder 
-                  value={watch("condicao_aplicabilidade") || ""}
-                  onChange={(val) => setValue("condicao_aplicabilidade", val)}
+                <Label className="text-xs font-semibold">Condição de Aplicabilidade</Label>
+                <Textarea 
+                  {...register("condicao_aplicabilidade")}
+                  readOnly
+                  placeholder="Sempre aplicável (sem condição)"
+                  className="font-mono text-xs bg-slate-50 border-zinc-300"
+                  rows={2}
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-3 pt-1">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Unidade</Label>
-                  <Input {...register("unidade_medida", { required: true })} className="h-9 text-xs" />
+                  <Input {...register("unidade_medida")} readOnly className="h-9 text-xs bg-slate-50" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Arredondamento</Label>
-                  <Select value={watch("regra_arredondamento")} onValueChange={v => setValue("regra_arredondamento", v || "")}>
+                  <Select value={watch("regra_arredondamento")} disabled>
                     <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cima" className="text-xs">Para Cima</SelectItem>
@@ -352,14 +333,13 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Perda (%)</Label>
-                  <Input type="number" step="0.01" {...register("margem_perda")} className="h-9 text-xs" />
+                  <Input type="number" step="0.01" {...register("margem_perda")} readOnly className="h-9 text-xs bg-slate-50" />
                 </div>
               </div>
-              
-              <Button type="submit" disabled={isSaving} className="w-full mt-2 bg-[#d97021] hover:bg-[#c3631b] font-bold text-xs h-10 shadow-sm">
-                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                {isSaving ? "Salvando..." : "Salvar Regra"}
-              </Button>
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                Para alterar esta regra use Configurações → Pacote de Regras.
+              </div>
             </div>
 
             {/* LADO DIREITO: SIMULADOR INTEGRADO COM TODAS AS VARIÁVEIS (6 colunas) */}
@@ -614,7 +594,7 @@ export function EditRegraModal({ isOpen, onClose, regra, posicoes, produtos, reg
               </div>
 
             </div>
-          </form>
+          </div>
         ) : (
           /* ABA: HISTÓRICO DE ALTERAÇÕES DA REGRA */
           <div className="py-2 space-y-4">

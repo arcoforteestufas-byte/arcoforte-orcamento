@@ -14,7 +14,7 @@ export default async function ParametrosEstufaPage() {
             <div>
                 <h2 className="text-3xl font-bold tracking-tight">Parâmetros da Estufa</h2>
                 <p className="text-muted-foreground">
-                    Campos que aparecem no formulário de orçamento e são usados pelas fórmulas em Regras de Montagem.
+                    Campos que aparecem no formulário de orçamento. Consulta apenas: para alterar use Configurações → Pacote de Regras.
                 </p>
             </div>
 
