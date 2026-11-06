@@ -3,8 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Settings2, TestTube2, Bot } from "lucide-react"
-import Link from "next/link"
+import { PlusCircle, Settings2, TestTube2 } from "lucide-react"
 import { createClient, createAdminClient } from "@/utils/supabase/server"
 import { CsvUploader } from "@/components/csv-uploader"
 import { SeedRegrasButton } from "@/components/seed-regras-button"
@@ -31,12 +30,6 @@ export default async function RegrasMontagemPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/admin/configuracoes?tab=claude">
-            <Button variant="outline" className="gap-2 border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100 font-semibold shadow-xs">
-              <Bot className="h-4 w-4" />
-              Sincronizar Claude
-            </Button>
-          </Link>
           <Button variant="outline" className="gap-2">
             <TestTube2 className="h-4 w-4" />
             Testar Motor

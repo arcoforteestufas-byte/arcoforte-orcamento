@@ -7,10 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Paintbrush, Image as ImageIcon, Settings2, FileText, CheckCircle2, Users, Bot, BookOpen, Package } from "lucide-react"
+import { Paintbrush, Image as ImageIcon, Settings2, FileText, CheckCircle2, Users, BookOpen, Package } from "lucide-react"
 import { UsersManager } from "@/components/users-manager"
 import { PropostaTopicsManager } from "./proposta-topics-manager"
-import { ClaudeSyncManager } from "./claude-sync-manager"
 import { PacoteRegrasManager } from "./pacote-regras-manager"
 import { ReactNode } from "react"
 
@@ -46,7 +45,7 @@ export function ConfiguracoesClient({
   const [isSaving, setIsSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
 
-  // Lê a aba indicada na URL (ex: /admin/configuracoes?tab=claude)
+  // Lê a aba indicada na URL (ex: /admin/configuracoes?tab=pacote)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search)
@@ -94,9 +93,6 @@ export function ConfiguracoesClient({
           <TabsTrigger value="regras" className="flex items-center gap-2"><Settings2 size={16}/> Regras</TabsTrigger>
           <TabsTrigger value="parametros" className="flex items-center gap-2"><Settings2 size={16}/> Parâmetros</TabsTrigger>
           <TabsTrigger value="pacote" className="flex items-center gap-2 font-semibold"><Package size={16}/> Pacote de Regras</TabsTrigger>
-          <TabsTrigger value="claude" className="flex items-center gap-2 text-purple-700 bg-purple-50 hover:bg-purple-100 data-[state=active]:bg-purple-700 data-[state=active]:text-white font-semibold">
-            <Bot size={16}/> Claude Sync
-          </TabsTrigger>
           <TabsTrigger value="documentacao" className="flex items-center gap-2 text-amber-800 bg-amber-50 hover:bg-amber-100 data-[state=active]:bg-[#d97021] data-[state=active]:text-white font-semibold">
             <BookOpen size={16}/> Documentação
           </TabsTrigger>
@@ -265,11 +261,6 @@ export function ConfiguracoesClient({
         {/* ABA PACOTE DE REGRAS (fonte única: regras + parâmetros + manuais) */}
         <TabsContent value="pacote" className="mt-6">
           <PacoteRegrasManager />
-        </TabsContent>
-
-        {/* ABA CLAUDE SYNC */}
-        <TabsContent value="claude" className="mt-6">
-          <ClaudeSyncManager />
         </TabsContent>
 
         {/* ABA DOCUMENTACAO */}
