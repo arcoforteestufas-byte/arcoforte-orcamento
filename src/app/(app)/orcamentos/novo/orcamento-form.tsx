@@ -40,7 +40,8 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   const [paramsForm, setParamsForm] = useState<ParametrosEstufa>({
     croqui_url: initialCroquiUrl || '',
     croqui_id: initialCroquiId || '',
-    pe_direito: initialA || ''
+    pe_direito: initialA || '',
+    tipo_poste: '100X50 GALVANIZADO'
   })
   const [resultado, setResultado] = useState<ItemOrcamento[]>([])
   
@@ -1069,6 +1070,41 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                         </Button>
                       </div>
                     )}
+                  </div>
+                )
+              }
+
+              if (param.nome_tecnico === 'tipo_poste') {
+                return (
+                  <div key="tipo_poste" className="grid gap-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="uppercase text-xs font-semibold text-slate-600">{param.rotulo}</Label>
+                      <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-800 border-amber-300 font-semibold">
+                        Padrão Ativo
+                      </Badge>
+                    </div>
+                    <Select 
+                      value={paramsForm['tipo_poste']?.toString() || '100X50 GALVANIZADO'}
+                      onValueChange={(val) => handleParamChange('tipo_poste', val)}
+                    >
+                      <SelectTrigger className="w-full bg-white">
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="100X50 GALVANIZADO">
+                          100x50 Galvanizado (Padrão Homologado ArcoForte)
+                        </SelectItem>
+                        <SelectItem value="75X40 GALVANIZADO" disabled className="opacity-50 text-slate-400">
+                          75x40 Galvanizado (Aguardando aprovação de regras)
+                        </SelectItem>
+                        <SelectItem value="EUCALIPTO" disabled className="opacity-50 text-slate-400">
+                          Eucalipto Tratado (Aguardando aprovação de regras)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground leading-tight">
+                      * As regras de cálculo oficiais da ArcoForte geram exclusivamente os postes 100x50 Galvanizados. As opções 75x40 e Eucalipto estão desabilitadas no momento até que a Engenharia cadastre suas fórmulas correspondentes.
+                    </p>
                   </div>
                 )
               }

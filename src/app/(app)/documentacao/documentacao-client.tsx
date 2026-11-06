@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import ReactMarkdown from "react-markdown"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -32,9 +33,14 @@ import {
   Code2,
   Terminal,
   ExternalLink,
-  Info
+  Info,
+  History,
+  RotateCcw,
+  Clock,
+  AlertCircle
 } from "lucide-react"
-import { salvarManualOficial, DadosItemManual } from "@/app/actions/documentacao"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { salvarManualOficial, obterHistoricoDocumentacao, DadosItemManual, VersaoHistoricoManual } from "@/app/actions/documentacao"
 
 export interface DocumentacaoClientProps {
   manualHumano: DadosItemManual
@@ -88,6 +94,12 @@ export function DocumentacaoClient({
   const [copiouClaude, setCopiouClaude] = useState(false)
   const [termoBusca, setTermoBusca] = useState("")
 
+  // Estados de Histórico de Versões
+  const [isHistoricoOpen, setIsHistoricoOpen] = useState(false)
+  const [isLoadingHistorico, setIsLoadingHistorico] = useState(false)
+  const [versoesList, setVersoesList] = useState<VersaoHistoricoManual[]>([])
+  const [versaoVisualizando, setVersaoVisualizando] = useState<VersaoHistoricoManual | null>(null)
+
   // Seletores conforme o manual ativo
   const conteudoAtual = manualAtivo === "humano" ? conteudoHumano : conteudoTecnico
   const versaoAtual = manualAtivo === "humano" ? versaoHumano : versaoTecnico
@@ -101,6 +113,38 @@ export function DocumentacaoClient({
   const setVersaoAtual = (nova: string) => {
     if (manualAtivo === "humano") setVersaoHumano(nova)
     else setVersaoTecnico(nova)
+  }
+
+  const abrirHistorico = async () => {
+    setIsHistoricoOpen(true)
+    setIsLoadingHistorico(true)
+    setVersaoVisualizando(null)
+    try {
+      const res = await obterHistoricoDocumentacao(manualAtivo)
+      if (res.success) {
+        setVersoesList(res.versoes)
+      } else {
+        toast.error("Erro ao carregar histórico: " + res.error)
+      }
+    } catch (err: any) {
+      toast.error("Erro ao buscar histórico: " + err.message)
+    } finally {
+      setIsLoadingHistorico(false)
+    }
+  }
+
+  const restaurarVersao = (item: VersaoHistoricoManual) => {
+    if (!item.conteudo_markdown) {
+      toast.error("Conteúdo completo desta versão não disponível para restauração direta.")
+      return
+    }
+    setConteudoAtual(item.conteudo_markdown)
+    setVersaoAtual(item.versao)
+    setIsEditing(true)
+    setIsHistoricoOpen(false)
+    toast.success(`Versão ${item.versao} carregada no editor! Clique em 'Salvar Alterações' para confirmar.`, {
+      duration: 6000
+    })
   }
 
   // Gera Sumário (TOC) dinamicamente a partir dos cabeçalhos ## do markdown atual
@@ -166,21 +210,33 @@ Por favor, atue como o engenheiro sênior da ArcoForte. Quando sugerir ou atuali
     toast.success("Download do arquivo Markdown iniciado!")
   }
 
+  const router = useRouter()
+
   const handleSalvar = async () => {
     setIsSaving(true)
     try {
       const res = await salvarManualOficial(manualAtivo, conteudoAtual, versaoAtual)
-      if (res.success) {
-        toast.success(res.message, { duration: 5000 })
+      if (res && res.success === true) {
+        toast.success(res.message || "Manual salvo com sucesso no Supabase!", { duration: 5000 })
         const agora = new Date().toLocaleDateString("pt-BR") + " às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-        if (manualAtivo === "humano") setAtualizadoEmHumano(agora)
-        else setAtualizadoEmTecnico(agora)
+        if (manualAtivo === "humano") {
+          setAtualizadoEmHumano(agora)
+          if (res.versao) setVersaoHumano(res.versao)
+        } else {
+          setAtualizadoEmTecnico(agora)
+          if (res.versao) setVersaoTecnico(res.versao)
+        }
         setIsEditing(false)
+        router.refresh()
       } else {
-        toast.error("Erro ao salvar: " + res.error)
+        const msg = res?.error || "Falha desconhecida ao salvar manual no Supabase."
+        toast.error("Erro ao salvar: " + msg, { 
+          duration: 9000,
+          description: "O conteúdo não pôde ser gravado no Supabase."
+        })
       }
     } catch (err: any) {
-      toast.error("Erro fatal: " + err.message)
+      toast.error("Erro fatal: " + (err?.message || "Erro inesperado"), { duration: 9000 })
     } finally {
       setIsSaving(false)
     }
@@ -352,6 +408,16 @@ Por favor, atue como o engenheiro sênior da ArcoForte. Quando sugerir ou atuali
             >
               <Download className="h-4 w-4" />
               Baixar .MD
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={abrirHistorico}
+              className="gap-1.5 border-slate-200 text-slate-700 hover:bg-slate-50 text-xs"
+            >
+              <History className="h-4 w-4 text-purple-600" />
+              Histórico de Versões
             </Button>
 
             {isAdministrador && (
@@ -574,6 +640,111 @@ Por favor, atue como o engenheiro sênior da ArcoForte. Quando sugerir ou atuali
           </div>
         </div>
       )}
+      {/* MODAL DE HISTÓRICO DE VERSÕES */}
+      <Dialog open={isHistoricoOpen} onOpenChange={setIsHistoricoOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <History className="h-5 w-5 text-purple-600" />
+              Histórico de Versões — {manualAtivo === "humano" ? "Manual em Linguagem Natural" : "Manual Técnico (Claude & IA)"}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Histórico de revisões gravadas no Supabase. Você pode consultar o que mudou e restaurar versões anteriores para o editor.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingHistorico ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+              <p className="text-xs text-slate-500">Buscando histórico no Supabase...</p>
+            </div>
+          ) : versoesList.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center bg-slate-50">
+              <Clock className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+              <h4 className="text-sm font-semibold text-slate-700">Nenhuma versão anterior gravada ainda</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                A partir de agora, a cada &quot;Salvar Alterações&quot; no editor, um snapshot desta documentação será registrado automaticamente no Supabase.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4 mt-2">
+              {versoesList.map((item, idx) => {
+                const isSelected = versaoVisualizando?.id === item.id
+                const dataFormatada = item.alterado_em
+                  ? new Date(item.alterado_em).toLocaleDateString("pt-BR") + " às " + new Date(item.alterado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+                  : "Data não registrada"
+
+                return (
+                  <div key={item.id || idx} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-purple-200 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="font-bold text-xs bg-purple-50 text-purple-800 border-purple-200">
+                            Versão {item.versao}
+                          </Badge>
+                          {idx === 0 && (
+                            <Badge variant="default" className="bg-emerald-600 text-white text-[10px]">
+                              Mais Recente
+                            </Badge>
+                          )}
+                          <span className="text-xs text-slate-500 flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {dataFormatada}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600">
+                          {item.resumo_alteracao || `Alteração realizada`}
+                          {item.autor_nome && <span className="text-slate-500 ml-1">• por <strong>{item.autor_nome}</strong></span>}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {item.conteudo_markdown && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setVersaoVisualizando(isSelected ? null : item)}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            {isSelected ? "Ocultar" : "Ver Conteúdo"}
+                          </Button>
+                        )}
+
+                        {isAdministrador && item.conteudo_markdown && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => restaurarVersao(item)}
+                            className="h-8 text-xs gap-1 bg-[#d97021] hover:bg-[#c3631b] text-white"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Restaurar no Editor
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* PREVIEW DO CONTEÚDO EXPANSÍVEL */}
+                    {isSelected && (
+                      <div className="mt-4 pt-4 border-t border-slate-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold text-slate-700">Prévia do Conteúdo Markdown (v{item.versao}):</span>
+                          <span className="text-[11px] text-slate-400">{item.conteudo_markdown.length} caracteres</span>
+                        </div>
+                        <div className="p-4 bg-slate-900 text-slate-100 rounded-lg text-xs font-mono max-h-60 overflow-y-auto whitespace-pre-wrap">
+                          {item.conteudo_markdown.slice(0, 3000)}
+                          {item.conteudo_markdown.length > 3000 && "\n\n... [conteúdo truncado na prévia]"}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

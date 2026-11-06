@@ -1,8 +1,8 @@
 # Manual de Regras e Orçamento de Estufas ArcoForte
 ### Versão em Linguagem Simples e Acessível (Para Vendedores, Engenharia e Clientes)
 
-**Versão Oficial:** 1.0  
-**Última Atualização:** Outubro de 2026  
+**Versão Oficial:** 3.1
+**Última Atualização:** 2 de novembro de 2026
 **Finalidade:** Explicar em português simples, prático e sem termos obscuros de programação como a estufa é projetada e como o sistema calcula a lista de materiais.
 
 ---
