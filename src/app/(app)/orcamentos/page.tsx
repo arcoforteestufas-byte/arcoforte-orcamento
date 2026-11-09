@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { PlusCircle, Search, FileText } from "lucide-react"
+import { PlusCircle, Search, FileText, Pencil } from "lucide-react"
 import Link from "next/link"
 import { ExcluirOrcamentoButton } from "./excluir-orcamento-button"
 
@@ -119,6 +119,13 @@ export default async function OrcamentosPage() {
                         title="Ver Detalhes"
                       >
                         <FileText className="h-4 w-4 text-slate-500" />
+                      </Link>
+                      <Link 
+                        href={`/orcamentos/${orc.id}/editar`}
+                        className={buttonVariants({ variant: "ghost", size: "icon" })}
+                        title="Editar Orçamento"
+                      >
+                        <Pencil className="h-4 w-4 text-slate-500 hover:text-[#d97021]" />
                       </Link>
                       {isAdministrador && (
                         <ExcluirOrcamentoButton

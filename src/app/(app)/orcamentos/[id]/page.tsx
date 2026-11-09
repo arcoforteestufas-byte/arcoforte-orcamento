@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import Link from "next/link"
-import { ArrowLeft, ChevronDown } from "lucide-react"
+import { ArrowLeft, ChevronDown, Pencil } from "lucide-react"
 import { PdfButtons } from "./pdf-buttons"
 import { ItemOrcamento } from "@/utils/engine"
 import { OrcamentoComercial } from "./orcamento-comercial-client"
@@ -76,14 +76,23 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
 
   return (
     <div className="flex flex-col gap-6 pb-12">
-      <div className="flex items-center gap-4">
-        <Link href="/orcamentos" className={buttonVariants({ variant: "outline", size: "icon" })}>
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Detalhes do Orçamento</h2>
-          <p className="text-muted-foreground">ID: #{orcamento.id.split('-')[0].toUpperCase()}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link href="/orcamentos" className={buttonVariants({ variant: "outline", size: "icon" })}>
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Detalhes do Orçamento</h2>
+            <p className="text-muted-foreground">ID: #{orcamento.id.split('-')[0].toUpperCase()}</p>
+          </div>
         </div>
+        <Link
+          href={`/orcamentos/${orcamento.id}/editar`}
+          className={buttonVariants({ variant: "default", className: "gap-2 bg-[#d97021] hover:bg-[#c3631b]" })}
+        >
+          <Pencil className="h-4 w-4" />
+          Editar Orçamento
+        </Link>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">

@@ -161,9 +161,16 @@ type Props = {
   regras: RegraCalculo[]
   produtos: Produto[]
   clientes: { id: string, nome: string, documento: string | null, cidade_uf: string | null }[]
+  orcamentoInicial?: {
+    id: string
+    cliente_id: string
+    status?: string
+    parametros_utilizados: ParametrosEstufa
+    itens?: ItemOrcamento[]
+  }
 }
 
-export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Props) {
+export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcamentoInicial }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -173,29 +180,76 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
   const initialL = searchParams.get('l') ? Number(searchParams.get('l')) : ''
   const initialA = searchParams.get('a') ? Number(searchParams.get('a')) : undefined
 
-  const [paramsForm, setParamsForm] = useState<ParametrosEstufa>({
-    croqui_url: initialCroquiUrl || '',
-    croqui_id: initialCroquiId || '',
-    pe_direito: initialA || '',
-    tipo_poste: '100X50 GALVANIZADO'
+  const [paramsForm, setParamsForm] = useState<ParametrosEstufa>((): ParametrosEstufa => {
+    if (orcamentoInicial?.parametros_utilizados) {
+      return {
+        tipo_poste: '100X50 GALVANIZADO',
+        ...orcamentoInicial.parametros_utilizados,
+      }
+    }
+    return {
+      croqui_url: initialCroquiUrl || '',
+      croqui_id: initialCroquiId || '',
+      pe_direito: initialA || '',
+      tipo_poste: '100X50 GALVANIZADO'
+    }
   })
-  const [resultado, setResultado] = useState<ItemOrcamento[]>([])
+  const [resultado, setResultado] = useState<ItemOrcamento[]>(() => orcamentoInicial?.itens || [])
   
   // Controle de Cliente
   const [localClientes, setLocalClientes] = useState(clientes)
-  const [selectedCliente, setSelectedCliente] = useState<string>("")
+  const [selectedCliente, setSelectedCliente] = useState<string>(orcamentoInicial?.cliente_id || "")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [novoCliente, setNovoCliente] = useState({ nome: '', documento: '', cidade_uf: '' })
   const [swapItemIndex, setSwapItemIndex] = useState<number | null>(null)
   
-  const [comprimento, setComprimento] = useState<number | ''>(initialC)
-  const [larguraTotal, setLarguraTotal] = useState<number | ''>(initialL)
+  const [comprimento, setComprimento] = useState<number | ''>(() => {
+    const p = orcamentoInicial?.parametros_utilizados
+    if (p?.comprimento_estufa) return Number(p.comprimento_estufa)
+    if (p?.vao && p?.n_vaos) return Number(p.vao) * Number(p.n_vaos)
+    return initialC
+  })
+  const [larguraTotal, setLarguraTotal] = useState<number | ''>(() => {
+    const p = orcamentoInicial?.parametros_utilizados
+    if (p?.n_modulos && p?.largura_modulo) {
+      return Number(p.n_modulos) * Number(p.largura_modulo)
+    }
+    return initialL
+  })
   const [vaoError, setVaoError] = useState('')
   const [vaoUltimo, setVaoUltimo] = useState<number | ''>('')
   
-  const [portasConfig, setPortasConfig] = useState<{ id: string, quantidade: number | '', tipo: string }[]>([])
-  const [anticamaraConfig, setAnticamaraConfig] = useState<{ id: string, quantidade: number | '', modelo: string }[]>([])
+  const [portasConfig, setPortasConfig] = useState<{ id: string, quantidade: number | '', tipo: string }[]>(() => {
+    const p = orcamentoInicial?.parametros_utilizados
+    if (!p) return []
+    const list: { id: string, quantidade: number | '', tipo: string }[] = []
+    if (Number(p.portas_abrir) > 0) {
+      list.push({ id: 'init-abrir', quantidade: Number(p.portas_abrir), tipo: 'abrir' })
+    }
+    if (Number(p.portas_correr_pequena) > 0) {
+      list.push({ id: 'init-correr-p', quantidade: Number(p.portas_correr_pequena), tipo: 'correr_pequena' })
+    }
+    if (Number(p.portas_correr_grande) > 0) {
+      list.push({ id: 'init-correr-g', quantidade: Number(p.portas_correr_grande), tipo: 'correr_grande' })
+    }
+    if (list.filter(x => x.tipo.startsWith('correr')).length === 0 && Number(p.portas_correr) > 0) {
+      list.push({ id: 'init-correr', quantidade: Number(p.portas_correr), tipo: 'correr_pequena' })
+    }
+    return list
+  })
+  const [anticamaraConfig, setAnticamaraConfig] = useState<{ id: string, quantidade: number | '', modelo: string }[]>(() => {
+    const p = orcamentoInicial?.parametros_utilizados
+    if (!p) return []
+    const list: { id: string, quantidade: number | '', modelo: string }[] = []
+    if (Number(p.anticamara_frontal) > 0) {
+      list.push({ id: 'init-3150', quantidade: Number(p.anticamara_frontal), modelo: '3150' })
+    }
+    if (Number(p.anticamara_lateral) > 0) {
+      list.push({ id: 'init-3160', quantidade: Number(p.anticamara_lateral), modelo: '3160' })
+    }
+    return list
+  })
 
   // Efeito para sincronizar portasConfig com portas_abrir, portas_correr_pequena, portas_correr_grande e portas_correr
   useEffect(() => {
@@ -294,11 +348,16 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
       const largurasPermitidas = [10, 8, 7] // Preferência para módulos maiores
       for (const w of largurasPermitidas) {
         if (l % w === 0) {
-          setParamsForm(prev => ({
-            ...prev,
-            largura_modulo: w,
-            n_modulos: l / w
-          }))
+          setParamsForm(prev => {
+            if ((Number(prev.n_modulos) || 0) * (Number(prev.largura_modulo) || 0) === l) {
+              return prev
+            }
+            return {
+              ...prev,
+              largura_modulo: w,
+              n_modulos: l / w
+            }
+          })
           break
         }
       }
@@ -495,25 +554,49 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
       if (!user) throw new Error("Usuário não autenticado")
 
       const valorTotal = resultado.reduce((acc, curr) => acc + curr.valor_total, 0)
+      let orcamentoId = orcamentoInicial?.id
 
-      // 1. Criar o orçamento
-      const { data: orcamento, error: orcError } = await supabase
-        .from('orcamentos')
-        .insert({
-          cliente_id: selectedCliente,
-          vendedor_id: user.id,
-          status: 'Rascunho',
-          parametros_utilizados: paramsForm,
-          valor_total: valorTotal
-        })
-        .select('id')
-        .single()
+      if (orcamentoId) {
+        // 1. Atualizar o orçamento existente
+        const { error: orcError } = await supabase
+          .from('orcamentos')
+          .update({
+            cliente_id: selectedCliente,
+            parametros_utilizados: paramsForm,
+            valor_total: valorTotal
+          })
+          .eq('id', orcamentoId)
 
-      if (orcError) throw orcError
+        if (orcError) throw orcError
+
+        // Remover itens antigos para substituir pela lista atualizada
+        const { error: delError } = await supabase
+          .from('orcamento_itens')
+          .delete()
+          .eq('orcamento_id', orcamentoId)
+
+        if (delError) throw delError
+      } else {
+        // 1. Criar novo orçamento
+        const { data: orcamento, error: orcError } = await supabase
+          .from('orcamentos')
+          .insert({
+            cliente_id: selectedCliente,
+            vendedor_id: user.id,
+            status: 'Rascunho',
+            parametros_utilizados: paramsForm,
+            valor_total: valorTotal
+          })
+          .select('id')
+          .single()
+
+        if (orcError) throw orcError
+        orcamentoId = orcamento.id
+      }
 
       // 2. Inserir os itens
       const itensToInsert = resultado.map(item => ({
-        orcamento_id: orcamento.id,
+        orcamento_id: orcamentoId,
         produto_codigo: item.produto_codigo,
         posicao_id: item.posicao_id || null,
         descricao_customizada: item.isManualChange ? `Substituiu: ${item.manualOriginalProduto}` : null,
@@ -537,8 +620,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
         if (fallbackError) throw fallbackError
       }
 
-      toast.success("Orçamento salvo com sucesso!")
-      router.push('/orcamentos') // Redireciona para a lista
+      if (orcamentoInicial?.id) {
+        toast.success("Orçamento atualizado com sucesso!")
+        router.push(`/orcamentos/${orcamentoId}`)
+        router.refresh()
+      } else {
+        toast.success("Orçamento salvo com sucesso!")
+        router.push('/orcamentos')
+      }
     } catch (e: any) {
       toast.error("Erro ao salvar orçamento: " + e.message)
     } finally {
@@ -769,7 +858,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                 return (
                   <div className="grid gap-2">
                     <Label className="font-bold text-slate-800 uppercase text-xs">{paramVao.rotulo}</Label>
-                    <Select onValueChange={(val) => handleParamChange('vao', Number(val))}>
+                    <Select value={paramsForm['vao']?.toString() || ''} onValueChange={(val) => handleParamChange('vao', Number(val))}>
                       <SelectTrigger className="bg-white border-slate-300 text-lg py-6"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
@@ -1491,10 +1580,13 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                 return (
                   <div key={param.nome_tecnico} className="grid gap-2">
                     <Label className="uppercase text-xs font-semibold text-slate-600">{param.rotulo}</Label>
-                    <Select onValueChange={(val) => {
-                      const num = Number(val)
-                      handleParamChange(param.nome_tecnico, isNaN(num) ? val : num)
-                    }}>
+                    <Select
+                      value={paramsForm[param.nome_tecnico]?.toString() || ''}
+                      onValueChange={(val) => {
+                        const num = Number(val)
+                        handleParamChange(param.nome_tecnico, isNaN(num) ? val : num)
+                      }}
+                    >
                       <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
@@ -1511,9 +1603,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                   <Label className="uppercase text-xs font-semibold text-slate-600">{param.rotulo}</Label>
                   <Input 
                     type={param.tipo === 'numero' ? 'number' : 'text'} 
+                    value={paramsForm[param.nome_tecnico]?.toString() || ''}
                     placeholder={`Ex: ${param.tipo === 'numero' ? '10' : ''}`}
                     onChange={(e) => {
-                      const val = param.tipo === 'numero' ? Number(e.target.value) : e.target.value
+                      const val = param.tipo === 'numero' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value
                       handleParamChange(param.nome_tecnico, val)
                     }}
                   />
@@ -1614,7 +1707,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
           <CardFooter className="bg-muted/30 pt-6">
             <Button onClick={handleCalcular} className="w-full gap-2 text-lg py-6 bg-[#d97021] hover:bg-[#c3631b] text-white">
               <Calculator className="h-5 w-5" />
-              Calcular Lista de Materiais
+              {orcamentoInicial ? "Recalcular Lista de Materiais" : "Calcular Lista de Materiais"}
             </Button>
           </CardFooter>
         </Card>
@@ -1635,7 +1728,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                   onClick={async () => {
                     const cliente = localClientes.find(c => c.id === selectedCliente)
                     const { gerarPDFOrcamento } = await import('@/utils/pdf-generator')
-                    gerarPDFOrcamento({ id: 'RASCUNHO', clientes: { nome: cliente?.nome || '' }, parametros_utilizados: paramsForm }, resultado, false)
+                    gerarPDFOrcamento({ id: orcamentoInicial?.id || 'RASCUNHO', clientes: { nome: cliente?.nome || '' }, parametros_utilizados: paramsForm }, resultado, false)
                   }}
                 >
                   <Download className="h-4 w-4" />
@@ -1648,7 +1741,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                   onClick={async () => {
                     const cliente = localClientes.find(c => c.id === selectedCliente)
                     const { gerarPDFOrcamento } = await import('@/utils/pdf-generator')
-                    gerarPDFOrcamento({ id: 'RASCUNHO', clientes: { nome: cliente?.nome || '' }, parametros_utilizados: paramsForm }, resultado, true)
+                    gerarPDFOrcamento({ id: orcamentoInicial?.id || 'RASCUNHO', clientes: { nome: cliente?.nome || '' }, parametros_utilizados: paramsForm }, resultado, true)
                   }}
                 >
                   <Download className="h-4 w-4" />
@@ -1663,34 +1756,71 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                   <div key={grupo}>
                     <h3 className="font-bold border-b pb-2 mb-3 text-slate-700">{grupo}</h3>
                     <div className="space-y-2">
-                      {resultado.filter(i => i.grupo_nome === grupo).map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-sm bg-slate-50 p-2 rounded">
-                          <div>
-                            <span className="font-medium">{item.produto_descricao}</span>
-                            <span className="text-xs text-muted-foreground ml-2">({item.posicao_nome})</span>
-                            {item.isManualChange && (
-                              <Badge variant="outline" className="ml-2 mt-1 text-[10px] h-5 bg-orange-50 text-orange-600 border-orange-200 w-fit">Alterado Manualmente</Badge>
-                            )}
-                          </div>
-                          <div className="text-right flex flex-col items-end min-w-[90px]">
-                            <span className="font-bold">{item.quantidade_final} {item.unidade}</span>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-muted-foreground block">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_total)}
-                              </span>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 w-6 p-0 text-slate-400 hover:text-[#d97021]"
-                                onClick={() => setSwapItemIndex(resultado.indexOf(item))}
-                                title="Trocar Produto"
-                              >
-                                <ArrowLeftRight className="h-3 w-3" />
-                              </Button>
+                      {resultado.filter(i => i.grupo_nome === grupo).map((item, idx) => {
+                        const realIndex = resultado.indexOf(item)
+                        return (
+                          <div key={idx} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm bg-slate-50 p-2 rounded">
+                            <div className="flex-1">
+                              <span className="font-medium">{item.produto_codigo} - {item.produto_descricao}</span>
+                              <span className="text-xs text-muted-foreground ml-2">({item.posicao_nome})</span>
+                              {item.isManualChange && (
+                                <Badge variant="outline" className="ml-2 mt-1 text-[10px] h-5 bg-orange-50 text-orange-600 border-orange-200 w-fit">Alterado Manualmente</Badge>
+                              )}
+                            </div>
+                            <div className="text-right flex items-center justify-end gap-3 min-w-[180px]">
+                              <div className="flex items-center gap-1.5">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step="any"
+                                  value={item.quantidade_final}
+                                  onChange={(e) => {
+                                    const novaQtd = Math.max(0, Number(e.target.value) || 0)
+                                    const newRes = [...resultado]
+                                    const current = newRes[realIndex]
+                                    newRes[realIndex] = {
+                                      ...current,
+                                      quantidade_final: novaQtd,
+                                      valor_total: current.preco_unitario * novaQtd,
+                                      isManualChange: true,
+                                      manualOriginalProduto: current.manualOriginalProduto || current.produto_codigo
+                                    }
+                                    setResultado(newRes)
+                                  }}
+                                  className="w-20 h-7 text-right bg-white px-2 text-xs font-bold"
+                                  title="Editar quantidade"
+                                />
+                                <span className="text-xs font-semibold text-slate-600">{item.unidade}</span>
+                              </div>
+                              <div className="flex items-center gap-1 min-w-[100px] justify-end">
+                                <span className="text-xs text-muted-foreground block">
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_total)}
+                                </span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-6 w-6 p-0 text-slate-400 hover:text-[#d97021]"
+                                  onClick={() => setSwapItemIndex(realIndex)}
+                                  title="Trocar Produto"
+                                >
+                                  <ArrowLeftRight className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
+                                  onClick={() => {
+                                    setResultado(resultado.filter((_, i) => i !== realIndex))
+                                  }}
+                                  title="Remover Item"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 ))}
@@ -1708,41 +1838,38 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              {swapItemIndex !== null && (
+              {swapItemIndex !== null && resultado[swapItemIndex] && (
                 <div className="text-sm bg-slate-50 p-3 rounded border">
                   <span className="font-semibold block mb-1 text-slate-700">Substituindo original:</span>
-                  <p>{resultado[swapItemIndex].produto_descricao}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Quantidade calculada: {resultado[swapItemIndex].quantidade_final} {resultado[swapItemIndex].unidade}</p>
+                  <p>{resultado[swapItemIndex].produto_codigo} - {resultado[swapItemIndex].produto_descricao}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Quantidade: {resultado[swapItemIndex].quantidade_final} {resultado[swapItemIndex].unidade}</p>
                 </div>
               )}
               <div className="grid gap-2 mt-2">
                 <Label>Novo Produto do Catálogo</Label>
-                <Select onValueChange={(val) => {
-                  if (swapItemIndex === null) return
-                  const prod = produtos.find(p => p.codigo === val)
-                  if (prod) {
-                    const newRes = [...resultado]
-                    const original = newRes[swapItemIndex]
-                    newRes[swapItemIndex] = {
-                      ...original,
-                      produto_codigo: prod.codigo,
-                      produto_descricao: prod.descricao,
-                      preco_unitario: prod.preco_unitario,
-                      valor_total: prod.preco_unitario * original.quantidade_final,
-                      isManualChange: true,
-                      manualOriginalProduto: original.produto_codigo
+                <ProdutoSelectComBusca
+                  produtos={produtos}
+                  value={swapItemIndex !== null && resultado[swapItemIndex] ? resultado[swapItemIndex].produto_codigo.toString() : ''}
+                  onChange={(val) => {
+                    if (swapItemIndex === null) return
+                    const prod = produtos.find(p => p.codigo.toString() === val.toString())
+                    if (prod) {
+                      const newRes = [...resultado]
+                      const original = newRes[swapItemIndex]
+                      newRes[swapItemIndex] = {
+                        ...original,
+                        produto_codigo: prod.codigo,
+                        produto_descricao: prod.descricao,
+                        preco_unitario: prod.preco_unitario,
+                        valor_total: prod.preco_unitario * original.quantidade_final,
+                        isManualChange: true,
+                        manualOriginalProduto: original.manualOriginalProduto || original.produto_codigo
+                      }
+                      setResultado(newRes)
+                      setSwapItemIndex(null)
                     }
-                    setResultado(newRes)
-                    setSwapItemIndex(null)
-                  }
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Selecione ou busque..." /></SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                     {produtos.map(p => (
-                       <SelectItem key={p.codigo} value={p.codigo}>{p.descricao} - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.preco_unitario)}</SelectItem>
-                     ))}
-                  </SelectContent>
-                </Select>
+                  }}
+                />
               </div>
             </div>
             <DialogFooter>
@@ -1784,7 +1911,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
               disabled={isLoading}
             >
               <Save className="h-4 w-4" />
-              {isLoading ? "Salvando..." : "Salvar Orçamento"}
+              {isLoading ? "Salvando..." : orcamentoInicial ? "Salvar Alterações" : "Salvar Orçamento"}
             </Button>
           </CardFooter>
         </Card>
@@ -1804,7 +1931,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
           disabled={isLoading}
         >
           <Save className="h-5 w-5" />
-          {isLoading ? "Salvando..." : "Salvar Orçamento"}
+          {isLoading ? "Salvando..." : orcamentoInicial ? "Salvar Alterações" : "Salvar Orçamento"}
         </Button>
       </div>
     </div>
