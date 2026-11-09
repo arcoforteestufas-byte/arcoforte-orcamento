@@ -13,19 +13,19 @@ import { PropostaTopicsManager } from "./proposta-topics-manager"
 import { PacoteRegrasManager } from "./pacote-regras-manager"
 import { ReactNode } from "react"
 
-export function ConfiguracoesClient({ 
-  regrasNode, 
+export function ConfiguracoesClient({
+  regrasNode,
   parametrosNode,
   documentacaoNode
-}: { 
-  regrasNode: ReactNode, 
+}: {
+  regrasNode: ReactNode,
   parametrosNode: ReactNode,
   documentacaoNode?: ReactNode
 }) {
   const { settings, updateSettings } = useSettings()
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -85,19 +85,19 @@ export function ConfiguracoesClient({
 
       <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="w-full">
         <TabsList className="flex flex-wrap w-full max-w-[1150px] gap-1 p-1 bg-slate-100/80 rounded-xl">
-          <TabsTrigger value="geral" className="flex items-center gap-2"><Settings2 size={16}/> Geral</TabsTrigger>
-          <TabsTrigger value="usuarios" className="flex items-center gap-2"><Users size={16}/> Usuários</TabsTrigger>
-          <TabsTrigger value="designer" className="flex items-center gap-2"><Paintbrush size={16}/> Designer</TabsTrigger>
-          <TabsTrigger value="pdf" className="flex items-center gap-2"><FileText size={16}/> PDF</TabsTrigger>
-          <TabsTrigger value="proposta" className="flex items-center gap-2"><FileText size={16}/> Proposta</TabsTrigger>
-          <TabsTrigger value="regras" className="flex items-center gap-2"><Settings2 size={16}/> Regras</TabsTrigger>
-          <TabsTrigger value="parametros" className="flex items-center gap-2"><Settings2 size={16}/> Parâmetros</TabsTrigger>
-          <TabsTrigger value="pacote" className="flex items-center gap-2 font-semibold"><Package size={16}/> Pacote de Regras</TabsTrigger>
+          <TabsTrigger value="geral" className="flex items-center gap-2"><Settings2 size={16} /> Geral</TabsTrigger>
+          <TabsTrigger value="usuarios" className="flex items-center gap-2"><Users size={16} /> Usuários</TabsTrigger>
+          <TabsTrigger value="designer" className="flex items-center gap-2"><Paintbrush size={16} /> Designer</TabsTrigger>
+          <TabsTrigger value="pdf" className="flex items-center gap-2"><FileText size={16} /> PDF</TabsTrigger>
+          <TabsTrigger value="proposta" className="flex items-center gap-2"><FileText size={16} /> Proposta</TabsTrigger>
+          <TabsTrigger value="regras" className="flex items-center gap-2"><Settings2 size={16} /> Regras</TabsTrigger>
+          <TabsTrigger value="parametros" className="flex items-center gap-2"><Settings2 size={16} /> Parâmetros</TabsTrigger>
+          <TabsTrigger value="pacote" className="flex items-center gap-2 font-semibold"><Package size={16} /> Pacote de Regras</TabsTrigger>
           <TabsTrigger value="documentacao" className="flex items-center gap-2 text-amber-800 bg-amber-50 hover:bg-amber-100 data-[state=active]:bg-[#d97021] data-[state=active]:text-white font-semibold">
-            <BookOpen size={16}/> Documentação
+            <BookOpen size={16} /> Documentação
           </TabsTrigger>
         </TabsList>
-        
+
         {/* ABA GERAL */}
         <TabsContent value="geral" className="mt-6">
           <Card className="border-slate-200 shadow-sm">
@@ -110,10 +110,10 @@ export function ConfiguracoesClient({
             <CardContent className="space-y-6">
               <div className="space-y-2 max-w-md">
                 <Label htmlFor="nome">Nome da Empresa</Label>
-                <Input 
-                  id="nome" 
-                  value={nome} 
-                  onChange={(e) => setNome(e.target.value)} 
+                <Input
+                  id="nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
                   placeholder="Ex: ArcoForte Estufas"
                 />
               </div>
@@ -121,18 +121,18 @@ export function ConfiguracoesClient({
               <div className="space-y-3 max-w-md">
                 <Label htmlFor="logo">Logo URL</Label>
                 <div className="flex gap-4 items-start">
-                  <Input 
-                    id="logo" 
-                    value={logo} 
-                    onChange={(e) => setLogo(e.target.value)} 
+                  <Input
+                    id="logo"
+                    value={logo}
+                    onChange={(e) => setLogo(e.target.value)}
                     placeholder="https://exemplo.com/logo.png"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">Cole o link (URL) ou clique no espaço abaixo para enviar uma imagem do seu computador.</p>
-                
+
                 {/* Preview Logo */}
                 <div className="flex items-end gap-4 mt-4">
-                  <div 
+                  <div
                     className="p-4 border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors rounded-xl flex items-center justify-center w-40 h-24 cursor-pointer relative group"
                     onClick={() => fileInputRef.current?.click()}
                     title="Clique para selecionar uma logo"
@@ -151,10 +151,10 @@ export function ConfiguracoesClient({
                       </div>
                     )}
                   </div>
-                  
+
                   {logo && (
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       className="text-red-500 hover:text-red-600 hover:bg-red-50 mb-1"
                       onClick={() => {
@@ -166,8 +166,8 @@ export function ConfiguracoesClient({
                     </Button>
                   )}
                 </div>
-                <input 
-                  type="file" 
+                <input
+                  type="file"
                   ref={fileInputRef}
                   onChange={handleLogoUpload}
                   accept="image/*"
@@ -182,7 +182,7 @@ export function ConfiguracoesClient({
         <TabsContent value="usuarios" className="mt-6">
           <UsersManager />
         </TabsContent>
-        
+
         {/* ABA DESIGNER */}
         <TabsContent value="designer" className="mt-6">
           <Card className="border-slate-200 shadow-sm">
@@ -208,9 +208,9 @@ export function ConfiguracoesClient({
                     </button>
                   ))}
                   <div className="flex items-center gap-2 border border-slate-200 p-1.5 rounded-full bg-slate-50">
-                    <input 
-                      type="color" 
-                      value={cor} 
+                    <input
+                      type="color"
+                      value={cor}
                       onChange={(e) => setCor(e.target.value)}
                       className="w-8 h-8 rounded-full border-0 cursor-pointer bg-transparent"
                     />

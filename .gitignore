@@ -48,5 +48,6 @@ next-env.d.ts
 *.docx
 *.txt
 *_data.json
+!catalog_data.json
 .vercel
 .env*
