@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,12 +8,148 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks, Image as ImageIcon } from "lucide-react"
+import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks, Image as ImageIcon, Search, Check, ChevronDown, X } from "lucide-react"
 import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo } from "@/utils/engine"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
+
+function ProdutoSelectComBusca({
+  produtos,
+  value,
+  onChange,
+  placeholder = "Selecione o produto...",
+  searchPlaceholder = "Pesquisar por código ou nome..."
+}: {
+  produtos: Produto[]
+  value: string
+  onChange: (val: string) => void
+  placeholder?: string
+  searchPlaceholder?: string
+}) {
+  const [busca, setBusca] = useState("")
+  const [aberto, setAberto] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setAberto(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const normalizar = (str: string) =>
+    str
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+
+  const termo = normalizar(busca.trim())
+  const produtosFiltrados = produtos.filter((p) => {
+    if (!termo) return true
+    const codigo = normalizar(String(p.codigo))
+    const descricao = normalizar(String(p.descricao))
+    return codigo.includes(termo) || descricao.includes(termo)
+  })
+
+  const produtoSelecionado = value
+    ? produtos.find((p) => p.codigo.toString() === value.toString())
+    : undefined
+
+  return (
+    <div ref={containerRef} className="relative grid gap-2">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Input
+          ref={inputRef}
+          type="text"
+          value={busca}
+          placeholder={searchPlaceholder}
+          onFocus={() => setAberto(true)}
+          onChange={(e) => {
+            setBusca(e.target.value)
+            setAberto(true)
+          }}
+          className="bg-white pl-8 pr-8 h-9 text-sm"
+        />
+        {busca && (
+          <button
+            type="button"
+            onClick={() => {
+              setBusca("")
+              inputRef.current?.focus()
+            }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            title="Limpar pesquisa"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          const next = !aberto
+          setAberto(next)
+          if (next) {
+            setTimeout(() => inputRef.current?.focus(), 0)
+          }
+        }}
+        className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-white py-2 pr-2 pl-2.5 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <span className={`truncate text-left flex-1 ${produtoSelecionado ? "text-slate-900" : "text-muted-foreground"}`}>
+          {produtoSelecionado
+            ? `${produtoSelecionado.codigo} - ${produtoSelecionado.descricao}`
+            : value || placeholder}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </button>
+
+      {aberto && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 text-popover-foreground shadow-lg">
+          {produtosFiltrados.length === 0 ? (
+            <div className="px-3 py-4 text-center text-sm text-slate-500">
+              Nenhum produto encontrado para &quot;{busca}&quot;.
+            </div>
+          ) : (
+            produtosFiltrados.map((p) => {
+              const isSelected = p.codigo.toString() === value?.toString()
+              return (
+                <button
+                  key={p.codigo}
+                  type="button"
+                  onClick={() => {
+                    onChange(p.codigo.toString())
+                    setAberto(false)
+                    setBusca("")
+                  }}
+                  className={`relative flex w-full cursor-pointer items-center gap-2 rounded-md py-1.5 pr-8 pl-2 text-left text-sm outline-hidden select-none hover:bg-slate-100 ${
+                    isSelected ? "bg-slate-100 font-medium text-slate-900" : "text-slate-700"
+                  }`}
+                >
+                  <span className="flex-1 truncate">
+                    {p.codigo} - {p.descricao}
+                  </span>
+                  {isSelected && (
+                    <span className="absolute right-2 flex size-4 items-center justify-center text-[#d97021]">
+                      <Check className="h-4 w-4" />
+                    </span>
+                  )}
+                </button>
+              )
+            })
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 type Props = {
   parametrosDef: {
@@ -944,37 +1080,18 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                             <Label className="uppercase text-xs font-semibold text-slate-600">
                               {isFilme ? 'Qual Filme / Plástico?' : 'Qual Tela?'}
                             </Label>
-                            <Select 
+                            <ProdutoSelectComBusca
                               value={paramsForm['produto_filme_cobertura']?.toString() || ''}
-                              onValueChange={(val) => handleParamChange('produto_filme_cobertura', val)}
-                            >
-                              <SelectTrigger className="bg-white w-full">
-                                <SelectValue placeholder="Selecione o produto...">
-                                  {paramsForm['produto_filme_cobertura']
-                                    ? (() => {
-                                      const prod = produtos.find(p => p.codigo.toString() === paramsForm['produto_filme_cobertura']?.toString());
-                                      return prod ? `${prod.codigo} - ${prod.descricao}` : paramsForm['produto_filme_cobertura']?.toString();
-                                    })()
-                                    : undefined
-                                  }
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent className="min-w-[300px] md:min-w-[500px] max-w-[90vw] max-h-[400px]">
-                                {produtos
-                                  .filter(p => {
-                                    const desc = p.descricao.toUpperCase()
-                                    if (isFilme) {
-                                      return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
-                                    } else {
-                                      return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
-                                    }
-                                  })
-                                  .map(p => (
-                                    <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
-                                  ))
+                              onChange={(val) => handleParamChange('produto_filme_cobertura', val)}
+                              produtos={produtos.filter(p => {
+                                const desc = p.descricao.toUpperCase()
+                                if (isFilme) {
+                                  return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
+                                } else {
+                                  return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
                                 }
-                              </SelectContent>
-                            </Select>
+                              })}
+                            />
                           </div>
                         )}
                       </div>
@@ -1051,37 +1168,18 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                               <Label className="uppercase text-xs font-semibold text-slate-600">
                                 {paramsForm['tipo_fechamento_material'] === 'filme' ? 'Qual Filme / Plástico?' : 'Qual Tela?'}
                               </Label>
-                              <Select 
+                              <ProdutoSelectComBusca
                                 value={paramsForm['produto_filme_fechamento']?.toString() || ''}
-                                onValueChange={(val) => handleParamChange('produto_filme_fechamento', val)}
-                              >
-                                <SelectTrigger className="bg-white w-full">
-                                  <SelectValue placeholder="Selecione o produto...">
-                                    {paramsForm['produto_filme_fechamento']
-                                      ? (() => {
-                                        const prod = produtos.find(p => p.codigo.toString() === paramsForm['produto_filme_fechamento']?.toString());
-                                        return prod ? `${prod.codigo} - ${prod.descricao}` : paramsForm['produto_filme_fechamento']?.toString();
-                                      })()
-                                      : undefined
-                                    }
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="max-w-[90vw] md:max-w-[600px] max-h-[400px]">
-                                  {produtos
-                                    .filter(p => {
-                                      const desc = p.descricao.toUpperCase()
-                                      if (paramsForm['tipo_fechamento_material'] === 'filme') {
-                                        return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
-                                      } else {
-                                        return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
-                                      }
-                                    })
-                                    .map(p => (
-                                      <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
-                                    ))
+                                onChange={(val) => handleParamChange('produto_filme_fechamento', val)}
+                                produtos={produtos.filter(p => {
+                                  const desc = p.descricao.toUpperCase()
+                                  if (paramsForm['tipo_fechamento_material'] === 'filme') {
+                                    return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
+                                  } else {
+                                    return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
                                   }
-                                </SelectContent>
-                              </Select>
+                                })}
+                              />
                             </div>
 
                             {paramsForm['tipo_fechamento_material'] === 'tela' && (
@@ -1236,37 +1334,18 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes }: Pro
                                   <Label className="uppercase text-xs font-semibold text-slate-600">
                                     {paramsForm['meia_lua_material'] === 'filme' ? 'Qual filme da meia lua?' : 'Qual tela da meia lua?'}
                                   </Label>
-                                  <Select
+                                  <ProdutoSelectComBusca
                                     value={paramsForm['produto_meia_lua']?.toString() || ''}
-                                    onValueChange={(val) => handleParamChange('produto_meia_lua', val)}
-                                  >
-                                    <SelectTrigger className="bg-white w-full">
-                                      <SelectValue placeholder="Selecione o produto...">
-                                        {paramsForm['produto_meia_lua']
-                                          ? (() => {
-                                            const prod = produtos.find(p => p.codigo.toString() === paramsForm['produto_meia_lua']?.toString());
-                                            return prod ? `${prod.codigo} - ${prod.descricao}` : paramsForm['produto_meia_lua']?.toString();
-                                          })()
-                                          : undefined
-                                        }
-                                      </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent className="max-w-[90vw] md:max-w-[600px] max-h-[400px]">
-                                      {produtos
-                                        .filter(p => {
-                                          const desc = p.descricao.toUpperCase()
-                                          if (paramsForm['meia_lua_material'] === 'filme') {
-                                            return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
-                                          } else {
-                                            return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
-                                          }
-                                        })
-                                        .map(p => (
-                                          <SelectItem key={p.codigo} value={p.codigo.toString()} className="w-full truncate">{p.codigo} - {p.descricao}</SelectItem>
-                                        ))
+                                    onChange={(val) => handleParamChange('produto_meia_lua', val)}
+                                    produtos={produtos.filter(p => {
+                                      const desc = p.descricao.toUpperCase()
+                                      if (paramsForm['meia_lua_material'] === 'filme') {
+                                        return desc.includes('FILME') || desc.includes('PLÁSTICO') || desc.includes('PLASTICO') || desc.includes('LONA')
+                                      } else {
+                                        return desc.includes('TELA') || desc.includes('SOMBRITE') || desc.includes('REDE')
                                       }
-                                    </SelectContent>
-                                  </Select>
+                                    })}
+                                  />
                                 </div>
                               )}
                             </div>
