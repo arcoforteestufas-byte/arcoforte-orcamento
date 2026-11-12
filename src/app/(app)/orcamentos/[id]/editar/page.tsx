@@ -20,18 +20,19 @@ export default async function EditarOrcamentoPage({ params }: { params: Promise<
   const isAdministrador = cargo === 'Administrador'
 
   // 1. Buscar o orçamento existente
-  const { data: orcamento, error: orcError } = await supabase
+  const { data: orcamento, error: orcError } = await supabaseAdmin
     .from('orcamentos')
     .select('*')
     .eq('id', id)
     .single()
 
   if (orcError || !orcamento) {
+    console.error('Erro ao buscar orçamento para edição:', { id, orcError })
     notFound()
   }
 
   // 2. Buscar os itens do orçamento
-  const { data: itens } = await supabase
+  const { data: itens } = await supabaseAdmin
     .from('orcamento_itens')
     .select(`
       *,
