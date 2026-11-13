@@ -21,7 +21,6 @@ export default async function AppLayout({
       </div>
       
       <div className="flex flex-1 flex-col h-full overflow-hidden relative">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] pointer-events-none z-0" />
         <Header user={user} />
         
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 z-10">

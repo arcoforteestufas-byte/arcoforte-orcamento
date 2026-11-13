@@ -380,41 +380,13 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
     }
   }, [paramsForm['vao'], paramsForm['n_vaos'], vaoUltimo])
 
-  // Efeito para adivinhar módulos pela largura total
-  useEffect(() => {
-    const l = Number(larguraTotal)
-    if (larguraTotal !== '' && !isNaN(l) && l >= 7 && l <= 500) {
-      const largurasPermitidas = [10, 8, 7] // Preferência para módulos maiores
-      for (const w of largurasPermitidas) {
-        if (l % w === 0 && l / w <= 50) {
-          setParamsForm(prev => {
-            if ((Number(prev.n_modulos) || 0) * (Number(prev.largura_modulo) || 0) === l) {
-              return prev
-            }
-            return {
-              ...prev,
-              largura_modulo: w,
-              n_modulos: l / w
-            }
-          })
-          break
-        }
-      }
-    }
-  }, [larguraTotal])
-
-  // Efeito reverso: Atualizar larguraTotal se os módulos mudarem manualmente
-  useEffect(() => {
-    const rawN = paramsForm['n_modulos']
-    const n = Number(rawN)
-    const w = Number(paramsForm['largura_modulo']) || 0
-    if (rawN !== '' && rawN !== undefined && !isNaN(n) && Number.isInteger(n) && n >= 1 && n <= 50 && w > 0) {
-      const calc = n * w
-      if (calc !== Number(larguraTotal)) {
-        setLarguraTotal(calc)
-      }
-    }
-  }, [paramsForm['n_modulos'], paramsForm['largura_modulo']])
+  const ordenarOpcoesNumericas = (opcoes: string[]) =>
+    [...opcoes].sort((a, b) => {
+      const na = Number(String(a).replace(',', '.'))
+      const nb = Number(String(b).replace(',', '.'))
+      if (!isNaN(na) && !isNaN(nb)) return na - nb
+      return String(a).localeCompare(String(b), 'pt-BR', { numeric: true })
+    })
 
   // Limpar configurações de postes duplos se o poste mudar para EUCALIPTO
   useEffect(() => {
@@ -675,14 +647,64 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
     return undefined
   }
 
+  const obterIdDomCampo = (campo: string): string => {
+    const mapaFixo: Record<string, string> = {
+      larguraTotal: 'campo-largura-estufa',
+      comprimento: 'campo-comprimento-estufa',
+      pe_direito: 'campo-pe-direito',
+      n_modulos: 'campo-n-modulos',
+      largura_modulo: 'campo-largura-modulo',
+      vao: 'campo-vao',
+      vaoUltimo: 'campo-vao-ultimo',
+      travamentos_x: 'campo-travamentos-x',
+      n_divisas_por_modulo: 'campo-n-divisas-por-modulo',
+      tela_largura_rolo: 'campo-tela-largura-rolo',
+    }
+    if (mapaFixo[campo]) return mapaFixo[campo]
+    if (campo.startsWith('porta_qtd_')) return `campo-porta-qtd-${campo.replace('porta_qtd_', '')}`
+    if (campo.startsWith('porta_tipo_')) return `campo-porta-tipo-${campo.replace('porta_tipo_', '')}`
+    if (campo.startsWith('anticamara_qtd_')) return `campo-anticamara-qtd-${campo.replace('anticamara_qtd_', '')}`
+    if (campo.startsWith('anticamara_modelo_')) return `campo-anticamara-modelo-${campo.replace('anticamara_modelo_', '')}`
+    return `campo-${campo}`
+  }
+
+  const focarCampoComErro = (campo: string) => {
+    const idDom = obterIdDomCampo(campo)
+    setTimeout(() => {
+      const el = document.getElementById(idDom)
+      if (el) {
+        el.scrollIntoView({ behavior: 'instant', block: 'center' })
+        el.focus({ preventScroll: true })
+      }
+    }, 0)
+  }
+
+  const renderErroCampo = (campo: string) => {
+    const msg = obterErroVisivel(campo)
+    if (!msg) return null
+    return (
+      <div
+        id={`erro-${campo}`}
+        role="alert"
+        aria-live="polite"
+        className="mt-1 flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700"
+      >
+        <AlertTriangle className="h-3.5 w-3.5 text-red-600 shrink-0" />
+        <span>{msg}</span>
+      </div>
+    )
+  }
+
+  const chavesErrosAtivos = Object.keys(errosValidacao)
   const listaErrosAtivos = Object.values(errosValidacao)
 
   const handleCalcular = () => {
     setTentouCalcular(true)
-    if (listaErrosAtivos.length > 0) {
+    if (chavesErrosAtivos.length > 0) {
       setResultado([])
-      toast.error("Preencha os campos obrigatórios e corrija os valores inválidos antes de calcular.", {
-        description: listaErrosAtivos[0]
+      focarCampoComErro(chavesErrosAtivos[0])
+      toast.error("Revise os campos destacados em vermelho no formulário.", {
+        description: errosValidacao[chavesErrosAtivos[0]]
       })
       return
     }
@@ -769,9 +791,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
 
   const handleSalvarOrcamento = async () => {
     setTentouCalcular(true)
-    if (listaErrosAtivos.length > 0) {
+    if (chavesErrosAtivos.length > 0) {
+      focarCampoComErro(chavesErrosAtivos[0])
       toast.error("Corrija os campos inválidos antes de salvar o orçamento.", {
-        description: listaErrosAtivos[0]
+        description: errosValidacao[chavesErrosAtivos[0]]
       })
       return
     }
@@ -1015,7 +1038,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
           <CardContent className="grid gap-6 p-6 bg-slate-50/50">
             {/* Primeira Linha: Largura, Comprimento e Altura */}
             <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
-              <div className="grid gap-2">
+              <div className="grid gap-2 content-start">
                 <Label htmlFor="campo-largura-estufa" className="font-bold text-slate-800 uppercase text-xs">Largura da Estufa (m) *</Label>
                 <Input 
                   id="campo-largura-estufa"
@@ -1026,21 +1049,41 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                   value={larguraTotal}
                   placeholder="Ex: 14"
                   aria-invalid={!!obterErroVisivel('larguraTotal')}
+                  aria-describedby={obterErroVisivel('larguraTotal') ? 'erro-larguraTotal' : undefined}
                   className={`bg-white text-lg py-6 ${obterErroVisivel('larguraTotal') ? 'border-red-500 focus-visible:ring-red-500' : 'border-slate-300'}`}
                   onKeyDown={handleNumericKeyDown('larguraTotal', true)}
+                  onBlur={() => marcarTocado('larguraTotal')}
                   onChange={(e) => {
                     marcarTocado('larguraTotal')
                     limparAvisoDigitacao('larguraTotal')
                     const raw = e.target.value.replace(',', '.')
-                    setLarguraTotal(raw === '' ? '' : Number(raw))
+                    const novoValor = raw === '' ? '' : Number(raw)
+                    setLarguraTotal(novoValor)
+                    const l = Number(novoValor)
+                    if (novoValor !== '' && !isNaN(l) && l >= 7 && l <= 500) {
+                      const largurasPermitidas = [10, 8, 7]
+                      const atualW = Number(paramsForm['largura_modulo']) || 0
+                      if ([10, 8, 7].includes(atualW) && l % atualW === 0 && l / atualW <= 50) {
+                        handleParamChange('n_modulos', l / atualW)
+                      } else {
+                        for (const w of largurasPermitidas) {
+                          if (l % w === 0 && l / w <= 50) {
+                            setParamsForm(prev => ({
+                              ...prev,
+                              largura_modulo: w,
+                              n_modulos: l / w
+                            }))
+                            break
+                          }
+                        }
+                      }
+                    }
                   }}
                 />
-                {obterErroVisivel('larguraTotal') && (
-                  <p className="text-xs text-red-600 font-medium">{obterErroVisivel('larguraTotal')}</p>
-                )}
+                {renderErroCampo('larguraTotal')}
               </div>
 
-              <div className="grid gap-2">
+              <div className="grid gap-2 content-start">
                 <Label htmlFor="campo-comprimento-estufa" className="font-bold text-slate-800 uppercase text-xs">Comprimento da Estufa (m) *</Label>
                 <Input 
                   id="campo-comprimento-estufa"
@@ -1051,8 +1094,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                   value={comprimento}
                   placeholder="Ex: 50"
                   aria-invalid={!!obterErroVisivel('comprimento')}
+                  aria-describedby={obterErroVisivel('comprimento') ? 'erro-comprimento' : undefined}
                   className={`bg-white text-lg py-6 ${obterErroVisivel('comprimento') ? 'border-red-500 focus-visible:ring-red-500' : 'border-slate-300'}`}
                   onKeyDown={handleNumericKeyDown('comprimento', true)}
+                  onBlur={() => marcarTocado('comprimento')}
                   onChange={(e) => {
                     marcarTocado('comprimento')
                     limparAvisoDigitacao('comprimento')
@@ -1060,17 +1105,16 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                     setComprimento(raw === '' ? '' : Number(raw))
                   }}
                 />
-                {obterErroVisivel('comprimento') && (
-                  <p className="text-xs text-red-600 font-medium">{obterErroVisivel('comprimento')}</p>
-                )}
+                {renderErroCampo('comprimento')}
               </div>
 
               {(() => {
                 const param = parametrosDef.find(p => p.nome_tecnico === 'pe_direito')
                 if (!param) return null
-                const opcoes: string[] = Array.isArray(param.opcoes) ? param.opcoes : JSON.parse(param.opcoes as string || '[]')
+                const opcoesRaw: string[] = Array.isArray(param.opcoes) ? param.opcoes : JSON.parse(param.opcoes as string || '[]')
+                const opcoes = ordenarOpcoesNumericas(opcoesRaw)
                 return (
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 content-start">
                     <Label htmlFor="campo-pe-direito" className="font-bold text-slate-800 uppercase text-xs">Altura / Pé-Direito (m) *</Label>
                     <Select
                       value={paramsForm['pe_direito']?.toString() || ''}
@@ -1079,8 +1123,17 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         handleParamChange(param.nome_tecnico, Number(val))
                       }}
                     >
-                      <SelectTrigger id="campo-pe-direito" aria-label="Altura / Pé-Direito (m)" className={`bg-white text-lg py-6 ${obterErroVisivel('pe_direito') ? 'border-red-500' : 'border-slate-300'}`}>
-                        <SelectValue placeholder="Selecione..." />
+                      <SelectTrigger
+                        id="campo-pe-direito"
+                        aria-label="Altura / Pé-Direito (m)"
+                        aria-invalid={!!obterErroVisivel('pe_direito')}
+                        aria-describedby={obterErroVisivel('pe_direito') ? 'erro-pe_direito' : undefined}
+                        onBlur={() => marcarTocado('pe_direito')}
+                        className={`bg-white text-lg py-6 ${obterErroVisivel('pe_direito') ? 'border-red-500' : 'border-slate-300'}`}
+                      >
+                        <SelectValue placeholder="Selecione...">
+                          {paramsForm['pe_direito'] ? `${paramsForm['pe_direito']} m` : undefined}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
@@ -1088,9 +1141,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         ))}
                       </SelectContent>
                     </Select>
-                    {obterErroVisivel('pe_direito') && (
-                      <p className="text-xs text-red-600 font-medium">{obterErroVisivel('pe_direito')}</p>
-                    )}
+                    {renderErroCampo('pe_direito')}
                   </div>
                 )
               })()}
@@ -1102,7 +1153,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                 const paramModulos = parametrosDef.find(p => p.nome_tecnico === 'n_modulos')
                 const rotuloModulos = paramModulos?.rotulo || 'Número de Módulos'
                 return (
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 content-start">
                     <Label htmlFor="campo-n-modulos" className="font-bold text-slate-800 uppercase text-xs">{rotuloModulos} *</Label>
                     <Input 
                       id="campo-n-modulos"
@@ -1113,17 +1164,23 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       value={paramsForm['n_modulos'] !== undefined && paramsForm['n_modulos'] !== '' ? String(paramsForm['n_modulos']) : ''}
                       placeholder="Ex: 2 módulos"
                       aria-invalid={!!obterErroVisivel('n_modulos')}
+                      aria-describedby={obterErroVisivel('n_modulos') ? 'erro-n_modulos' : undefined}
                       className={`bg-white text-lg py-6 ${obterErroVisivel('n_modulos') ? 'border-red-500 focus-visible:ring-red-500' : 'border-slate-300'}`}
                       onKeyDown={handleNumericKeyDown('n_modulos', false)}
+                      onBlur={() => marcarTocado('n_modulos')}
                       onChange={(e) => {
                         marcarTocado('n_modulos')
                         limparAvisoDigitacao('n_modulos')
-                        handleParamChange('n_modulos', e.target.value === '' ? '' : Number(e.target.value))
+                        const novoN = e.target.value === '' ? '' : Number(e.target.value)
+                        handleParamChange('n_modulos', novoN)
+                        const n = Number(novoN)
+                        const w = Number(paramsForm['largura_modulo']) || 0
+                        if (novoN !== '' && !isNaN(n) && Number.isInteger(n) && n >= 1 && n <= 50 && w > 0) {
+                          setLarguraTotal(n * w)
+                        }
                       }}
                     />
-                    {obterErroVisivel('n_modulos') && (
-                      <p className="text-xs text-red-600 font-medium">{obterErroVisivel('n_modulos')}</p>
-                    )}
+                    {renderErroCampo('n_modulos')}
                   </div>
                 )
               })()}
@@ -1131,19 +1188,43 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
               {(() => {
                 const paramLargura = parametrosDef.find(p => p.nome_tecnico === 'largura_modulo')
                 if (!paramLargura) return null
-                const opcoes: string[] = Array.isArray(paramLargura.opcoes) ? paramLargura.opcoes : JSON.parse(paramLargura.opcoes as string || '[]')
+                const opcoesRaw: string[] = Array.isArray(paramLargura.opcoes) ? paramLargura.opcoes : JSON.parse(paramLargura.opcoes as string || '[]')
+                const opcoes = ordenarOpcoesNumericas(opcoesRaw)
                 return (
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 content-start">
                     <Label htmlFor="campo-largura-modulo" className="font-bold text-slate-800 uppercase text-xs">{paramLargura.rotulo} *</Label>
                     <Select
                       value={paramsForm['largura_modulo']?.toString() || ''}
                       onValueChange={(val) => {
                         marcarTocado('largura_modulo')
-                        handleParamChange('largura_modulo', Number(val))
+                        const w = Number(val)
+                        const l = Number(larguraTotal) || 0
+                        const n = Number(paramsForm['n_modulos']) || 0
+                        if (w > 0 && l >= 7 && l <= 500 && l % w === 0 && l / w <= 50) {
+                          setParamsForm(prev => ({
+                            ...prev,
+                            largura_modulo: w,
+                            n_modulos: l / w
+                          }))
+                        } else if (w > 0 && n >= 1 && n <= 50 && Number.isInteger(n)) {
+                          handleParamChange('largura_modulo', w)
+                          setLarguraTotal(n * w)
+                        } else {
+                          handleParamChange('largura_modulo', w)
+                        }
                       }}
                     >
-                      <SelectTrigger id="campo-largura-modulo" aria-label={paramLargura.rotulo} className={`bg-white text-lg py-6 ${obterErroVisivel('largura_modulo') ? 'border-red-500' : 'border-slate-300'}`}>
-                        <SelectValue placeholder="Selecione..." />
+                      <SelectTrigger
+                        id="campo-largura-modulo"
+                        aria-label={paramLargura.rotulo}
+                        aria-invalid={!!obterErroVisivel('largura_modulo')}
+                        aria-describedby={obterErroVisivel('largura_modulo') ? 'erro-largura_modulo' : undefined}
+                        onBlur={() => marcarTocado('largura_modulo')}
+                        className={`bg-white text-lg py-6 ${obterErroVisivel('largura_modulo') ? 'border-red-500' : 'border-slate-300'}`}
+                      >
+                        <SelectValue placeholder="Selecione...">
+                          {paramsForm['largura_modulo'] ? `${paramsForm['largura_modulo']} m` : undefined}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
@@ -1151,9 +1232,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         ))}
                       </SelectContent>
                     </Select>
-                    {obterErroVisivel('largura_modulo') && (
-                      <p className="text-xs text-red-600 font-medium">{obterErroVisivel('largura_modulo')}</p>
-                    )}
+                    {renderErroCampo('largura_modulo')}
                   </div>
                 )
               })()}
@@ -1161,9 +1240,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
               {(() => {
                 const paramVao = parametrosDef.find(p => p.nome_tecnico === 'vao')
                 if (!paramVao) return null
-                const opcoes: string[] = Array.isArray(paramVao.opcoes) ? paramVao.opcoes : JSON.parse(paramVao.opcoes as string || '[]')
+                const opcoesRaw: string[] = Array.isArray(paramVao.opcoes) ? paramVao.opcoes : JSON.parse(paramVao.opcoes as string || '[]')
+                const opcoes = ordenarOpcoesNumericas(opcoesRaw)
                 return (
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 content-start">
                     <Label htmlFor="campo-vao" className="font-bold text-slate-800 uppercase text-xs">{paramVao.rotulo} *</Label>
                     <Select
                       value={paramsForm['vao']?.toString() || ''}
@@ -1172,8 +1252,17 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         handleParamChange('vao', Number(val))
                       }}
                     >
-                      <SelectTrigger id="campo-vao" aria-label={paramVao.rotulo} className={`bg-white text-lg py-6 ${obterErroVisivel('vao') ? 'border-red-500' : 'border-slate-300'}`}>
-                        <SelectValue placeholder="Selecione..." />
+                      <SelectTrigger
+                        id="campo-vao"
+                        aria-label={paramVao.rotulo}
+                        aria-invalid={!!obterErroVisivel('vao')}
+                        aria-describedby={obterErroVisivel('vao') ? 'erro-vao' : undefined}
+                        onBlur={() => marcarTocado('vao')}
+                        className={`bg-white text-lg py-6 ${obterErroVisivel('vao') ? 'border-red-500' : 'border-slate-300'}`}
+                      >
+                        <SelectValue placeholder="Selecione...">
+                          {paramsForm['vao'] ? `${paramsForm['vao']} m` : undefined}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
@@ -1181,9 +1270,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         ))}
                       </SelectContent>
                     </Select>
-                    {obterErroVisivel('vao') && (
-                      <p className="text-xs text-red-600 font-medium">{obterErroVisivel('vao')}</p>
-                    )}
+                    {renderErroCampo('vao')}
                   </div>
                 )
               })()}
@@ -1210,7 +1297,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                     max={Number(paramsForm['vao']) || 4}
                     step="any"
                     value={vaoUltimo}
+                    aria-invalid={!!obterErroVisivel('vaoUltimo')}
+                    aria-describedby={obterErroVisivel('vaoUltimo') ? 'erro-vaoUltimo' : undefined}
                     onKeyDown={handleNumericKeyDown('vaoUltimo', true)}
+                    onBlur={() => marcarTocado('vaoUltimo')}
                     onChange={(e) => {
                       marcarTocado('vaoUltimo')
                       limparAvisoDigitacao('vaoUltimo')
@@ -1219,9 +1309,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                     }}
                     className={`bg-white text-lg py-6 ${obterErroVisivel('vaoUltimo') ? 'border-red-500 focus-visible:ring-red-500' : 'border-orange-300 focus-visible:ring-orange-500'}`}
                   />
-                  {obterErroVisivel('vaoUltimo') && (
-                    <p className="text-xs text-red-600 font-medium">{obterErroVisivel('vaoUltimo')}</p>
-                  )}
+                  {renderErroCampo('vaoUltimo')}
                 </div>
               </div>
             )}
@@ -1373,7 +1461,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                             step={1}
                             placeholder="Ex: 1"
                             value={paramsForm['travamentos_x'] !== undefined && paramsForm['travamentos_x'] !== '' ? String(paramsForm['travamentos_x']) : ''}
+                            aria-invalid={!!obterErroVisivel('travamentos_x')}
+                            aria-describedby={obterErroVisivel('travamentos_x') ? 'erro-travamentos_x' : undefined}
                             onKeyDown={handleNumericKeyDown('travamentos_x', false)}
+                            onBlur={() => marcarTocado('travamentos_x')}
                             onChange={(e) => {
                               marcarTocado('travamentos_x')
                               limparAvisoDigitacao('travamentos_x')
@@ -1381,9 +1472,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                             }}
                             className={`bg-white ${obterErroVisivel('travamentos_x') ? 'border-red-500' : ''}`}
                           />
-                          {obterErroVisivel('travamentos_x') && (
-                            <p className="text-xs text-red-600 font-medium">{obterErroVisivel('travamentos_x')}</p>
-                          )}
+                          {renderErroCampo('travamentos_x')}
                         </div>
                       </div>
                     )}
@@ -1627,7 +1716,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                   max={20}
                                   placeholder="Ex: 3 ou 4,2"
                                   value={paramsForm['tela_largura_rolo'] !== undefined && paramsForm['tela_largura_rolo'] !== '' ? String(paramsForm['tela_largura_rolo']) : ''}
+                                  aria-invalid={!!obterErroVisivel('tela_largura_rolo')}
+                                  aria-describedby={obterErroVisivel('tela_largura_rolo') ? 'erro-tela_largura_rolo' : undefined}
                                   onKeyDown={handleNumericKeyDown('tela_largura_rolo', true)}
+                                  onBlur={() => marcarTocado('tela_largura_rolo')}
                                   onChange={(e) => {
                                     marcarTocado('tela_largura_rolo')
                                     limparAvisoDigitacao('tela_largura_rolo')
@@ -1636,9 +1728,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                   }}
                                   className={`bg-white ${obterErroVisivel('tela_largura_rolo') ? 'border-red-500' : ''}`}
                                 />
-                                {obterErroVisivel('tela_largura_rolo') && (
-                                  <p className="text-xs text-red-600 font-medium">{obterErroVisivel('tela_largura_rolo')}</p>
-                                )}
+                                {renderErroCampo('tela_largura_rolo')}
                               </div>
                             )}
 
@@ -1808,7 +1898,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                             step={1}
                             placeholder="Ex: 1"
                             value={paramsForm['n_divisas_por_modulo'] !== undefined && paramsForm['n_divisas_por_modulo'] !== '' ? String(paramsForm['n_divisas_por_modulo']) : ''}
+                            aria-invalid={!!obterErroVisivel('n_divisas_por_modulo')}
+                            aria-describedby={obterErroVisivel('n_divisas_por_modulo') ? 'erro-n_divisas_por_modulo' : undefined}
                             onKeyDown={handleNumericKeyDown('n_divisas_por_modulo', false)}
+                            onBlur={() => marcarTocado('n_divisas_por_modulo')}
                             onChange={(e) => {
                               marcarTocado('n_divisas_por_modulo')
                               limparAvisoDigitacao('n_divisas_por_modulo')
@@ -1816,9 +1909,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                             }}
                             className={`bg-white ${obterErroVisivel('n_divisas_por_modulo') ? 'border-red-500' : ''}`}
                           />
-                          {obterErroVisivel('n_divisas_por_modulo') && (
-                            <p className="text-xs text-red-600 font-medium">{obterErroVisivel('n_divisas_por_modulo')}</p>
-                          )}
+                          {renderErroCampo('n_divisas_por_modulo')}
                         </div>
                       </div>
                     )}
@@ -1837,7 +1928,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                 step={1}
                                 placeholder="Ex: 1 anticâmara"
                                 value={item.quantidade}
+                                aria-invalid={!!obterErroVisivel(`anticamara_qtd_${index}`)}
+                                aria-describedby={obterErroVisivel(`anticamara_qtd_${index}`) ? `erro-anticamara_qtd_${index}` : undefined}
                                 onKeyDown={handleNumericKeyDown(`anticamara_qtd_${index}`, false)}
+                                onBlur={() => marcarTocado(`anticamara_qtd_${index}`)}
                                 onChange={(e) => {
                                   marcarTocado(`anticamara_qtd_${index}`)
                                   limparAvisoDigitacao(`anticamara_qtd_${index}`)
@@ -1847,9 +1941,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                 }}
                                 className={`bg-white ${obterErroVisivel(`anticamara_qtd_${index}`) ? 'border-red-500' : ''}`}
                               />
-                              {obterErroVisivel(`anticamara_qtd_${index}`) && (
-                                <p className="text-xs text-red-600 font-medium">{obterErroVisivel(`anticamara_qtd_${index}`)}</p>
-                              )}
+                              {renderErroCampo(`anticamara_qtd_${index}`)}
                             </div>
                             <div className="grid gap-2 flex-[2] w-full">
                               <Label htmlFor={`campo-anticamara-modelo-${index}`} className="uppercase text-[10px] font-semibold text-slate-600">Qual o modelo da anticâmara? *</Label>
@@ -1862,7 +1954,13 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                   setAnticamaraConfig(newConfig);
                                 }}
                               >
-                                <SelectTrigger id={`campo-anticamara-modelo-${index}`} className={`bg-white w-full ${obterErroVisivel(`anticamara_modelo_${index}`) ? 'border-red-500' : ''}`}>
+                                <SelectTrigger
+                                  id={`campo-anticamara-modelo-${index}`}
+                                  aria-invalid={!!obterErroVisivel(`anticamara_modelo_${index}`)}
+                                  aria-describedby={obterErroVisivel(`anticamara_modelo_${index}`) ? `erro-anticamara_modelo_${index}` : undefined}
+                                  onBlur={() => marcarTocado(`anticamara_modelo_${index}`)}
+                                  className={`bg-white w-full ${obterErroVisivel(`anticamara_modelo_${index}`) ? 'border-red-500' : ''}`}
+                                >
                                   <SelectValue placeholder="Selecione o produto...">
                                     {item.modelo
                                       ? (() => {
@@ -1882,9 +1980,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                   }
                                 </SelectContent>
                               </Select>
-                              {obterErroVisivel(`anticamara_modelo_${index}`) && (
-                                <p className="text-xs text-red-600 font-medium">{obterErroVisivel(`anticamara_modelo_${index}`)}</p>
-                              )}
+                              {renderErroCampo(`anticamara_modelo_${index}`)}
                             </div>
                             {anticamaraConfig.length > 1 && (
                               <Button 
@@ -1958,7 +2054,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                 const opcoes: string[] = Array.isArray(param.opcoes) ? param.opcoes : JSON.parse(param.opcoes as string || '[]')
                 const obrigatorio = param.nome_tecnico === 'tipo_arco' || param.nome_tecnico === 'calha_lateral'
                 return (
-                  <div key={param.nome_tecnico} className="grid gap-2">
+                  <div key={param.nome_tecnico} className="grid gap-2 content-start">
                     <Label htmlFor={`campo-${param.nome_tecnico}`} className="uppercase text-xs font-semibold text-slate-600">
                       {param.rotulo}{obrigatorio ? ' *' : ''}
                     </Label>
@@ -1973,9 +2069,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       <SelectTrigger
                         id={`campo-${param.nome_tecnico}`}
                         aria-label={param.rotulo}
+                        aria-invalid={!!obterErroVisivel(param.nome_tecnico)}
+                        aria-describedby={obterErroVisivel(param.nome_tecnico) ? `erro-${param.nome_tecnico}` : undefined}
+                        onBlur={() => marcarTocado(param.nome_tecnico)}
                         className={`w-full bg-white ${obterErroVisivel(param.nome_tecnico) ? 'border-red-500' : ''}`}
                       >
-                        <SelectValue placeholder="Selecione..." />
+                        <SelectValue placeholder="Selecione...">
+                          {paramsForm[param.nome_tecnico] ? String(paramsForm[param.nome_tecnico]) : undefined}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
@@ -1983,22 +2084,23 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         ))}
                       </SelectContent>
                     </Select>
-                    {obterErroVisivel(param.nome_tecnico) && (
-                      <p className="text-xs text-red-600 font-medium">{obterErroVisivel(param.nome_tecnico)}</p>
-                    )}
+                    {renderErroCampo(param.nome_tecnico)}
                   </div>
                 )
               }
 
               return (
-                <div key={param.nome_tecnico} className="grid gap-2">
+                <div key={param.nome_tecnico} className="grid gap-2 content-start">
                   <Label htmlFor={`campo-${param.nome_tecnico}`} className="uppercase text-xs font-semibold text-slate-600">{param.rotulo}</Label>
                   <Input 
                     id={`campo-${param.nome_tecnico}`}
                     type={param.tipo === 'numero' ? 'number' : 'text'} 
                     value={paramsForm[param.nome_tecnico] !== undefined && paramsForm[param.nome_tecnico] !== '' ? String(paramsForm[param.nome_tecnico]) : ''}
                     placeholder={`Ex: ${param.tipo === 'numero' ? '10' : ''}`}
+                    aria-invalid={!!obterErroVisivel(param.nome_tecnico)}
+                    aria-describedby={obterErroVisivel(param.nome_tecnico) ? `erro-${param.nome_tecnico}` : undefined}
                     onKeyDown={param.tipo === 'numero' ? handleNumericKeyDown(param.nome_tecnico, true) : undefined}
+                    onBlur={() => marcarTocado(param.nome_tecnico)}
                     onChange={(e) => {
                       marcarTocado(param.nome_tecnico)
                       limparAvisoDigitacao(param.nome_tecnico)
@@ -2006,9 +2108,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       handleParamChange(param.nome_tecnico, val)
                     }}
                   />
-                  {obterErroVisivel(param.nome_tecnico) && (
-                    <p className="text-xs text-red-600 font-medium">{obterErroVisivel(param.nome_tecnico)}</p>
-                  )}
+                  {renderErroCampo(param.nome_tecnico)}
                 </div>
               )
             })}
@@ -2047,7 +2147,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                           step={1}
                           placeholder="Ex: 2 portas"
                           value={porta.quantidade}
+                          aria-invalid={!!obterErroVisivel(`porta_qtd_${index}`)}
+                          aria-describedby={obterErroVisivel(`porta_qtd_${index}`) ? `erro-porta_qtd_${index}` : undefined}
                           onKeyDown={handleNumericKeyDown(`porta_qtd_${index}`, false)}
+                          onBlur={() => marcarTocado(`porta_qtd_${index}`)}
                           onChange={(e) => {
                             marcarTocado(`porta_qtd_${index}`)
                             limparAvisoDigitacao(`porta_qtd_${index}`)
@@ -2057,9 +2160,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                           }}
                           className={`bg-white ${obterErroVisivel(`porta_qtd_${index}`) ? 'border-red-500' : ''}`}
                         />
-                        {obterErroVisivel(`porta_qtd_${index}`) && (
-                          <p className="text-xs text-red-600 font-medium">{obterErroVisivel(`porta_qtd_${index}`)}</p>
-                        )}
+                        {renderErroCampo(`porta_qtd_${index}`)}
                       </div>
                       <div className="grid gap-2 flex-[2] w-full">
                         <Label htmlFor={`campo-porta-tipo-${index}`} className="uppercase text-[10px] font-semibold text-slate-600">Qual o modelo da porta? *</Label>
@@ -2072,7 +2173,13 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                             setPortasConfig(newConfig);
                           }}
                         >
-                          <SelectTrigger id={`campo-porta-tipo-${index}`} className={`bg-white ${obterErroVisivel(`porta_tipo_${index}`) ? 'border-red-500' : ''}`}>
+                          <SelectTrigger
+                            id={`campo-porta-tipo-${index}`}
+                            aria-invalid={!!obterErroVisivel(`porta_tipo_${index}`)}
+                            aria-describedby={obterErroVisivel(`porta_tipo_${index}`) ? `erro-porta_tipo_${index}` : undefined}
+                            onBlur={() => marcarTocado(`porta_tipo_${index}`)}
+                            className={`bg-white ${obterErroVisivel(`porta_tipo_${index}`) ? 'border-red-500' : ''}`}
+                          >
                             <SelectValue placeholder="Selecione o modelo...">
                               {porta.tipo === 'abrir'
                                 ? 'Porta de Abrir 2,00 x 1,00 m'
@@ -2089,9 +2196,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                             <SelectItem value="correr_grande">Porta de Correr 2,10 x 3,00 m</SelectItem>
                           </SelectContent>
                         </Select>
-                        {obterErroVisivel(`porta_tipo_${index}`) && (
-                          <p className="text-xs text-red-600 font-medium">{obterErroVisivel(`porta_tipo_${index}`)}</p>
-                        )}
+                        {renderErroCampo(`porta_tipo_${index}`)}
                       </div>
                       {portasConfig.length > 1 && (
                         <Button 
@@ -2118,17 +2223,23 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
             </div>
           </CardContent>
           <CardFooter className="bg-muted/30 pt-6 flex flex-col gap-4">
-            {tentouCalcular && listaErrosAtivos.length > 0 && (
-              <div role="alert" className="w-full rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                <div className="flex items-center gap-2 font-bold mb-1">
+            {tentouCalcular && chavesErrosAtivos.length > 0 && (
+              <div className="w-full rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 font-medium">
                   <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-                  <span>Preencha os dados obrigatórios e corrija os erros antes de calcular:</span>
+                  <span>
+                    Há {chavesErrosAtivos.length} campo(s) obrigatório(s) ou inválido(s). Confira a mensagem em vermelho junto de cada campo.
+                  </span>
                 </div>
-                <ul className="list-disc pl-5 space-y-0.5 text-xs">
-                  {listaErrosAtivos.map((erro, idx) => (
-                    <li key={idx}>{erro}</li>
-                  ))}
-                </ul>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => focarCampoComErro(chavesErrosAtivos[0])}
+                  className="shrink-0 border-red-300 bg-white text-red-700 hover:bg-red-100 text-xs h-7"
+                >
+                  Ir para o campo
+                </Button>
               </div>
             )}
             <Button onClick={handleCalcular} className="w-full gap-2 text-lg py-6 bg-[#d97021] hover:bg-[#c3631b] text-white">
