@@ -1873,7 +1873,6 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                   <Info className="h-4 w-4" />
                                 </button>
                               )}
-                              <span className="text-xs text-muted-foreground ml-2">({item.posicao_nome})</span>
                               {item.isManualChange && (
                                 <Badge variant="outline" className="ml-2 mt-1 text-[10px] h-5 bg-orange-50 text-orange-600 border-orange-200 w-fit">Alterado Manualmente</Badge>
                               )}
