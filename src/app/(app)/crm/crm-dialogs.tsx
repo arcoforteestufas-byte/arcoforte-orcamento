@@ -177,9 +177,13 @@ export function EnviarFunilDialog({ alvo, funis, usuarios, onFechar, onFeito }: 
   const atual = funis.find(f => f.id === alvo?.funilAtualId)
   const funilDestino = funis.find(f => f.id === destino)
   // Quem pode receber: usuários do funil de destino (lista vazia = todos)
-  const candidatos = funilDestino?.usuarios?.length
-    ? usuarios.filter(u => funilDestino.usuarios!.includes(u.id))
-    : usuarios
+  const temLista = !!funilDestino?.usuarios?.length
+  const candidatos = temLista ? usuarios.filter(u => funilDestino!.usuarios!.includes(u.id)) : usuarios
+  // O responsável atual não trabalha no destino: precisa escolher (senão o lead some para a equipe)
+  const atualFicaFora = temLista && !funilDestino!.usuarios!.includes(alvo?.vendedorId || "")
+  const rodizio = !!funilDestino?.distribuicao_automatica && temLista
+  const RODIZIO = "__rodizio__"
+  const faltaResponsavel = atualFicaFora && !rodizio && !vendedor
 
   useEffect(() => {
     if (!alvo) return
@@ -192,7 +196,7 @@ export function EnviarFunilDialog({ alvo, funis, usuarios, onFechar, onFeito }: 
   const confirmar = async () => {
     if (!alvo || !destino) return
     setSalvando(true)
-    const r = await enviarLeadParaFunil(alvo.leadId, destino, vendedor || null)
+    const r = await enviarLeadParaFunil(alvo.leadId, destino, vendedor && vendedor !== RODIZIO ? vendedor : null)
     setSalvando(false)
     if (!r.ok) return toast.error(r.erro)
     toast.success(`Lead enviado para ${funilDestino?.nome}`)
@@ -229,20 +233,28 @@ export function EnviarFunilDialog({ alvo, funis, usuarios, onFechar, onFeito }: 
               </div>
             </div>
             <div className="grid gap-1.5">
-              <Label>Responsável no novo funil</Label>
-              <select className={inputClasse} value={vendedor} onChange={e => setVendedor(e.target.value)}>
-                <option value="">Manter o responsável atual ({usuarios.find(u => u.id === alvo?.vendedorId)?.nome || "—"})</option>
-                {candidatos.filter(u => u.id !== alvo?.vendedorId).map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+              <Label>Responsável no novo funil{atualFicaFora && !rodizio ? " *" : ""}</Label>
+              <select className={`${inputClasse} ${faltaResponsavel ? "border-amber-400 ring-2 ring-amber-200" : ""}`} value={vendedor} onChange={e => setVendedor(e.target.value)}>
+                {rodizio
+                  ? <option value="">Rodízio automático (próximo da fila do {funilDestino?.nome})</option>
+                  : atualFicaFora
+                    ? <option value="">Escolha quem vai atender...</option>
+                    : <option value="">Manter o responsável atual ({usuarios.find(u => u.id === alvo?.vendedorId)?.nome || "—"})</option>}
+                {candidatos.filter(u => u.id !== alvo?.vendedorId || !atualFicaFora).map(u => (
+                  <option key={u.id} value={u.id}>{u.nome}{u.id === alvo?.vendedorId ? " (atual)" : ""}</option>
+                ))}
               </select>
               <p className="text-xs text-muted-foreground">
-                O lead entra na primeira etapa do funil escolhido. Se trocar o responsável, o cadastro do cliente também passa para ele.
+                {faltaResponsavel
+                  ? `O responsável atual não trabalha no funil ${funilDestino?.nome}. Escolha quem vai atender, senão a equipe não vê o lead.`
+                  : "O lead entra na primeira etapa do funil escolhido. Se trocar o responsável, o cadastro do cliente também passa para ele."}
               </p>
             </div>
           </div>
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onFechar}>Cancelar</Button>
-          <Button onClick={confirmar} disabled={salvando || !destino} className="bg-[#d97021] hover:bg-[#c3631b] gap-1">
+          <Button onClick={confirmar} disabled={salvando || !destino || faltaResponsavel} className="bg-[#d97021] hover:bg-[#c3631b] gap-1">
             <Send className="h-4 w-4" /> {salvando ? "Enviando..." : "Enviar"}
           </Button>
         </DialogFooter>

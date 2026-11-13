@@ -12,7 +12,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { criarLead, listarClientesParaLead, moverLead } from "@/app/actions/crm"
+import { assumirLead, criarLead, listarClientesParaLead, moverLead } from "@/app/actions/crm"
 import {
   TEMPERATURA_INFO, campoNoFunil, hojeISO, temperatura,
   type CrmEtapa, type CrmLead, type CrmQuadro, type Temperatura,
@@ -28,6 +28,7 @@ function valorDoLead(l: CrmLead) {
 }
 
 const COLUNA_ENVIAR = "__enviar__"
+const SEM_RESPONSAVEL = "__fila__"
 
 export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
   const router = useRouter()
@@ -51,12 +52,24 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
   const proximoFunil = quadro.funis.find(f => f.id === funil?.proximo_funil_id)
   const nomeUsuario = (id: string) => quadro.usuarios.find(u => u.id === id)?.nome || "?"
   const mostraFiltroVendedor = quadro.isAdmin || !!funil?.membros_veem_todos
+  const equipe = useMemo(() => funil?.usuarios || [], [funil])
+  // Pode pegar leads da fila: funil compartilhado e a pessoa trabalha nele
+  const podeAssumir = !!funil?.membros_veem_todos && (equipe.includes(quadro.userId) || (!equipe.length && !quadro.isAdmin))
+
+  const assumir = async (l: CrmLead) => {
+    const r = await assumirLead(l.id)
+    if (!r.ok) return toast.error(r.erro)
+    toast.success(`Você assumiu "${l.titulo}"`)
+    setLeads(ls => ls.map(x => x.id === l.id ? { ...x, vendedor_id: quadro.userId } : x))
+    router.refresh()
+  }
 
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase()
     const limite = periodoFechados === "todos" ? 0 : Date.now() - Number(periodoFechados) * 86400000
     return leads.filter(l => {
-      if (vendedor && l.vendedor_id !== vendedor) return false
+      if (vendedor === SEM_RESPONSAVEL) { if (!equipe.length || equipe.includes(l.vendedor_id)) return false }
+      else if (vendedor && l.vendedor_id !== vendedor) return false
       if (temp && temperatura(l.score, quadro.config) !== temp) return false
       if (termo) {
         const alvo = [l.titulo, l.contato_nome, l.cidade, l.uf, l.cliente_nome, l.telefone].filter(Boolean).join(" ").toLowerCase()
@@ -68,7 +81,7 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
       }
       return true
     })
-  }, [leads, busca, vendedor, temp, periodoFechados, quadro.config])
+  }, [leads, busca, vendedor, temp, periodoFechados, quadro.config, equipe])
 
   const porEtapa = useMemo(() => {
     const m: Record<string, CrmLead[]> = {}
@@ -190,6 +203,7 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
           {mostraFiltroVendedor && (
             <select className={cn(inputClasse, "w-auto bg-background")} value={vendedor} onChange={e => setVendedor(e.target.value)}>
               <option value="">Todos os responsáveis</option>
+              {equipe.length > 0 && <option value={SEM_RESPONSAVEL}>Na fila (sem responsável)</option>}
               {quadro.usuarios.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
             </select>
           )}
@@ -253,6 +267,24 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
 
       {/* Filtro de temperatura */}
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
+        {mostraFiltroVendedor && (
+          <>
+            <button onClick={() => setVendedor(vendedor === quadro.userId ? "" : quadro.userId)}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ring-1 ring-inset transition-colors ${vendedor === quadro.userId
+                ? "bg-[#d97021] text-white ring-[#d97021]" : "bg-background ring-border text-muted-foreground hover:text-foreground"}`}>
+              <UserRound className="h-3 w-3" /> Meus leads
+            </button>
+            {equipe.length > 0 && (
+              <button onClick={() => setVendedor(vendedor === SEM_RESPONSAVEL ? "" : SEM_RESPONSAVEL)}
+                title="Leads que chegaram neste funil e ainda não têm ninguém da equipe como responsável"
+                className={`rounded-full px-2.5 py-1 font-medium ring-1 ring-inset transition-colors ${vendedor === SEM_RESPONSAVEL
+                  ? "bg-amber-500 text-white ring-amber-500" : "bg-background ring-border text-muted-foreground hover:text-foreground"}`}>
+                Na fila (sem responsável)
+              </button>
+            )}
+            <span className="mx-1 h-4 w-px bg-border" />
+          </>
+        )}
         <span className="text-muted-foreground mr-1">Temperatura:</span>
         {([["", "Todos"], ["quente", "Quentes"], ["morno", "Mornos"], ["frio", "Frios"]] as const).map(([v, r]) => (
           <button key={v} onClick={() => setTemp(v)}
@@ -304,7 +336,9 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
                       onDragStart={() => setArrastando(l.id)}
                       onDragEnd={() => { setArrastando(null); setColunaAlvo(null); setCartaoAlvo(null) }}
                       onDragOver={() => { if (cartaoAlvo !== l.id) setCartaoAlvo(l.id) }}
-                      onAbrir={() => router.push(`/crm/lead/${l.id}`)} />
+                      onAbrir={() => router.push(`/crm/lead/${l.id}`)}
+                      naFila={equipe.length > 0 && !equipe.includes(l.vendedor_id)}
+                      onAssumir={podeAssumir && l.status === "aberto" && l.vendedor_id !== quadro.userId ? () => assumir(l) : undefined} />
                   ))}
                   {cards.length === 0 && (
                     <div className="text-xs text-muted-foreground text-center py-8 border-2 border-dashed border-slate-300/70 rounded-lg">
@@ -348,7 +382,7 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
 
 // ======================================================================
 
-function CartaoLead({ l, quadro, nomeUsuario, arrastando, cartaoAlvo, onDragStart, onDragEnd, onDragOver, onAbrir }: {
+function CartaoLead({ l, quadro, nomeUsuario, arrastando, cartaoAlvo, onDragStart, onDragEnd, onDragOver, onAbrir, naFila, onAssumir }: {
   l: CrmLead
   quadro: CrmQuadro
   nomeUsuario: (id: string) => string
@@ -358,6 +392,8 @@ function CartaoLead({ l, quadro, nomeUsuario, arrastando, cartaoAlvo, onDragStar
   onDragEnd: () => void
   onDragOver: () => void
   onAbrir: () => void
+  naFila: boolean
+  onAssumir?: () => void
 }) {
   const dias = diasDesde(l.etapa_desde)
   const parado = l.status === "aberto" && dias >= quadro.config.dias_alerta_parado
@@ -426,6 +462,15 @@ function CartaoLead({ l, quadro, nomeUsuario, arrastando, cartaoAlvo, onDragStar
           <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 ${contatoAtrasado ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`} title="Próximo contato">
             <CalendarClock className="h-3 w-3" />{formatarData(l.proxima_acao_em).slice(0, 5)}
           </span>
+        )}
+        {naFila && l.status === "aberto" && (
+          <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 font-medium" title="Ninguém da equipe deste funil é o responsável ainda">na fila</span>
+        )}
+        {onAssumir && (
+          <button onClick={e => { e.stopPropagation(); onAssumir() }}
+            className={`ml-auto rounded-md px-2 py-0.5 font-semibold transition-colors ${naFila ? "bg-[#d97021] text-white hover:bg-[#c3631b]" : "text-[#d97021] opacity-0 group-hover:opacity-100 hover:bg-orange-50"}`}>
+            Assumir
+          </button>
         )}
         {l.status === "perdido" && l.motivo_perda_id && (
           <span className="rounded bg-red-50 text-red-700 px-1.5 py-0.5">{quadro.motivos.find(m => m.id === l.motivo_perda_id)?.nome}</span>

@@ -91,12 +91,13 @@ function normalizarFunil(f: Record<string, any>, acessos: { funil_id: string; us
     proximo_funil_id: f.proximo_funil_id ?? null,
     membros_veem_todos: !!f.membros_veem_todos,
     membros_editam_todos: !!f.membros_editam_todos,
+    distribuicao_automatica: !!f.distribuicao_automatica,
     usuarios: acessos.filter(a => a.funil_id === f.id).map(a => a.usuario_id),
   } as CrmFunil
 }
 
 const MSG_SEM_TABELAS =
-  "As tabelas do CRM ainda não foram criadas neste banco. Rode as migrações 20261113000000_crm.sql e 20261114000000_crm_v2.sql."
+  "As tabelas do CRM ainda não estão atualizadas neste banco. Rode as migrações 20261113000000_crm.sql, 20261114000000_crm_v2.sql e 20261115000000_crm_v3.sql."
 
 // =====================================================================
 // LEITURA
@@ -428,6 +429,20 @@ export async function enviarLeadParaFunil(id: string, funilId: string, vendedorI
   return { ok: true }
 }
 
+/** Quem trabalha num funil com fila compartilhada pega o lead para si. */
+export async function assumirLead(id: string): Promise<Resultado> {
+  const { supabase, user } = await sessao()
+  if (!user) return { ok: false, erro: "Não autenticado" }
+  const { data, error } = await supabase.rpc("crm_assumir_lead", { p_lead: id })
+  if (error) {
+    return { ok: false, erro: error.message.includes("crm_assumir_lead") ? MSG_SEM_TABELAS : error.message }
+  }
+  if (data) return { ok: false, erro: String(data) }
+  revalidar(id)
+  revalidatePath("/clientes")
+  return { ok: true }
+}
+
 export async function marcarGanho(
   id: string,
   etapaId: string,
@@ -746,6 +761,7 @@ export async function salvarFunil(f: Partial<CrmFunil> & { nome: string }): Prom
   if (f.proximo_funil_id !== undefined) campos.proximo_funil_id = f.proximo_funil_id && f.proximo_funil_id !== f.id ? f.proximo_funil_id : null
   if (f.membros_veem_todos !== undefined) campos.membros_veem_todos = !!f.membros_veem_todos
   if (f.membros_editam_todos !== undefined) campos.membros_editam_todos = !!f.membros_veem_todos && !!f.membros_editam_todos
+  if (f.distribuicao_automatica !== undefined) campos.distribuicao_automatica = !!f.distribuicao_automatica
 
   let id = f.id
   if (id) {

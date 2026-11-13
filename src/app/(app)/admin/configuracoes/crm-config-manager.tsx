@@ -264,6 +264,18 @@ function FunilEditor({ funil, funis, usuarios, onSalvar, onExcluir }: {
           </label>
           {!f.membros_veem_todos && <p className="text-xs text-muted-foreground pl-6">Cada um vê só os leads em que é o responsável (bom para Vendedores).</p>}
         </div>
+        <div className="space-y-1 text-sm border-t pt-3">
+          <label className={`flex items-center gap-2 ${todos ? "opacity-40" : ""}`}>
+            <input type="checkbox" className="h-4 w-4 accent-[#d97021]" disabled={todos} checked={f.distribuicao_automatica && !todos}
+              onChange={e => setF({ ...f, distribuicao_automatica: e.target.checked })} />
+            Rodízio automático: leads enviados para este funil vão, um de cada vez, para cada pessoa da lista
+          </label>
+          <p className="text-xs text-muted-foreground pl-6">
+            {todos
+              ? "Para usar o rodízio, marque acima quem trabalha neste funil."
+              : "Quem envia ainda pode escolher uma pessoa específica; se não escolher, o sistema distribui em ordem alfabética, sempre para o próximo."}
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center justify-between">

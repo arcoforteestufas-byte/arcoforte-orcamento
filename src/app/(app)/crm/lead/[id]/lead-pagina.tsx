@@ -12,7 +12,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  adicionarAtividade, alternarTarefa, atualizarLead, criarTarefa, desvincularOrcamento, excluirAtividade,
+  adicionarAtividade, alternarTarefa, assumirLead, atualizarLead, criarTarefa, desvincularOrcamento, excluirAtividade,
   excluirLead, excluirTarefa, listarOrcamentosSemLead, moverLead, vincularOrcamento,
 } from "@/app/actions/crm"
 import { TIPOS_ATIVIDADE, hojeISO, type CrmFichaLead, type CrmOrcamentoResumo, type CrmQuadro } from "@/lib/crm-types"
@@ -63,6 +63,9 @@ export function LeadPagina({ ficha, quadro }: { ficha: CrmFichaLead; quadro: Crm
   const etapaPerdido = etapas.find(e => e.tipo === "perdido")
   const nomeUsuario = (id: string | null) => quadro.usuarios.find(u => u.id === id)?.nome || "—"
   const whats = linkWhatsApp(lead.telefone)
+  const equipe = funil?.usuarios || []
+  const podeAssumir = !!funil?.membros_veem_todos && lead.status === "aberto" && lead.vendedor_id !== quadro.userId
+    && (equipe.includes(quadro.userId) || (!equipe.length && !quadro.isAdmin))
 
   // Formulários (voltam ao valor salvo quando o lead muda no servidor)
   const chaveSalva = JSON.stringify([lead.atualizado_em, lead.campos])
@@ -158,6 +161,16 @@ export function LeadPagina({ ficha, quadro }: { ficha: CrmFichaLead; quadro: Crm
               <div className="text-xs uppercase tracking-wider text-muted-foreground">{lead.status === "ganho" ? "Valor fechado" : "Valor do negócio"}</div>
               <div className={`text-2xl font-bold ${lead.status === "ganho" ? "text-emerald-700" : ""}`}>{valor ? brlCentavos.format(valor) : "—"}</div>
             </div>
+            {podeAssumir && (
+              <Button className="gap-1 bg-[#d97021] hover:bg-[#c3631b]" onClick={async () => {
+                const r = await assumirLead(lead.id)
+                if (!r.ok) return toast.error(r.erro)
+                toast.success("Agora o lead é seu")
+                atualizar()
+              }}>
+                <UserRound className="h-4 w-4" /> Assumir lead
+              </Button>
+            )}
             {podeEditar && (
               <div className="flex flex-wrap gap-2">
                 {quadro.funis.length > 1 && (

@@ -13,6 +13,7 @@ export interface CrmFunil {
   proximo_funil_id: string | null
   membros_veem_todos: boolean
   membros_editam_todos: boolean
+  distribuicao_automatica: boolean // rodízio entre os usuários do funil ao receber leads
   usuarios?: string[] // ids com acesso (vazio = todos)
 }
 
