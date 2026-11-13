@@ -30,5 +30,32 @@ export const inputClasse =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50"
 
 export function iniciais(nome: string) {
-  return nome.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join("") || "?"
+  const limpo = (nome || "").replace(/\([^)]*\)/g, "").trim()
+  const partes = limpo.match(/[A-Za-zÀ-ÖØ-öø-ÿ]+/g) || []
+  if (partes.length >= 2) return ((partes[0]?.[0] || "") + (partes[1]?.[0] || "")).toUpperCase() || "?"
+  if (partes.length === 1) return (partes[0] || "").slice(0, 2).toUpperCase() || "?"
+  return "?"
+}
+
+/** Valida data opcional "AAAA-MM-DD" (vazio é permitido; bloqueia anos inválidos como 61120-02-20). */
+export function validarDataOpcional(valor: string | null | undefined, badInput?: boolean): string | null {
+  if (badInput) return "Data inválida. Informe uma data válida (AAAA-MM-DD) ou limpe o campo."
+  const v = (valor || "").trim()
+  if (!v) return null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    return "Data inválida. Use o formato AAAA-MM-DD com ano de 4 dígitos."
+  }
+  const [ano, mes, dia] = v.split("-").map(Number)
+  if (ano < 2000 || ano > 2100) {
+    return "Data inválida. O ano deve estar entre 2000 e 2100."
+  }
+  const dt = new Date(Date.UTC(ano, mes - 1, dia))
+  if (
+    dt.getUTCFullYear() !== ano ||
+    dt.getUTCMonth() + 1 !== mes ||
+    dt.getUTCDate() !== dia
+  ) {
+    return "Data inválida no calendário."
+  }
+  return null
 }

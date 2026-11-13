@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
   ArrowLeft, CalendarClock, Check, CheckCircle2, ChevronRight, ClipboardList, FileSignature, FileText,
-  Link2, ListTodo, MapPin, MessageCircle, Phone, Plus, Save, Send, Trash2, Unlink, UserRound, XCircle,
+  Link2, ListTodo, MapPin, MessageCircle, Phone, Plus, Save, Send, Trash2, Unlink, UserRound, X, XCircle,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -20,7 +20,7 @@ import { LeadCampos, leadParaValores, type LeadFormValores } from "../../lead-ca
 import { CamposQualificacao, ScoreBadge } from "../../crm-score"
 import { EnviarFunilDialog, GanhoDialog, PerdidoDialog, type AlvoEtapa } from "../../crm-dialogs"
 import { ClienteDoLead, type ModoCliente } from "../../cliente-do-lead"
-import { brlCentavos, dataHora, diasDesde, formatarData, iniciais, inputClasse, linkWhatsApp } from "../../crm-utils"
+import { brlCentavos, dataHora, diasDesde, formatarData, iniciais, inputClasse, linkWhatsApp, validarDataOpcional } from "../../crm-utils"
 
 const ROTULO_ATIVIDADE: Record<string, string> = {
   nota: "Nota", ligacao: "Ligação", whatsapp: "WhatsApp", visita: "Visita", email: "E-mail",
@@ -482,33 +482,127 @@ function Tarefas({ leadId, tarefas, nomeUsuario, onMudou }: {
   nomeUsuario: (id: string | null) => string
   onMudou: () => void
 }) {
+  const [lista, setLista] = useState(tarefas)
+  useEffect(() => { setLista(tarefas) }, [tarefas])
+
   const [titulo, setTitulo] = useState("")
   const [data, setData] = useState("")
+  const [dataInvalida, setDataInvalida] = useState(false)
+  const [erroData, setErroData] = useState<string | null>(null)
+  const [chaveData, setChaveData] = useState(0)
+  const [salvando, setSalvando] = useState(false)
   const hoje = hojeISO()
-  const abertas = tarefas.filter(t => !t.concluida).length
+  const abertas = lista.filter(t => !t.concluida).length
+
+  const limparData = () => {
+    setData("")
+    setDataInvalida(false)
+    setErroData(null)
+    setChaveData(k => k + 1)
+  }
+
+  const aoMudarData = (e: React.SyntheticEvent<HTMLInputElement>) => {
+    const val = e.currentTarget.value
+    const bad = !!e.currentTarget.validity?.badInput
+    setData(val)
+    setDataInvalida(bad)
+    setErroData(validarDataOpcional(val, bad))
+  }
+
+  const salvarTarefa = async () => {
+    if (!titulo.trim() || salvando) return
+    const erro = validarDataOpcional(data, dataInvalida)
+    if (erro) {
+      setErroData(erro)
+      toast.error(erro)
+      return
+    }
+    setSalvando(true)
+    const r = await criarTarefa(leadId, titulo, data.trim() || null)
+    setSalvando(false)
+    if (!r.ok) {
+      setErroData(r.erro)
+      return toast.error(r.erro)
+    }
+    if (r.dados) setLista(prev => [r.dados!, ...prev])
+    setTitulo("")
+    limparData()
+    toast.success("Tarefa adicionada")
+    onMudou()
+  }
 
   return (
     <Cartao titulo={`Tarefas${abertas ? ` (${abertas})` : ""}`} icone={<ListTodo className="h-4 w-4 text-[#d97021]" />}>
-      <div className="space-y-2">
-        <input className={inputClasse} value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex.: Ligar para confirmar medidas" />
-        <div className="flex gap-2">
-          <input className={inputClasse} type="date" value={data} onChange={e => setData(e.target.value)} />
-          <Button disabled={!titulo.trim()} onClick={async () => {
-            const r = await criarTarefa(leadId, titulo, data || null)
-            if (!r.ok) return toast.error(r.erro)
-            setTitulo(""); setData("")
-            onMudou()
-          }}><Plus className="h-4 w-4" /></Button>
+      <form
+        noValidate
+        className="space-y-2"
+        onSubmit={e => {
+          e.preventDefault()
+          salvarTarefa()
+        }}
+      >
+        <input
+          className={inputClasse}
+          aria-label="Título da tarefa"
+          value={titulo}
+          onChange={e => setTitulo(e.target.value)}
+          placeholder="Ex.: Ligar para confirmar medidas"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[150px] flex items-center gap-1">
+            <input
+              key={chaveData}
+              className={`${inputClasse} ${erroData ? "border-red-500 ring-1 ring-red-500" : ""}`}
+              type="date"
+              min="2000-01-01"
+              max="2100-12-31"
+              aria-label="Data da tarefa"
+              aria-invalid={!!erroData}
+              value={data}
+              onChange={aoMudarData}
+              onInput={aoMudarData}
+              onKeyDown={e => {
+                if ((e.key === "Backspace" || e.key === "Delete" || e.key === "Escape") && (dataInvalida || erroData)) {
+                  limparData()
+                }
+              }}
+            />
+            {(data || dataInvalida || erroData) && (
+              <button
+                type="button"
+                onClick={limparData}
+                title="Limpar data"
+                aria-label="Limpar data"
+                className="shrink-0 rounded-md border p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <Button
+            type="submit"
+            disabled={salvando || !titulo.trim()}
+            className="shrink-0 gap-1 bg-[#d97021] hover:bg-[#c3631b]"
+          >
+            <Plus className="h-4 w-4" /> Adicionar tarefa
+          </Button>
         </div>
-      </div>
-      {tarefas.length > 0 && (
+        {erroData && (
+          <p role="alert" className="text-xs font-medium text-red-600">
+            {erroData}
+          </p>
+        )}
+      </form>
+      {lista.length > 0 && (
         <ul className="mt-3 space-y-1.5">
-          {tarefas.map(t => {
+          {lista.map(t => {
             const atrasada = !t.concluida && t.vence_em && t.vence_em < hoje
             return (
               <li key={t.id} className={`group flex items-start gap-2.5 rounded-lg border p-2.5 text-sm ${atrasada ? "border-red-200 bg-red-50/60" : ""}`}>
                 <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#d97021]" checked={t.concluida} onChange={async (e) => {
-                  await alternarTarefa(t.id, e.target.checked)
+                  const concluida = e.target.checked
+                  setLista(prev => prev.map(x => x.id === t.id ? { ...x, concluida } : x))
+                  await alternarTarefa(t.id, concluida)
                   onMudou()
                 }} />
                 <div className="flex-1 min-w-0">
@@ -518,7 +612,8 @@ function Tarefas({ leadId, tarefas, nomeUsuario, onMudou }: {
                     <span>{nomeUsuario(t.responsavel_id)}</span>
                   </div>
                 </div>
-                <button className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-600" onClick={async () => {
+                <button type="button" aria-label="Excluir tarefa" className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-600" onClick={async () => {
+                  setLista(prev => prev.filter(x => x.id !== t.id))
                   await excluirTarefa(t.id)
                   onMudou()
                 }}><Trash2 className="h-3.5 w-3.5" /></button>
@@ -539,34 +634,57 @@ function Historico({ leadId, atividades, nomeUsuario, userId, isAdmin, onMudou }
   isAdmin: boolean
   onMudou: () => void
 }) {
+  const [lista, setLista] = useState(atividades)
+  useEffect(() => { setLista(atividades) }, [atividades])
+
   const [tipo, setTipo] = useState("nota")
   const [texto, setTexto] = useState("")
+  const [salvando, setSalvando] = useState(false)
+  const [notaSalva, setNotaSalva] = useState(false)
   const corDoTipo = useMemo(() => (t: string) =>
     t === "ganho" ? "bg-emerald-600" : t === "perdido" ? "bg-red-600" : t === "etapa" ? "bg-sky-500" : t === "orcamento" ? "bg-violet-500" : t === "sistema" ? "bg-slate-400" : "bg-[#d97021]", [])
+
+  const registrarNota = async () => {
+    if (!texto.trim() || salvando) return
+    setSalvando(true)
+    const r = await adicionarAtividade(leadId, tipo, texto)
+    setSalvando(false)
+    if (!r.ok) return toast.error(r.erro)
+    if (r.dados) setLista(prev => [r.dados!, ...prev])
+    setTexto("")
+    setNotaSalva(true)
+    setTimeout(() => setNotaSalva(false), 4000)
+    toast.success("Nota salva")
+    onMudou()
+  }
 
   return (
     <Cartao titulo="Histórico" icone={<MessageCircle className="h-4 w-4 text-[#d97021]" />}>
       <div className="space-y-2">
         <div className="flex flex-wrap gap-1">
           {TIPOS_ATIVIDADE.map(t => (
-            <button key={t.valor} onClick={() => setTipo(t.valor)}
+            <button key={t.valor} type="button" onClick={() => setTipo(t.valor)}
               className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${tipo === t.valor ? "bg-[#d97021] text-white" : "bg-muted hover:bg-muted/70"}`}>
               {t.rotulo}
             </button>
           ))}
         </div>
-        <Textarea rows={2} value={texto} onChange={e => setTexto(e.target.value)} placeholder="O que foi conversado / combinado?" />
-        <div className="flex justify-end">
-          <Button size="sm" disabled={!texto.trim()} onClick={async () => {
-            const r = await adicionarAtividade(leadId, tipo, texto)
-            if (!r.ok) return toast.error(r.erro)
-            setTexto("")
-            onMudou()
-          }}>Registrar</Button>
+        <Textarea rows={2} value={texto} onChange={e => { setTexto(e.target.value); if (notaSalva) setNotaSalva(false) }} placeholder="O que foi conversado / combinado?" />
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            {notaSalva && (
+              <span role="status" className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                <Check className="h-3.5 w-3.5" /> Nota salva
+              </span>
+            )}
+          </div>
+          <Button size="sm" disabled={salvando || !texto.trim()} onClick={registrarNota}>
+            {salvando ? "Salvando..." : "Registrar"}
+          </Button>
         </div>
       </div>
       <ol className="relative mt-4 space-y-4 border-l pl-5">
-        {atividades.map(a => (
+        {lista.map(a => (
           <li key={a.id} className="group text-sm">
             <span className={`absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-background ${corDoTipo(a.tipo)}`} />
             <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
@@ -574,8 +692,9 @@ function Historico({ leadId, atividades, nomeUsuario, userId, isAdmin, onMudou }
               <span>{dataHora.format(new Date(a.criado_em))}</span>
               <span>· {nomeUsuario(a.usuario_id)}</span>
               {["nota", "ligacao", "whatsapp", "visita", "email"].includes(a.tipo) && (a.usuario_id === userId || isAdmin) && (
-                <button className="opacity-0 group-hover:opacity-100 hover:text-red-600" onClick={async () => {
+                <button type="button" aria-label="Apagar registro" className="opacity-0 group-hover:opacity-100 hover:text-red-600" onClick={async () => {
                   if (!confirm("Apagar este registro?")) return
+                  setLista(prev => prev.filter(x => x.id !== a.id))
                   await excluirAtividade(a.id)
                   onMudou()
                 }}><Trash2 className="h-3 w-3" /></button>

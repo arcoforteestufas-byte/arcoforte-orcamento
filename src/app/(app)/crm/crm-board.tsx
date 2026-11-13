@@ -364,17 +364,57 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
         </div>
       </div>
 
-      <NovoLeadDialog aberto={novoAberto} onFechar={() => setNovoAberto(false)} quadro={quadro}
-        onCriado={(id) => { setNovoAberto(false); router.push(`/crm/lead/${id}`) }} />
+      <NovoLeadDialog
+        aberto={novoAberto}
+        onFechar={() => setNovoAberto(false)}
+        quadro={quadro}
+        onCriado={(novoLead, abrirFicha) => {
+          setLeads(ls => ls.some(x => x.id === novoLead.id) ? ls : [...ls, novoLead])
+          setNovoAberto(false)
+          if (abrirFicha) {
+            router.push(`/crm/lead/${novoLead.id}`)
+          } else {
+            router.refresh()
+          }
+        }}
+      />
 
-      <GanhoDialog alvo={ganho} onFechar={() => setGanho(null)} onFeito={() => { setGanho(null); router.refresh() }} />
-      <PerdidoDialog alvo={perdido} motivos={quadro.motivos} config={quadro.config} onFechar={() => setPerdido(null)} onFeito={() => { setPerdido(null); router.refresh() }} />
+      <GanhoDialog
+        alvo={ganho}
+        onFechar={() => setGanho(null)}
+        onFeito={() => {
+          if (ganho) {
+            const agora = new Date().toISOString()
+            setLeads(ls => ls.map(x => x.id === ganho.leadId ? { ...x, status: "ganho", etapa_id: ganho.etapaId, ganho_em: agora, etapa_desde: agora } : x))
+          }
+          setGanho(null)
+          router.refresh()
+        }}
+      />
+      <PerdidoDialog
+        alvo={perdido}
+        motivos={quadro.motivos}
+        config={quadro.config}
+        onFechar={() => setPerdido(null)}
+        onFeito={(motivoId) => {
+          if (perdido) {
+            const agora = new Date().toISOString()
+            setLeads(ls => ls.map(x => x.id === perdido.leadId ? { ...x, status: "perdido", etapa_id: perdido.etapaId, perdido_em: agora, etapa_desde: agora, motivo_perda_id: motivoId ?? null } : x))
+          }
+          setPerdido(null)
+          router.refresh()
+        }}
+      />
       <EnviarFunilDialog
         alvo={enviar ? { leadId: enviar.id, titulo: enviar.titulo, funilAtualId: enviar.funil_id, vendedorId: enviar.vendedor_id } : null}
         funis={quadro.funis}
         usuarios={quadro.usuarios}
         onFechar={() => setEnviar(null)}
-        onFeito={() => { setEnviar(null); router.refresh() }}
+        onFeito={() => {
+          if (enviar) setLeads(ls => ls.filter(x => x.id !== enviar.id))
+          setEnviar(null)
+          router.refresh()
+        }}
       />
     </div>
   )
@@ -488,7 +528,7 @@ function NovoLeadDialog({ aberto, onFechar, quadro, onCriado }: {
   aberto: boolean
   onFechar: () => void
   quadro: CrmQuadro
-  onCriado: (id: string) => void
+  onCriado: (lead: CrmLead, abrirFicha?: boolean) => void
 }) {
   const [valores, setValores] = useState<LeadFormValores>({ ...LEAD_VAZIO, vendedor_id: quadro.userId })
   const [campos, setCampos] = useState<Record<string, unknown>>({})
@@ -539,14 +579,14 @@ function NovoLeadDialog({ aberto, onFechar, quadro, onCriado }: {
     }))
   }
 
-  const salvar = async () => {
+  const salvar = async (abrirFicha = false) => {
     if (!quadro.funilAtual) return
     setSalvando(true)
     const r = await criarLead({ ...valores, cliente_id: cliente?.id || "", funil_id: quadro.funilAtual.id, etapa_id: etapaId, campos })
     setSalvando(false)
     if (!r.ok) return toast.error(r.erro)
     toast.success("Lead criado")
-    onCriado(r.dados!.id)
+    onCriado(r.dados!.lead, abrirFicha)
   }
 
   return (
@@ -627,7 +667,10 @@ function NovoLeadDialog({ aberto, onFechar, quadro, onCriado }: {
 
         <DialogFooter>
           <Button variant="outline" onClick={onFechar}>Cancelar</Button>
-          <Button onClick={salvar} disabled={salvando || !valores.titulo.trim()} className="bg-[#d97021] hover:bg-[#c3631b]">
+          <Button variant="outline" onClick={() => salvar(true)} disabled={salvando || !valores.titulo.trim()}>
+            Criar e abrir ficha
+          </Button>
+          <Button onClick={() => salvar(false)} disabled={salvando || !valores.titulo.trim()} className="bg-[#d97021] hover:bg-[#c3631b]">
             {salvando ? "Salvando..." : "Criar lead"}
           </Button>
         </DialogFooter>

@@ -100,28 +100,57 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
   )
 }
 
+const MOTIVOS_FALLBACK: CrmItemLista[] = [
+  { id: "fallback:Preço", nome: "Preço", ordem: 0, ativo: true },
+  { id: "fallback:Prazo de entrega", nome: "Prazo de entrega", ordem: 1, ativo: true },
+  { id: "fallback:Fechou com concorrente", nome: "Fechou com concorrente", ordem: 2, ativo: true },
+  { id: "fallback:Desistiu do projeto", nome: "Desistiu do projeto", ordem: 3, ativo: true },
+  { id: "fallback:Sem crédito / financiamento negado", nome: "Sem crédito / financiamento negado", ordem: 4, ativo: true },
+  { id: "fallback:Sem retorno do cliente", nome: "Sem retorno do cliente", ordem: 5, ativo: true },
+]
+
 export function PerdidoDialog({ alvo, motivos, config, onFechar, onFeito }: {
   alvo: AlvoEtapa
   motivos: CrmItemLista[]
   config: CrmConfig
   onFechar: () => void
-  onFeito: () => void
+  onFeito: (motivoId?: string | null) => void
 }) {
   const [motivo, setMotivo] = useState("")
   const [obs, setObs] = useState("")
   const [perderOrcs, setPerderOrcs] = useState(true)
   const [salvando, setSalvando] = useState(false)
-  useEffect(() => { if (alvo) { setMotivo(""); setObs(""); setPerderOrcs(true) } }, [alvo])
+  const [erroMotivo, setErroMotivo] = useState(false)
+  useEffect(() => {
+    if (alvo) {
+      setMotivo("")
+      setObs("")
+      setPerderOrcs(true)
+      setErroMotivo(false)
+    }
+  }, [alvo])
   const obrigatorio = config.motivo_perda_obrigatorio
+  const ativos = motivos.filter(m => m.ativo)
+  const opcoesMotivo = ativos.length > 0 ? ativos : MOTIVOS_FALLBACK
+
+  const escolherMotivo = (valor: string) => {
+    setMotivo(valor)
+    if (valor) setErroMotivo(false)
+  }
 
   const confirmar = async () => {
     if (!alvo) return
+    if (obrigatorio && !motivo) {
+      setErroMotivo(true)
+      toast.error("Motivo da perda é obrigatório")
+      return
+    }
     setSalvando(true)
     const r = await marcarPerdido(alvo.leadId, alvo.etapaId, motivo || null, obs, perderOrcs)
     setSalvando(false)
     if (!r.ok) return toast.error(r.erro)
-    toast("Lead marcado como perdido")
-    onFeito()
+    toast.success("Lead marcado como perdido")
+    onFeito(motivo || null)
   }
 
   return (
@@ -132,19 +161,37 @@ export function PerdidoDialog({ alvo, motivos, config, onFechar, onFeito }: {
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid gap-1.5">
-            <Label>Motivo da perda{obrigatorio ? " *" : ""}</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {motivos.filter(m => m.ativo).map(m => (
-                <button key={m.id} type="button" onClick={() => setMotivo(motivo === m.id ? "" : m.id)}
+            <Label htmlFor="motivo-perda">Motivo da perda{obrigatorio ? " *" : ""}</Label>
+            <select
+              id="motivo-perda"
+              aria-label="Motivo da perda"
+              aria-invalid={obrigatorio && !motivo ? true : undefined}
+              className={`${inputClasse} bg-background ${erroMotivo && !motivo ? "border-red-500 ring-1 ring-red-500" : ""}`}
+              value={motivo}
+              onChange={e => escolherMotivo(e.target.value)}
+            >
+              <option value="">Selecione o motivo...</option>
+              {opcoesMotivo.map(m => (
+                <option key={m.id} value={m.id}>{m.nome}</option>
+              ))}
+            </select>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {opcoesMotivo.map(m => (
+                <button key={m.id} type="button" onClick={() => escolherMotivo(motivo === m.id ? "" : m.id)}
                   className={`rounded-full border px-3 py-1 text-sm transition-colors ${motivo === m.id ? "border-red-600 bg-red-50 text-red-700 font-medium" : "hover:bg-muted"}`}>
                   {m.nome}
                 </button>
               ))}
             </div>
+            {obrigatorio && !motivo && (
+              <p role="alert" className={`text-xs text-red-600 ${erroMotivo ? "font-semibold" : "font-medium"}`}>
+                Motivo da perda é obrigatório
+              </p>
+            )}
           </div>
           <div className="grid gap-1.5">
-            <Label>Detalhes (opcional)</Label>
-            <Textarea rows={2} value={obs} onChange={e => setObs(e.target.value)} placeholder="Ex.: fechou com concorrente por R$ 10 mil a menos" />
+            <Label htmlFor="detalhes-perda">Detalhes (opcional)</Label>
+            <Textarea id="detalhes-perda" rows={2} value={obs} onChange={e => setObs(e.target.value)} placeholder="Ex.: fechou com concorrente por R$ 10 mil a menos" />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={perderOrcs} onChange={e => setPerderOrcs(e.target.checked)} className="accent-red-600" />
@@ -153,7 +200,7 @@ export function PerdidoDialog({ alvo, motivos, config, onFechar, onFeito }: {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onFechar}>Cancelar</Button>
-          <Button variant="destructive" onClick={confirmar} disabled={salvando || (obrigatorio && !motivo)}>
+          <Button variant="destructive" onClick={confirmar} disabled={salvando}>
             {salvando ? "Salvando..." : "Confirmar perda"}
           </Button>
         </DialogFooter>

@@ -7,16 +7,29 @@ import {
   CONFIG_PADRAO,
   calcularScore,
   hojeISO,
+  type CrmAtividade,
   type CrmCampo,
   type CrmCliente,
   type CrmConfig,
   type CrmEtapa,
   type CrmFichaLead,
   type CrmFunil,
+  type CrmItemLista,
   type CrmLead,
   type CrmQuadro,
   type CrmOrcamentoResumo,
+  type CrmTarefa,
 } from "@/lib/crm-types"
+import { validarDataOpcional } from "@/app/(app)/crm/crm-utils"
+
+const MOTIVOS_PERDA_PADRAO: CrmItemLista[] = [
+  { id: "fallback:Preço", nome: "Preço", ordem: 0, ativo: true },
+  { id: "fallback:Prazo de entrega", nome: "Prazo de entrega", ordem: 1, ativo: true },
+  { id: "fallback:Fechou com concorrente", nome: "Fechou com concorrente", ordem: 2, ativo: true },
+  { id: "fallback:Desistiu do projeto", nome: "Desistiu do projeto", ordem: 3, ativo: true },
+  { id: "fallback:Sem crédito / financiamento negado", nome: "Sem crédito / financiamento negado", ordem: 4, ativo: true },
+  { id: "fallback:Sem retorno do cliente", nome: "Sem retorno do cliente", ordem: 5, ativo: true },
+]
 
 type Resultado<T = undefined> = { ok: true; dados?: T } | { ok: false; erro: string }
 type Supa = Awaited<ReturnType<typeof createClient>>
@@ -177,6 +190,10 @@ export async function obterQuadro(funilId?: string, opcoes?: { semLeads?: boolea
     if (leadsR.error) console.error("obterQuadro leads", leadsR.error)
   }
 
+  const motivosLista = (motivosR.data && motivosR.data.length > 0)
+    ? motivosR.data
+    : MOTIVOS_PERDA_PADRAO
+
   return {
     funis,
     funilAtual,
@@ -184,7 +201,7 @@ export async function obterQuadro(funilId?: string, opcoes?: { semLeads?: boolea
     leads,
     usuarios: usuariosR.data || [],
     origens: origensR.data || [],
-    motivos: motivosR.data || [],
+    motivos: motivosLista,
     campos: ((camposR.data || []) as CrmCampo[]),
     contagemFunis,
     config: { ...CONFIG_PADRAO, ...(configR.data || {}) } as CrmConfig,
@@ -306,7 +323,7 @@ function limparLead(dados: Record<string, unknown>) {
 
 export async function criarLead(
   dados: Record<string, unknown> & { funil_id: string; etapa_id?: string; campos?: Record<string, unknown> }
-): Promise<Resultado<{ id: string }>> {
+): Promise<Resultado<{ id: string; lead: CrmLead }>> {
   const { supabase, user } = await sessao()
   if (!user) return { ok: false, erro: "Não autenticado" }
   const campos = limparLead(dados)
@@ -332,13 +349,25 @@ export async function criarLead(
       ...campos, funil_id: dados.funil_id, etapa_id: etapaId, ordem: Date.now(),
       campos: valoresCampos, score: calcularScore(defs, valoresCampos),
     })
-    .select("id")
+    .select("*, clientes(nome)")
     .single()
   if (error) return { ok: false, erro: error.message }
 
   await registrar(supabase, data.id, "sistema", "Lead criado")
   revalidar()
-  return { ok: true, dados: { id: data.id } }
+
+  const { clientes, ...resto } = data as Record<string, any>
+  const novoLead: CrmLead = {
+    ...(resto as CrmLead),
+    campos: resto.campos || {},
+    score: Number(resto.score) || 0,
+    cliente_nome: clientes?.nome ?? null,
+    qtd_orcamentos: 0,
+    maior_orcamento: 0,
+    tarefas_abertas: 0,
+    tarefa_atrasada: false,
+  }
+  return { ok: true, dados: { id: data.id, lead: novoLead } }
 }
 
 export async function atualizarLead(id: string, dados: Record<string, unknown> & { campos?: Record<string, unknown> }): Promise<Resultado> {
@@ -496,12 +525,17 @@ export async function marcarPerdido(
     supabase.from("crm_config").select("motivo_perda_obrigatorio").eq("id", 1).maybeSingle(),
   ])
   if (etapa?.tipo !== "perdido") return { ok: false, erro: "Etapa inválida para perda." }
-  if ((cfg?.motivo_perda_obrigatorio ?? true) && !motivoId) return { ok: false, erro: "Escolha o motivo da perda." }
+  if ((cfg?.motivo_perda_obrigatorio ?? true) && !motivoId) return { ok: false, erro: "Motivo da perda é obrigatório" }
+
+  const ehFallback = motivoId?.startsWith("fallback:")
+  const motivoUuid = ehFallback ? null : motivoId
+  const nomeFallback = ehFallback ? motivoId!.replace(/^fallback:/, "") : ""
+  const obsFinal = [nomeFallback, obs?.trim()].filter(Boolean).join(" — ") || null
 
   const agora = new Date().toISOString()
   const { data, error } = await supabase.from("crm_leads").update({
     etapa_id: etapaId, status: "perdido", perdido_em: agora, ganho_em: null, etapa_desde: agora,
-    motivo_perda_id: motivoId, motivo_perda_obs: obs?.trim() || null,
+    motivo_perda_id: motivoUuid, motivo_perda_obs: obsFinal,
     orcamento_ganho_id: null, valor_fechado: null, atualizado_em: agora,
   }).eq("id", id).select("id")
   if (error) return { ok: false, erro: error.message }
@@ -511,9 +545,9 @@ export async function marcarPerdido(
     await supabase.from("orcamentos").update({ status: "Perdido" }).eq("lead_id", id).in("status", ["Rascunho", "Enviado"])
   }
 
-  let nomeMotivo = ""
-  if (motivoId) {
-    const { data: m } = await supabase.from("crm_motivos_perda").select("nome").eq("id", motivoId).maybeSingle()
+  let nomeMotivo = nomeFallback
+  if (motivoUuid) {
+    const { data: m } = await supabase.from("crm_motivos_perda").select("nome").eq("id", motivoUuid).maybeSingle()
     nomeMotivo = m?.nome || ""
   }
   await registrar(supabase, id, "perdido", `Lead PERDIDO${nomeMotivo ? ` — ${nomeMotivo}` : ""}${obs?.trim() ? `: ${obs.trim()}` : ""}`)
@@ -526,15 +560,19 @@ export async function marcarPerdido(
 // HISTÓRICO, TAREFAS, ORÇAMENTOS E CLIENTE
 // =====================================================================
 
-export async function adicionarAtividade(leadId: string, tipo: string, descricao: string): Promise<Resultado> {
+export async function adicionarAtividade(leadId: string, tipo: string, descricao: string): Promise<Resultado<CrmAtividade>> {
   const { supabase, user } = await sessao()
   if (!user) return { ok: false, erro: "Não autenticado" }
   if (!descricao.trim()) return { ok: false, erro: "Escreva a anotação." }
-  const { error } = await supabase.from("crm_lead_atividades").insert({ lead_id: leadId, tipo, descricao: descricao.trim() })
+  const { data, error } = await supabase
+    .from("crm_lead_atividades")
+    .insert({ lead_id: leadId, tipo, descricao: descricao.trim() })
+    .select("*")
+    .single()
   if (error) return { ok: false, erro: error.message }
   await supabase.from("crm_leads").update({ atualizado_em: new Date().toISOString() }).eq("id", leadId)
   revalidar(leadId)
-  return { ok: true }
+  return { ok: true, dados: data as CrmAtividade }
 }
 
 export async function excluirAtividade(id: string): Promise<Resultado> {
@@ -544,14 +582,21 @@ export async function excluirAtividade(id: string): Promise<Resultado> {
   return { ok: true }
 }
 
-export async function criarTarefa(leadId: string, titulo: string, venceEm: string | null): Promise<Resultado> {
+export async function criarTarefa(leadId: string, titulo: string, venceEm: string | null): Promise<Resultado<CrmTarefa>> {
   const { supabase, user } = await sessao()
   if (!user) return { ok: false, erro: "Não autenticado" }
   if (!titulo.trim()) return { ok: false, erro: "Escreva a tarefa." }
-  const { error } = await supabase.from("crm_lead_tarefas").insert({ lead_id: leadId, titulo: titulo.trim(), vence_em: venceEm || null })
+  const erroData = validarDataOpcional(venceEm)
+  if (erroData) return { ok: false, erro: erroData }
+  const dataLimpa = venceEm?.trim() || null
+  const { data, error } = await supabase
+    .from("crm_lead_tarefas")
+    .insert({ lead_id: leadId, titulo: titulo.trim(), vence_em: dataLimpa })
+    .select("*")
+    .single()
   if (error) return { ok: false, erro: error.message }
   revalidar(leadId)
-  return { ok: true }
+  return { ok: true, dados: data as CrmTarefa }
 }
 
 export async function alternarTarefa(id: string, concluida: boolean): Promise<Resultado> {
