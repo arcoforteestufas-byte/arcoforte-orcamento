@@ -632,7 +632,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
       } else if (leadIdCrm && orcamentoId) {
         await registrarOrcamentoNoLead(leadIdCrm, orcamentoId, valorTotal)
         toast.success("Orçamento salvo e ligado ao lead!")
-        router.push(`/crm?lead=${leadIdCrm}`)
+        router.push(`/crm/lead/${leadIdCrm}`)
       } else {
         toast.success("Orçamento salvo com sucesso!")
         router.push('/orcamentos')

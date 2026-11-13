@@ -28,3 +28,7 @@ export function linkWhatsApp(telefone: string | null | undefined) {
 
 export const inputClasse =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50"
+
+export function iniciais(nome: string) {
+  return nome.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join("") || "?"
+}

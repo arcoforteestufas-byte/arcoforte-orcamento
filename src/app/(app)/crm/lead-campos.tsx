@@ -33,12 +33,14 @@ export function LeadCampos({
   origens,
   usuarios,
   podeTrocarVendedor,
+  autoFocar = false,
 }: {
   valores: LeadFormValores
   onChange: (v: LeadFormValores) => void
   origens: CrmItemLista[]
   usuarios: CrmUsuario[]
   podeTrocarVendedor: boolean
+  autoFocar?: boolean
 }) {
   const set = (campo: keyof LeadFormValores) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -48,7 +50,7 @@ export function LeadCampos({
     <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
       <div className="sm:col-span-6 grid gap-1.5">
         <Label>Nome do lead / cliente *</Label>
-        <input className={inputClasse} value={valores.titulo} onChange={set("titulo")} placeholder="Ex.: Sítio Boa Vista — João Silva" autoFocus />
+        <input className={inputClasse} value={valores.titulo} onChange={set("titulo")} placeholder="Ex.: Sítio Boa Vista — João Silva" autoFocus={autoFocar} />
       </div>
       <div className="sm:col-span-3 grid gap-1.5">
         <Label>Contato</Label>

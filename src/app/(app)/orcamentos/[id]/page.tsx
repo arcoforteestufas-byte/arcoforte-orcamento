@@ -78,12 +78,17 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
     <div className="flex flex-col gap-6 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/orcamentos" className={buttonVariants({ variant: "outline", size: "icon" })}>
+          <Link href={orcamento.lead_id ? `/crm/lead/${orcamento.lead_id}` : "/orcamentos"} className={buttonVariants({ variant: "outline", size: "icon" })}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Detalhes do Orçamento</h2>
-            <p className="text-muted-foreground">ID: #{orcamento.id.split('-')[0].toUpperCase()}</p>
+            <p className="text-muted-foreground">
+              ID: #{orcamento.id.split('-')[0].toUpperCase()}
+              {orcamento.lead_id && (
+                <Link href={`/crm/lead/${orcamento.lead_id}`} className="ml-3 text-[#d97021] hover:underline">← Voltar ao lead no CRM</Link>
+              )}
+            </p>
           </div>
         </div>
         <Link
