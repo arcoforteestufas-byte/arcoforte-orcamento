@@ -249,6 +249,33 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
   const [novoCliente, setNovoCliente] = useState({ nome: '', documento: '', cidade_uf: '' })
   const [swapItemIndex, setSwapItemIndex] = useState<number | null>(null)
   const [itemExplicado, setItemExplicado] = useState<ItemOrcamento | null>(null)
+
+  // Larguras de módulo vêm das opções do parâmetro largura_modulo (Pacote de Regras)
+  const largurasModulo: number[] = (() => {
+    const pl = parametrosDef.find(p => p.nome_tecnico === 'largura_modulo')
+    const bruto: string[] = pl ? (Array.isArray(pl.opcoes) ? pl.opcoes : JSON.parse((pl.opcoes as string) || '[]')) : []
+    const lista = bruto.map(Number).filter(n => n > 0).sort((a, b) => b - a)
+    return lista.length ? lista : [10, 8, 7]
+  })()
+  const larguraMinima = Math.min(...largurasModulo)
+  const listaLarguras = [...largurasModulo].sort((a, b) => a - b).join(', ')
+  // Módulos menores que 7 m só existem com arco simples e sem arco de divisa
+  const larguraModuloAtual = Number(paramsForm['largura_modulo']) || 0
+  const soArcoSimples = larguraModuloAtual > 0 && larguraModuloAtual < 7
+
+  useEffect(() => {
+    if (!soArcoSimples) return
+    setParamsForm(prev => {
+      const arcoErrado = !!prev['tipo_arco'] && prev['tipo_arco'] !== 'SIMPLES'
+      if (!arcoErrado && !prev['arco_divisa']) return prev
+      return {
+        ...prev,
+        ...(arcoErrado ? { tipo_arco: 'SIMPLES' } : {}),
+        arco_divisa: false,
+        n_divisas_por_modulo: ''
+      }
+    })
+  }, [soArcoSimples, paramsForm['tipo_arco'], paramsForm['arco_divisa']])
   
   const [comprimento, setComprimento] = useState<number | ''>(() => {
     const p = orcamentoInicial?.parametros_utilizados
@@ -528,14 +555,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
   const valorInvalidoImediato: Record<string, boolean> = {}
 
   if (larguraTotal === '' || larguraTotal === undefined || larguraTotal === null) {
-    errosValidacao['larguraTotal'] = 'Informe a largura da estufa (mínimo 7 m).'
+    errosValidacao['larguraTotal'] = `Informe a largura da estufa (mínimo ${larguraMinima} m).`
   } else {
     const l = Number(larguraTotal)
     if (isNaN(l) || l <= 0) {
-      errosValidacao['larguraTotal'] = 'A largura deve ser maior que 0 (mínimo 7 m).'
+      errosValidacao['larguraTotal'] = `A largura deve ser maior que 0 (mínimo ${larguraMinima} m).`
       valorInvalidoImediato['larguraTotal'] = true
-    } else if (l < 7) {
-      errosValidacao['larguraTotal'] = 'A largura mínima da estufa é de 7 m (1 módulo de 7 m).'
+    } else if (l < larguraMinima) {
+      errosValidacao['larguraTotal'] = `A largura mínima da estufa é de ${larguraMinima} m (1 módulo de ${larguraMinima} m).`
       valorInvalidoImediato['larguraTotal'] = true
     } else if (l > 500) {
       errosValidacao['larguraTotal'] = 'A largura máxima permitida é de 500 m.'
@@ -546,8 +573,8 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
       if (paramsForm['n_modulos'] !== '' && nMod >= 1 && nMod <= 50 && lMod > 0 && l !== nMod * lMod) {
         errosValidacao['larguraTotal'] = `A largura (${l} m) não coincide com ${nMod} módulo(s) de ${lMod} m (${nMod * lMod} m).`
         valorInvalidoImediato['larguraTotal'] = true
-      } else if (![7, 8, 10].some(w => l % w === 0) && (!paramsForm['n_modulos'] || !paramsForm['largura_modulo'])) {
-        errosValidacao['larguraTotal'] = `A largura (${l} m) deve ser múltipla de 7, 8 ou 10 m.`
+      } else if (!largurasModulo.some(w => l % w === 0) && (!paramsForm['n_modulos'] || !paramsForm['largura_modulo'])) {
+        errosValidacao['larguraTotal'] = `A largura (${l} m) deve ser múltipla de uma das larguras de módulo (${listaLarguras} m).`
         valorInvalidoImediato['larguraTotal'] = true
       }
     }
@@ -590,7 +617,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
   }
 
   if (!paramsForm['largura_modulo']) {
-    errosValidacao['largura_modulo'] = 'Selecione a largura do módulo (7, 8 ou 10 m).'
+    errosValidacao['largura_modulo'] = `Selecione a largura do módulo (${listaLarguras} m).`
   }
 
   if (!paramsForm['vao']) {
@@ -1108,10 +1135,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                     const novoValor = raw === '' ? '' : Number(raw)
                     setLarguraTotal(novoValor)
                     const l = Number(novoValor)
-                    if (novoValor !== '' && !isNaN(l) && l >= 7 && l <= 500) {
-                      const largurasPermitidas = [10, 8, 7]
+                    if (novoValor !== '' && !isNaN(l) && l >= larguraMinima && l <= 500) {
+                      const largurasPermitidas = largurasModulo
                       const atualW = Number(paramsForm['largura_modulo']) || 0
-                      if ([10, 8, 7].includes(atualW) && l % atualW === 0 && l / atualW <= 50) {
+                      if (largurasModulo.includes(atualW) && l % atualW === 0 && l / atualW <= 50) {
                         handleParamChange('n_modulos', l / atualW)
                       } else {
                         for (const w of largurasPermitidas) {
@@ -1248,7 +1275,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         const w = Number(val)
                         const l = Number(larguraTotal) || 0
                         const n = Number(paramsForm['n_modulos']) || 0
-                        if (w > 0 && l >= 7 && l <= 500 && l % w === 0 && l / w <= 50) {
+                        if (w > 0 && l >= larguraMinima && l <= 500 && l % w === 0 && l / w <= 50) {
                           setParamsForm(prev => ({
                             ...prev,
                             largura_modulo: w,
@@ -1704,6 +1731,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                 )
               }
 
+              if (param.tipo === 'booleano' && param.nome_tecnico === 'arco_divisa' && soArcoSimples) {
+                return (
+                  <div key={param.nome_tecnico} className="col-span-2 mt-2 text-xs text-slate-500">
+                    Módulo de {larguraModuloAtual} m não tem arco de divisa.
+                  </div>
+                )
+              }
+
               if (param.tipo === 'booleano') {
                 return (
                   <div key={param.nome_tecnico} className="col-span-2 flex flex-col mt-2">
@@ -2150,7 +2185,9 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
               }
 
               if (param.tipo === 'selecao' && param.opcoes) {
-                const opcoes: string[] = Array.isArray(param.opcoes) ? param.opcoes : JSON.parse(param.opcoes as string || '[]')
+                const opcoesTodas: string[] = Array.isArray(param.opcoes) ? param.opcoes : JSON.parse(param.opcoes as string || '[]')
+                const limitarArco = param.nome_tecnico === 'tipo_arco' && soArcoSimples
+                const opcoes = limitarArco ? opcoesTodas.filter(o => o === 'SIMPLES') : opcoesTodas
                 const obrigatorio = param.nome_tecnico === 'tipo_arco' || param.nome_tecnico === 'calha_lateral'
                 return (
                   <div key={param.nome_tecnico} className="grid gap-2 content-start">
@@ -2183,6 +2220,9 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         ))}
                       </SelectContent>
                     </Select>
+                    {limitarArco && (
+                      <p className="text-xs text-slate-500">Módulo de {larguraModuloAtual} m só tem arco simples.</p>
+                    )}
                     {renderErroCampo(param.nome_tecnico)}
                   </div>
                 )
