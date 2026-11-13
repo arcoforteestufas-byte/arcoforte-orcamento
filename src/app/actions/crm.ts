@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import {
   CONFIG_PADRAO,
+  hojeISO,
   type CrmConfig,
   type CrmEtapa,
   type CrmFichaLead,
@@ -26,7 +27,10 @@ function ehAdmin(user: { user_metadata?: Record<string, unknown> } | null) {
 
 function num(v: unknown): number | null {
   if (v === null || v === undefined || v === "") return null
-  const n = Number(String(v).replace(",", "."))
+  let s = String(v).trim().replace(/[R$\s]/g, "")
+  // formato brasileiro "150.000,50": tira os pontos de milhar e troca a vírgula
+  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".")
+  const n = Number(s)
   return Number.isFinite(n) ? n : null
 }
 
@@ -106,7 +110,7 @@ export async function obterQuadro(funilId?: string): Promise<CrmQuadro> {
     ])
     etapas = (etapasR.data || []) as CrmEtapa[]
 
-    const hoje = new Date().toISOString().slice(0, 10)
+    const hoje = hojeISO()
     leads = (leadsR.data || []).map((l: Record<string, any>) => {
       const orcs = (l.orcamentos || []) as { valor_total: number }[]
       const tarefas = ((l.crm_lead_tarefas || []) as { concluida: boolean; vence_em: string | null }[])

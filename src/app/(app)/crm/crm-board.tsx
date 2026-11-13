@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { criarLead, marcarGanho, marcarPerdido, moverLead, obterFichaLead } from "@/app/actions/crm"
-import type { CrmEtapa, CrmLead, CrmOrcamentoResumo, CrmQuadro } from "@/lib/crm-types"
+import { hojeISO, type CrmEtapa, type CrmLead, type CrmOrcamentoResumo, type CrmQuadro } from "@/lib/crm-types"
 import { LeadCampos, LEAD_VAZIO, type LeadFormValores } from "./lead-campos"
 import { LeadFicha } from "./lead-ficha"
 import { brl, brlCentavos, diasDesde, formatarData, inputClasse } from "./crm-utils"
@@ -231,7 +231,7 @@ export function CrmBoard({ quadro, leadInicial }: { quadro: CrmQuadro; leadInici
                   {cards.map(l => {
                     const dias = diasDesde(l.etapa_desde)
                     const parado = l.status === "aberto" && dias >= quadro.config.dias_alerta_parado
-                    const hoje = new Date().toISOString().slice(0, 10)
+                    const hoje = hojeISO()
                     const contatoAtrasado = l.status === "aberto" && l.proxima_acao_em && l.proxima_acao_em < hoje
                     const valor = valorDoLead(l)
                     return (
@@ -398,19 +398,22 @@ function GanhoDialog({ alvo, onFechar, onFeito }: {
   const [escolhido, setEscolhido] = useState("")
   const [valor, setValor] = useState("")
   const [salvando, setSalvando] = useState(false)
+  // onFechar muda a cada render do quadro; guardado em ref para não recarregar a janela à toa
+  const onFecharRef = useRef(onFechar)
+  onFecharRef.current = onFechar
 
   useEffect(() => {
     if (!alvo) return
     setOrcamentos(null); setEscolhido(""); setValor("")
     obterFichaLead(alvo.leadId).then(r => {
-      if (!r.ok) { toast.error(r.erro); return onFechar() }
+      if (!r.ok) { toast.error(r.erro); return onFecharRef.current() }
       const orcs = r.dados!.orcamentos.filter(o => o.status !== "Perdido")
       setTitulo(r.dados!.lead.titulo)
       setOrcamentos(orcs)
       if (orcs.length === 1) setEscolhido(orcs[0].id)
       else if (!orcs.length) setValor(r.dados!.lead.valor_estimado ? String(r.dados!.lead.valor_estimado) : "")
     })
-  }, [alvo, onFechar])
+  }, [alvo])
 
   const confirmar = async () => {
     if (!alvo) return

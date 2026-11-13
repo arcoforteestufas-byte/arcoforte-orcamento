@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -18,7 +18,7 @@ import {
   desvincularOrcamento, excluirAtividade, excluirLead, excluirTarefa, listarOrcamentosSemLead,
   obterFichaLead, vincularOrcamento,
 } from "@/app/actions/crm"
-import { TIPOS_ATIVIDADE, type CrmEtapa, type CrmFichaLead, type CrmQuadro } from "@/lib/crm-types"
+import { TIPOS_ATIVIDADE, hojeISO, type CrmEtapa, type CrmFichaLead, type CrmQuadro } from "@/lib/crm-types"
 import { LeadCampos, leadParaValores, type LeadFormValores } from "./lead-campos"
 import { brlCentavos, dataHora, formatarData, inputClasse, linkWhatsApp } from "./crm-utils"
 
@@ -61,18 +61,23 @@ export function LeadFicha({
   const [orcLivres, setOrcLivres] = useState<Awaited<ReturnType<typeof listarOrcamentosSemLead>> | null>(null)
   const [orcEscolhido, setOrcEscolhido] = useState("")
 
-  const carregar = useCallback(async (id: string) => {
-    setCarregando(true)
+  // onFechar muda a cada render do quadro (router.refresh); em ref para a ficha não
+  // recarregar sozinha nem voltar para a aba "Dados" depois de cada ação
+  const onFecharRef = useRef(onFechar)
+  onFecharRef.current = onFechar
+
+  const carregar = useCallback(async (id: string, silencioso = false) => {
+    if (!silencioso) setCarregando(true)
     const r = await obterFichaLead(id)
     setCarregando(false)
     if (!r.ok) {
       toast.error(r.erro)
-      onFechar()
+      onFecharRef.current()
       return
     }
     setFicha(r.dados!)
     setValores(leadParaValores(r.dados!.lead as unknown as Record<string, unknown>))
-  }, [onFechar])
+  }, [])
 
   useEffect(() => {
     if (leadId) {
@@ -86,7 +91,7 @@ export function LeadFicha({
   }, [leadId, carregar])
 
   const recarregar = async () => {
-    if (leadId) await carregar(leadId)
+    if (leadId) await carregar(leadId, true)
     router.refresh()
   }
 
@@ -366,7 +371,7 @@ export function LeadFicha({
                 ) : (
                   <ul className="divide-y rounded-md border">
                     {ficha!.tarefas.map(t => {
-                      const atrasada = !t.concluida && t.vence_em && t.vence_em < new Date().toISOString().slice(0, 10)
+                      const atrasada = !t.concluida && t.vence_em && t.vence_em < hojeISO()
                       return (
                         <li key={t.id} className="flex items-center gap-3 p-3 text-sm group">
                           <input type="checkbox" className="h-4 w-4 accent-[#d97021]" checked={t.concluida} onChange={async (e) => {

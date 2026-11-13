@@ -134,6 +134,11 @@ export const CONFIG_PADRAO: CrmConfig = {
   dias_alerta_parado: 7,
 }
 
+/** Data de hoje (AAAA-MM-DD) no horário de Brasília — evita "virar o dia" às 21h por causa do UTC */
+export function hojeISO() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date())
+}
+
 export const UFS = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA",
   "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
