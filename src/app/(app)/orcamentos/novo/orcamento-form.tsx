@@ -486,6 +486,22 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
     setResultado(itens)
   }
 
+  // Abre a explicação de um item. Itens de orçamento salvo vêm do banco sem os detalhes do
+  // cálculo: nesse caso refaz o cálculo com os parâmetros atuais e pega os detalhes do mesmo item.
+  const abrirExplicacao = (item: ItemOrcamento) => {
+    if (item.detalhes && item.detalhes.length > 0) {
+      setItemExplicado(item)
+      return
+    }
+    const nDivisasPorModulo = Number(paramsForm['n_divisas_por_modulo']) || 0
+    const nModulosCalc = Number(paramsForm['n_modulos']) || 0
+    const itens = calcularOrcamento({ ...paramsForm, n_divisas: nDivisasPorModulo * nModulosCalc }, regras, produtos)
+    const codigoOriginal = item.manualOriginalProduto || item.produto_codigo
+    const igual = itens.find(i => i.produto_codigo === codigoOriginal && i.grupo_nome === item.grupo_nome)
+      || itens.find(i => i.produto_codigo === codigoOriginal)
+    setItemExplicado({ ...item, detalhes: igual?.detalhes || [] })
+  }
+
   const handleSalvarCliente = async () => {
     if (!novoCliente.nome) return toast.error("O nome é obrigatório")
     
@@ -1775,6 +1791,11 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       const calculado = detalhes.reduce((acc, d) => acc + d.quantidade_final, 0)
                       return (
                         <div className="space-y-4 text-sm">
+                          {detalhes.length === 0 && (
+                            <p className="text-slate-600">
+                              Com os dados preenchidos agora, nenhuma regra do sistema calcula este item. Ele pode ter sido incluído ou trocado à mão. Clique em Recalcular Lista de Materiais para conferir.
+                            </p>
+                          )}
                           {detalhes.map((d, i) => {
                             const texto = montarTextoExplicacao(d)
                             const conta = formulaComValores(d)
@@ -1820,7 +1841,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                               Total calculado: {numero(calculado)} {itemExplicado.unidade}
                             </p>
                           )}
-                          {itemExplicado.isManualChange && (
+                          {itemExplicado.isManualChange && detalhes.length > 0 && (
                             <p className="rounded-md bg-orange-50 border border-orange-200 p-2 text-xs text-orange-700">
                               Este item foi alterado manualmente. O sistema tinha calculado {numero(calculado)} {itemExplicado.unidade}.
                             </p>
@@ -1841,11 +1862,11 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                           <div key={idx} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm bg-slate-50 p-2 rounded">
                             <div className="flex-1">
                               <span className="font-medium">{item.produto_codigo} - {item.produto_descricao}</span>
-                              {item.detalhes && item.detalhes.length > 0 && (
+                              {(
                                 <button
                                   type="button"
-                                  onClick={() => setItemExplicado(item)}
-                                  className="inline-flex align-middle ml-1.5 text-slate-400 hover:text-[#d97021]"
+                                  onClick={() => abrirExplicacao(item)}
+                                  className="inline-flex align-middle ml-1.5 text-[#d97021]/70 hover:text-[#d97021]"
                                   title="Como o sistema chegou nesta quantidade"
                                   aria-label="Explicar o cálculo"
                                 >
