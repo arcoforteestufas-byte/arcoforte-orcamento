@@ -6,7 +6,39 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+const SelectOpenContext = React.createContext<boolean>(false)
+
+function Select<Value, Multiple extends boolean | undefined = false>({
+  open: openProp,
+  defaultOpen = false,
+  onOpenChange,
+  ...props
+}: SelectPrimitive.Root.Props<Value, Multiple>) {
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen)
+  const isOpen = openProp !== undefined ? openProp : internalOpen
+
+  const handleOpenChange = React.useCallback<
+    NonNullable<SelectPrimitive.Root.Props<Value, Multiple>["onOpenChange"]>
+  >(
+    (nextOpen, eventDetails) => {
+      if (openProp === undefined) {
+        setInternalOpen(nextOpen)
+      }
+      onOpenChange?.(nextOpen, eventDetails)
+    },
+    [openProp, onOpenChange]
+  )
+
+  return (
+    <SelectOpenContext.Provider value={isOpen}>
+      <SelectPrimitive.Root
+        open={isOpen}
+        onOpenChange={handleOpenChange}
+        {...props}
+      />
+    </SelectOpenContext.Provider>
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -70,6 +102,9 @@ function SelectContent({
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
   >) {
+  const isOpen = React.useContext(SelectOpenContext)
+  if (!isOpen) return null
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner

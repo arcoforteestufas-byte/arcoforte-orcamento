@@ -17,12 +17,16 @@ import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
 
 function ProdutoSelectComBusca({
+  id,
+  ariaLabel,
   produtos,
   value,
   onChange,
   placeholder = "Selecione o produto...",
   searchPlaceholder = "Pesquisar por código ou nome..."
 }: {
+  id?: string
+  ariaLabel?: string
   produtos: Produto[]
   value: string
   onChange: (val: string) => void
@@ -62,6 +66,22 @@ function ProdutoSelectComBusca({
     ? produtos.find((p) => p.codigo.toString() === value.toString())
     : undefined
 
+  const selecionarAutomaticoSeUnico = () => {
+    if (!termo) return
+    const exato = produtosFiltrados.find((p) => normalizar(String(p.codigo)) === termo)
+    if (exato) {
+      onChange(exato.codigo.toString())
+      setAberto(false)
+      setBusca("")
+      return
+    }
+    if (produtosFiltrados.length === 1) {
+      onChange(produtosFiltrados[0].codigo.toString())
+      setAberto(false)
+      setBusca("")
+    }
+  }
+
   return (
     <div ref={containerRef} className="relative grid gap-2">
       <div className="relative">
@@ -70,11 +90,27 @@ function ProdutoSelectComBusca({
           ref={inputRef}
           type="text"
           value={busca}
+          aria-label={ariaLabel ? `Pesquisar ${ariaLabel}` : searchPlaceholder}
           placeholder={searchPlaceholder}
           onFocus={() => setAberto(true)}
           onChange={(e) => {
             setBusca(e.target.value)
             setAberto(true)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && produtosFiltrados.length > 0) {
+              e.preventDefault()
+              const exato = produtosFiltrados.find((p) => normalizar(String(p.codigo)) === termo)
+              const escolhido = exato || produtosFiltrados[0]
+              onChange(escolhido.codigo.toString())
+              setAberto(false)
+              setBusca("")
+            }
+          }}
+          onBlur={() => {
+            if (!value && termo) {
+              selecionarAutomaticoSeUnico()
+            }
           }}
           className="bg-white pl-8 pr-8 h-9 text-sm"
         />
@@ -94,17 +130,16 @@ function ProdutoSelectComBusca({
       </div>
 
       <button
+        id={id}
         type="button"
-        onClick={() => {
-          const next = !aberto
-          setAberto(next)
-          if (next) {
-            setTimeout(() => inputRef.current?.focus(), 0)
-          }
-        }}
-        className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-white py-2 pr-2 pl-2.5 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        role="combobox"
+        aria-expanded={aberto}
+        aria-haspopup="listbox"
+        aria-label={ariaLabel}
+        onClick={() => setAberto((prev) => !prev)}
+        className="flex h-9 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-white py-2 pr-2.5 pl-2.5 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <span className={`truncate text-left flex-1 ${produtoSelecionado ? "text-slate-900" : "text-muted-foreground"}`}>
+        <span className={`truncate text-left flex-1 ${produtoSelecionado ? "text-slate-900 font-medium" : "text-muted-foreground"}`}>
           {produtoSelecionado
             ? `${produtoSelecionado.codigo} - ${produtoSelecionado.descricao}`
             : value || placeholder}
@@ -113,7 +148,11 @@ function ProdutoSelectComBusca({
       </button>
 
       {aberto && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 text-popover-foreground shadow-lg">
+        <div
+          role="listbox"
+          aria-label={ariaLabel || "Lista de produtos"}
+          className="mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 text-popover-foreground shadow-md"
+        >
           {produtosFiltrados.length === 0 ? (
             <div className="px-3 py-4 text-center text-sm text-slate-500">
               Nenhum produto encontrado para &quot;{busca}&quot;.
@@ -125,6 +164,8 @@ function ProdutoSelectComBusca({
                 <button
                   key={p.codigo}
                   type="button"
+                  role="option"
+                  aria-selected={isSelected}
                   onClick={() => {
                     onChange(p.codigo.toString())
                     setAberto(false)
@@ -602,6 +643,12 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
     }
   }
 
+  if (paramsForm['fixacao_inferior'] && parametrosDef.some(p => p.nome_tecnico === 'tipo_fixacao_inferior')) {
+    if (!paramsForm['tipo_fixacao_inferior']) {
+      errosValidacao['tipo_fixacao_inferior'] = 'Selecione o tipo de fixação inferior (ex.: MURETA).'
+    }
+  }
+
   if (paramsForm['fechamento_lateral'] && paramsForm['tipo_fechamento_material'] === 'tela') {
     const rolo = paramsForm['tela_largura_rolo']
     if (rolo !== '' && rolo !== undefined) {
@@ -659,6 +706,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
       travamentos_x: 'campo-travamentos-x',
       n_divisas_por_modulo: 'campo-n-divisas-por-modulo',
       tela_largura_rolo: 'campo-tela-largura-rolo',
+      tipo_fixacao_inferior: 'campo-tipo-fixacao-inferior',
     }
     if (mapaFixo[campo]) return mapaFixo[campo]
     if (campo.startsWith('porta_qtd_')) return `campo-porta-qtd-${campo.replace('porta_qtd_', '')}`
@@ -1396,6 +1444,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
 
               if (param.nome_tecnico === 'fixacao_inferior') {
                 const tipoFixacaoInferior = parametrosDef.find(p => p.nome_tecnico === 'tipo_fixacao_inferior');
+                const opcoesFixInf: string[] = tipoFixacaoInferior
+                  ? (Array.isArray(tipoFixacaoInferior.opcoes)
+                      ? tipoFixacaoInferior.opcoes
+                      : JSON.parse((tipoFixacaoInferior.opcoes as string) || '[]'))
+                  : []
+                const rotuloFixInf = param.rotulo?.toLowerCase().includes('mureta')
+                  ? param.rotulo
+                  : `${param.rotulo} (Mureta / Enterrada / Lateral Simples)`
                 return (
                   <div key="master_fixacao_inferior" className="col-span-1 md:col-span-2 flex flex-col mt-2">
                     <div className="flex items-center space-x-2">
@@ -1404,27 +1460,48 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         checked={!!paramsForm['fixacao_inferior']}
                         onCheckedChange={(c) => {
                           handleParamChange('fixacao_inferior', c)
-                          if (!c) handleParamChange('tipo_fixacao_inferior', '')
+                          if (!c) {
+                            handleParamChange('tipo_fixacao_inferior', '')
+                          } else if (!paramsForm['tipo_fixacao_inferior'] && opcoesFixInf.includes('MURETA')) {
+                            handleParamChange('tipo_fixacao_inferior', 'MURETA')
+                          }
                         }}
                       />
                       <Label htmlFor="fixacao_inferior" className="text-sm font-bold leading-none cursor-pointer">
-                        {param.rotulo}
+                        {rotuloFixInf}
                       </Label>
                     </div>
                     {paramsForm['fixacao_inferior'] && tipoFixacaoInferior && (
                       <div className="grid gap-2 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
-                        <Label className="uppercase text-xs font-semibold text-slate-600">{tipoFixacaoInferior.rotulo}</Label>
+                        <Label htmlFor="campo-tipo-fixacao-inferior" className="uppercase text-xs font-semibold text-slate-600">
+                          {tipoFixacaoInferior.rotulo} *
+                        </Label>
                         <Select 
                           value={paramsForm['tipo_fixacao_inferior']?.toString() || ''}
-                          onValueChange={(val) => handleParamChange('tipo_fixacao_inferior', val)}
+                          onValueChange={(val) => {
+                            marcarTocado('tipo_fixacao_inferior')
+                            handleParamChange('tipo_fixacao_inferior', val)
+                          }}
                         >
-                          <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectTrigger
+                            id="campo-tipo-fixacao-inferior"
+                            aria-label={tipoFixacaoInferior.rotulo}
+                            aria-invalid={!!obterErroVisivel('tipo_fixacao_inferior')}
+                            aria-describedby={obterErroVisivel('tipo_fixacao_inferior') ? 'erro-tipo_fixacao_inferior' : undefined}
+                            onBlur={() => marcarTocado('tipo_fixacao_inferior')}
+                            className={`w-full bg-white ${obterErroVisivel('tipo_fixacao_inferior') ? 'border-red-500' : ''}`}
+                          >
+                            <SelectValue placeholder="Selecione...">
+                              {paramsForm['tipo_fixacao_inferior'] ? String(paramsForm['tipo_fixacao_inferior']) : undefined}
+                            </SelectValue>
+                          </SelectTrigger>
                           <SelectContent>
-                            {JSON.parse(tipoFixacaoInferior.opcoes as string || '[]').map((op: string) => (
+                            {opcoesFixInf.map((op: string) => (
                               <SelectItem key={op} value={op}>{op}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        {renderErroCampo('tipo_fixacao_inferior')}
                       </div>
                     )}
                   </div>
@@ -1580,7 +1657,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                     {paramsForm['master_tipo_cobertura'] && (
                       <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
                         <div className="grid gap-2">
-                          <Label className="uppercase text-xs font-semibold text-slate-600">Qual o tipo de cobertura?</Label>
+                          <Label htmlFor="campo-tipo-cobertura" className="uppercase text-xs font-semibold text-slate-600">Qual o tipo de cobertura?</Label>
                           <Select 
                             value={paramsForm['tipo_cobertura']?.toString() || ''}
                             onValueChange={(val) => {
@@ -1588,7 +1665,11 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                               handleParamChange('produto_filme_cobertura', '') // reseta o produto ao mudar
                             }}
                           >
-                            <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectTrigger id="campo-tipo-cobertura" className="bg-white">
+                              <SelectValue placeholder="Selecione...">
+                                {paramsForm['tipo_cobertura'] ? String(paramsForm['tipo_cobertura']) : undefined}
+                              </SelectValue>
+                            </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="FILME">FILME</SelectItem>
                               <SelectItem value="TELA">TELA</SelectItem>
@@ -1598,10 +1679,12 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
 
                         {showProducts && (
                           <div className="grid gap-2 pt-2 border-t border-slate-200">
-                            <Label className="uppercase text-xs font-semibold text-slate-600">
+                            <Label htmlFor="campo-produto-cobertura" className="uppercase text-xs font-semibold text-slate-600">
                               {isFilme ? 'Qual Filme / Plástico?' : 'Qual Tela?'}
                             </Label>
                             <ProdutoSelectComBusca
+                              id="campo-produto-cobertura"
+                              ariaLabel={isFilme ? 'Qual Filme / Plástico da cobertura?' : 'Qual Tela da cobertura?'}
                               value={paramsForm['produto_filme_cobertura']?.toString() || ''}
                               onChange={(val) => handleParamChange('produto_filme_cobertura', val)}
                               produtos={produtos.filter(p => {
@@ -1662,7 +1745,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                     {param.nome_tecnico === 'fechamento_lateral' && paramsForm['fechamento_lateral'] && (
                       <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
                         <div className="grid gap-2">
-                          <Label className="uppercase text-xs font-semibold text-slate-600">O que será usado no fechamento lateral?</Label>
+                          <Label htmlFor="campo-tipo-fechamento-material" className="uppercase text-xs font-semibold text-slate-600">O que será usado no fechamento lateral?</Label>
                           <Select 
                             value={paramsForm['tipo_fechamento_material']?.toString() || ''}
                             onValueChange={(val) => {
@@ -1675,7 +1758,15 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                               }
                             }}
                           >
-                            <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectTrigger id="campo-tipo-fechamento-material" className="bg-white">
+                              <SelectValue placeholder="Selecione...">
+                                {paramsForm['tipo_fechamento_material'] === 'filme'
+                                  ? 'Filme / Plástico'
+                                  : paramsForm['tipo_fechamento_material'] === 'tela'
+                                    ? 'Tela'
+                                    : undefined}
+                              </SelectValue>
+                            </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="filme">Filme / Plástico</SelectItem>
                               <SelectItem value="tela">Tela</SelectItem>
@@ -1686,10 +1777,12 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         {paramsForm['tipo_fechamento_material'] && (
                           <>
                             <div className="grid gap-2 pt-2 border-t border-slate-200">
-                              <Label className="uppercase text-xs font-semibold text-slate-600">
+                              <Label htmlFor="campo-produto-fechamento" className="uppercase text-xs font-semibold text-slate-600">
                                 {paramsForm['tipo_fechamento_material'] === 'filme' ? 'Qual Filme / Plástico?' : 'Qual Tela?'}
                               </Label>
                               <ProdutoSelectComBusca
+                                id="campo-produto-fechamento"
+                                ariaLabel={paramsForm['tipo_fechamento_material'] === 'filme' ? 'Qual Filme / Plástico do fechamento?' : 'Qual Tela do fechamento?'}
                                 value={paramsForm['produto_filme_fechamento']?.toString() || ''}
                                 onChange={(val) => handleParamChange('produto_filme_fechamento', val)}
                                 produtos={produtos.filter(p => {
@@ -2022,8 +2115,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       value={paramsForm['tipo_poste']?.toString() || '100X50 GALVANIZADO'}
                       onValueChange={(val) => handleParamChange('tipo_poste', val)}
                     >
-                      <SelectTrigger className="w-full bg-white">
-                        <SelectValue placeholder="Selecione..." />
+                      <SelectTrigger id="campo-tipo-poste" className="w-full bg-white">
+                        <SelectValue placeholder="Selecione...">
+                          {paramsForm['tipo_poste'] === '75X40 GALVANIZADO'
+                            ? (permite75x40 ? '75x40 Galvanizado (somente pé-direito 4 m)' : '75x40 Galvanizado (disponível só com pé-direito 4 m)')
+                            : paramsForm['tipo_poste'] === 'EUCALIPTO'
+                              ? 'Eucalipto Tratado (Aguardando aprovação de regras)'
+                              : '100x50 Galvanizado (Padrão Homologado ArcoForte)'}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="100X50 GALVANIZADO">
@@ -2492,6 +2591,15 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
             <div className="text-4xl font-bold text-[#d97021] mb-4">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
             </div>
+            {tentouCalcular && chavesErrosAtivos.length > 0 && (
+              <div role="alert" className="mb-5 rounded-md border border-red-500/50 bg-red-950/70 p-3 text-xs text-red-200 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block text-red-300 mb-0.5">Cálculo pausado — preencha os campos pendentes:</strong>
+                  <span>{errosValidacao[chavesErrosAtivos[0]]}</span>
+                </div>
+              </div>
+            )}
             {valorTotal > 500000 && (
               <div role="alert" className="mb-5 rounded-md border border-amber-500/40 bg-amber-950/60 p-3 text-xs text-amber-200 flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
