@@ -11,6 +11,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
 import { criarLead, listarClientesParaLead, moverLead } from "@/app/actions/crm"
 import {
   TEMPERATURA_INFO, campoNoFunil, hojeISO, temperatura,
@@ -184,19 +185,19 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input className={`${inputClasse} pl-8 w-52 bg-background`} placeholder="Buscar lead, cidade..." value={busca} onChange={e => setBusca(e.target.value)} />
+            <input className={cn(inputClasse, "pl-8 w-52 bg-background")} placeholder="Buscar lead, cidade..." value={busca} onChange={e => setBusca(e.target.value)} />
           </div>
           {mostraFiltroVendedor && (
-            <select className={`${inputClasse} w-auto bg-background`} value={vendedor} onChange={e => setVendedor(e.target.value)}>
+            <select className={cn(inputClasse, "w-auto bg-background")} value={vendedor} onChange={e => setVendedor(e.target.value)}>
               <option value="">Todos os responsáveis</option>
               {quadro.usuarios.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
             </select>
           )}
-          <select className={`${inputClasse} w-auto bg-background`} value={ordenacao} onChange={e => setOrdenacao(e.target.value as "manual" | "score")}>
+          <select className={cn(inputClasse, "w-auto bg-background")} value={ordenacao} onChange={e => setOrdenacao(e.target.value as "manual" | "score")}>
             <option value="manual">Ordem: manual</option>
             <option value="score">Ordem: mais quentes</option>
           </select>
-          <select className={`${inputClasse} w-auto bg-background`} value={periodoFechados} onChange={e => setPeriodoFechados(e.target.value)} title="Quais ganhos/perdidos aparecem">
+          <select className={cn(inputClasse, "w-auto bg-background")} value={periodoFechados} onChange={e => setPeriodoFechados(e.target.value)} title="Quais ganhos/perdidos aparecem">
             <option value="30">Fechados: 30 dias</option>
             <option value="90">Fechados: 90 dias</option>
             <option value="365">Fechados: 12 meses</option>
