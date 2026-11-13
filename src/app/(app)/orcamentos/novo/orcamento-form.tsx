@@ -12,6 +12,7 @@ import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings
 import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo } from "@/utils/engine"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { useRouter, useSearchParams } from "next/navigation"
+import { registrarOrcamentoNoLead } from "@/app/actions/crm"
 import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
 
@@ -179,6 +180,9 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
   const initialC = searchParams.get('c') ? Number(searchParams.get('c')) : ''
   const initialL = searchParams.get('l') ? Number(searchParams.get('l')) : ''
   const initialA = searchParams.get('a') ? Number(searchParams.get('a')) : undefined
+  // Vindo do CRM: /orcamentos/novo?lead=<id>&cliente=<id>
+  const leadIdCrm = searchParams.get('lead') || null
+  const clienteInicialCrm = searchParams.get('cliente') || ''
 
   const [paramsForm, setParamsForm] = useState<ParametrosEstufa>((): ParametrosEstufa => {
     if (orcamentoInicial?.parametros_utilizados) {
@@ -198,7 +202,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
   
   // Controle de Cliente
   const [localClientes, setLocalClientes] = useState(clientes)
-  const [selectedCliente, setSelectedCliente] = useState<string>(orcamentoInicial?.cliente_id || "")
+  const [selectedCliente, setSelectedCliente] = useState<string>(orcamentoInicial?.cliente_id || clienteInicialCrm || "")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [novoCliente, setNovoCliente] = useState({ nome: '', documento: '', cidade_uf: '' })
@@ -585,7 +589,8 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
             vendedor_id: user.id,
             status: 'Rascunho',
             parametros_utilizados: paramsForm,
-            valor_total: valorTotal
+            valor_total: valorTotal,
+            ...(leadIdCrm ? { lead_id: leadIdCrm } : {})
           })
           .select('id')
           .single()
@@ -624,6 +629,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
         toast.success("Orçamento atualizado com sucesso!")
         router.push(`/orcamentos/${orcamentoId}`)
         router.refresh()
+      } else if (leadIdCrm && orcamentoId) {
+        await registrarOrcamentoNoLead(leadIdCrm, orcamentoId, valorTotal)
+        toast.success("Orçamento salvo e ligado ao lead!")
+        router.push(`/crm?lead=${leadIdCrm}`)
       } else {
         toast.success("Orçamento salvo com sucesso!")
         router.push('/orcamentos')

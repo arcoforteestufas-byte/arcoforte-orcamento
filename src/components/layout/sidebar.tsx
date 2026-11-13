@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, FileSearch, BookOpen } from "lucide-react"
+import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, FileSearch, BookOpen, Kanban } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { User as SupabaseUser } from "@supabase/supabase-js"
 
 const navigation = [
   { name: "Painel", href: "/", icon: Home, adminOnly: false },
+  { name: "CRM", href: "/crm", icon: Kanban, adminOnly: false },
   { name: "Orçamentos", href: "/orcamentos", icon: FileText, adminOnly: false },
   { name: "Propostas", href: "/propostas", icon: FileText, adminOnly: false },
   { name: "Croquis", href: "/croquis", icon: FileSearch, adminOnly: false },

@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Paintbrush, Image as ImageIcon, Settings2, FileText, CheckCircle2, Users, BookOpen, Package } from "lucide-react"
+import { Paintbrush, Image as ImageIcon, Settings2, FileText, CheckCircle2, Users, BookOpen, Package, Kanban } from "lucide-react"
 import { UsersManager } from "@/components/users-manager"
 import { PropostaTopicsManager } from "./proposta-topics-manager"
 import { PacoteRegrasManager } from "./pacote-regras-manager"
+import { CrmConfigManager } from "./crm-config-manager"
 import { ReactNode } from "react"
 
 export function ConfiguracoesClient({
@@ -87,6 +88,7 @@ export function ConfiguracoesClient({
         <TabsList className="flex flex-wrap w-full max-w-[1150px] gap-1 p-1 bg-slate-100/80 rounded-xl">
           <TabsTrigger value="geral" className="flex items-center gap-2"><Settings2 size={16} /> Geral</TabsTrigger>
           <TabsTrigger value="usuarios" className="flex items-center gap-2"><Users size={16} /> Usuários</TabsTrigger>
+          <TabsTrigger value="crm" className="flex items-center gap-2"><Kanban size={16} /> CRM</TabsTrigger>
           <TabsTrigger value="designer" className="flex items-center gap-2"><Paintbrush size={16} /> Designer</TabsTrigger>
           <TabsTrigger value="pdf" className="flex items-center gap-2"><FileText size={16} /> PDF</TabsTrigger>
           <TabsTrigger value="proposta" className="flex items-center gap-2"><FileText size={16} /> Proposta</TabsTrigger>
@@ -184,6 +186,10 @@ export function ConfiguracoesClient({
         </TabsContent>
 
         {/* ABA DESIGNER */}
+        <TabsContent value="crm" className="mt-6">
+          <CrmConfigManager />
+        </TabsContent>
+
         <TabsContent value="designer" className="mt-6">
           <Card className="border-slate-200 shadow-sm">
             <CardHeader>
