@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks, Image as ImageIcon, Search, Check, ChevronDown, X, Info } from "lucide-react"
+import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks, Image as ImageIcon, Search, Check, ChevronDown, X, Info, AlertTriangle } from "lucide-react"
 import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo, montarTextoExplicacao } from "@/utils/engine"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -224,6 +224,38 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
   })
   const [vaoError, setVaoError] = useState('')
   const [vaoUltimo, setVaoUltimo] = useState<number | ''>('')
+  const [tentouCalcular, setTentouCalcular] = useState(false)
+  const [camposTocados, setCamposTocados] = useState<Record<string, boolean>>({})
+  const [avisosDigitacao, setAvisosDigitacao] = useState<Record<string, string>>({})
+
+  const marcarTocado = (campo: string) => {
+    setCamposTocados(prev => prev[campo] ? prev : { ...prev, [campo]: true })
+  }
+
+  const limparAvisoDigitacao = (campo: string) => {
+    setAvisosDigitacao(prev => {
+      if (!prev[campo]) return prev
+      const next = { ...prev }
+      delete next[campo]
+      return next
+    })
+  }
+
+  const handleNumericKeyDown = (campo: string, permiteDecimal = false) => (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.key.length > 1) return
+    const regex = permiteDecimal ? /^[0-9.,-]$/ : /^[0-9-]$/
+    if (!regex.test(e.key)) {
+      e.preventDefault()
+      setAvisosDigitacao(prev => ({
+        ...prev,
+        [campo]: permiteDecimal
+          ? 'Digite apenas números (use vírgula ou ponto para decimais).'
+          : 'Digite apenas números inteiros neste campo.'
+      }))
+    } else {
+      limparAvisoDigitacao(campo)
+    }
+  }
   
   const [portasConfig, setPortasConfig] = useState<{ id: string, quantidade: number | '', tipo: string }[]>(() => {
     const p = orcamentoInicial?.parametros_utilizados
@@ -309,28 +341,28 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
 
   // Efeito para calcular n_vaos e comprimento_estufa
   useEffect(() => {
-    if (comprimento && paramsForm['vao']) {
-      const c = Number(comprimento)
-      const vaoNum = Number(paramsForm['vao'])
+    const c = Number(comprimento)
+    const vaoNum = Number(paramsForm['vao'])
+    if (comprimento !== '' && !isNaN(c) && c >= 3 && c <= 500 && vaoNum > 0) {
+      const calculadoNVaos = Math.ceil(c / vaoNum)
+      setParamsForm(prev => ({ ...prev, n_vaos: calculadoNVaos }))
       
-      if (vaoNum > 0) {
-        const calculadoNVaos = Math.ceil(c / vaoNum)
-        setParamsForm(prev => ({ ...prev, n_vaos: calculadoNVaos }))
-        
-        if (c % vaoNum !== 0) {
-          const resto = c % vaoNum
-          setVaoError(`Nota: Como ${c}m não divide perfeitamente por ${vaoNum}m, haverá um vão de ${resto}m no final.`)
-          if (vaoUltimo === '') {
-            setVaoUltimo(resto)
-          }
-        } else {
-          setVaoError('')
-          setVaoUltimo('')
+      if (c % vaoNum !== 0) {
+        const resto = c % vaoNum
+        setVaoError(`Nota: Como ${c}m não divide perfeitamente por ${vaoNum}m, haverá um vão de ${resto}m no final.`)
+        if (vaoUltimo === '') {
+          setVaoUltimo(resto)
         }
+      } else {
+        setVaoError('')
+        setVaoUltimo('')
       }
     } else {
       setVaoError('')
       setVaoUltimo('')
+      if (comprimento === '' || isNaN(c) || c <= 0 || c > 500) {
+        setParamsForm(prev => ({ ...prev, n_vaos: '', comprimento_estufa: '' }))
+      }
     }
   }, [comprimento, paramsForm['vao']])
 
@@ -341,18 +373,20 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
       const nVaos = Number(paramsForm['n_vaos'])
       const vaoUlt = vaoUltimo !== '' ? Number(vaoUltimo) : vao
 
-      const comprimento_estufa = vao * (nVaos - 1) + vaoUlt
-      setParamsForm(prev => ({ ...prev, comprimento_estufa }))
+      if (vao > 0 && nVaos > 0 && vaoUlt > 0) {
+        const comprimento_estufa = vao * (nVaos - 1) + vaoUlt
+        setParamsForm(prev => ({ ...prev, comprimento_estufa }))
+      }
     }
   }, [paramsForm['vao'], paramsForm['n_vaos'], vaoUltimo])
 
   // Efeito para adivinhar módulos pela largura total
   useEffect(() => {
-    if (larguraTotal) {
-      const l = Number(larguraTotal)
+    const l = Number(larguraTotal)
+    if (larguraTotal !== '' && !isNaN(l) && l >= 7 && l <= 500) {
       const largurasPermitidas = [10, 8, 7] // Preferência para módulos maiores
       for (const w of largurasPermitidas) {
-        if (l % w === 0) {
+        if (l % w === 0 && l / w <= 50) {
           setParamsForm(prev => {
             if ((Number(prev.n_modulos) || 0) * (Number(prev.largura_modulo) || 0) === l) {
               return prev
@@ -371,9 +405,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
 
   // Efeito reverso: Atualizar larguraTotal se os módulos mudarem manualmente
   useEffect(() => {
-    const n = Number(paramsForm['n_modulos']) || 0
+    const rawN = paramsForm['n_modulos']
+    const n = Number(rawN)
     const w = Number(paramsForm['largura_modulo']) || 0
-    if (n > 0 && w > 0) {
+    if (rawN !== '' && rawN !== undefined && !isNaN(n) && Number.isInteger(n) && n >= 1 && n <= 50 && w > 0) {
       const calc = n * w
       if (calc !== Number(larguraTotal)) {
         setLarguraTotal(calc)
@@ -475,7 +510,182 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
     paramsForm['produto_meia_lua']
   ])
 
+  // Validação completa de campos obrigatórios e limites práticos
+  const errosValidacao: Record<string, string> = {}
+  const valorInvalidoImediato: Record<string, boolean> = {}
+
+  if (larguraTotal === '' || larguraTotal === undefined || larguraTotal === null) {
+    errosValidacao['larguraTotal'] = 'Informe a largura da estufa (mínimo 7 m).'
+  } else {
+    const l = Number(larguraTotal)
+    if (isNaN(l) || l <= 0) {
+      errosValidacao['larguraTotal'] = 'A largura deve ser maior que 0 (mínimo 7 m).'
+      valorInvalidoImediato['larguraTotal'] = true
+    } else if (l < 7) {
+      errosValidacao['larguraTotal'] = 'A largura mínima da estufa é de 7 m (1 módulo de 7 m).'
+      valorInvalidoImediato['larguraTotal'] = true
+    } else if (l > 500) {
+      errosValidacao['larguraTotal'] = 'A largura máxima permitida é de 500 m.'
+      valorInvalidoImediato['larguraTotal'] = true
+    } else {
+      const nMod = Number(paramsForm['n_modulos'])
+      const lMod = Number(paramsForm['largura_modulo'])
+      if (paramsForm['n_modulos'] !== '' && nMod >= 1 && nMod <= 50 && lMod > 0 && l !== nMod * lMod) {
+        errosValidacao['larguraTotal'] = `A largura (${l} m) não coincide com ${nMod} módulo(s) de ${lMod} m (${nMod * lMod} m).`
+        valorInvalidoImediato['larguraTotal'] = true
+      } else if (![7, 8, 10].some(w => l % w === 0) && (!paramsForm['n_modulos'] || !paramsForm['largura_modulo'])) {
+        errosValidacao['larguraTotal'] = `A largura (${l} m) deve ser múltipla de 7, 8 ou 10 m.`
+        valorInvalidoImediato['larguraTotal'] = true
+      }
+    }
+  }
+
+  if (comprimento === '' || comprimento === undefined || comprimento === null) {
+    errosValidacao['comprimento'] = 'Informe o comprimento da estufa (mínimo 3 m).'
+  } else {
+    const c = Number(comprimento)
+    if (isNaN(c) || c <= 0) {
+      errosValidacao['comprimento'] = 'O comprimento deve ser maior que 0 (mínimo 3 m).'
+      valorInvalidoImediato['comprimento'] = true
+    } else if (c < 3) {
+      errosValidacao['comprimento'] = 'O comprimento mínimo da estufa é de 3 m (1 vão de 3 m).'
+      valorInvalidoImediato['comprimento'] = true
+    } else if (c > 500) {
+      errosValidacao['comprimento'] = 'O comprimento máximo permitido é de 500 m.'
+      valorInvalidoImediato['comprimento'] = true
+    }
+  }
+
+  if (!paramsForm['pe_direito']) {
+    errosValidacao['pe_direito'] = 'Selecione a altura (pé-direito) da estufa.'
+  }
+
+  if (paramsForm['n_modulos'] === '' || paramsForm['n_modulos'] === undefined || paramsForm['n_modulos'] === null) {
+    errosValidacao['n_modulos'] = 'Informe o número de módulos (entre 1 e 50).'
+  } else {
+    const nMod = Number(paramsForm['n_modulos'])
+    if (isNaN(nMod) || nMod < 1) {
+      errosValidacao['n_modulos'] = 'O número de módulos deve ser de pelo menos 1.'
+      valorInvalidoImediato['n_modulos'] = true
+    } else if (!Number.isInteger(nMod)) {
+      errosValidacao['n_modulos'] = 'O número de módulos deve ser um número inteiro.'
+      valorInvalidoImediato['n_modulos'] = true
+    } else if (nMod > 50) {
+      errosValidacao['n_modulos'] = 'O limite máximo é de 50 módulos.'
+      valorInvalidoImediato['n_modulos'] = true
+    }
+  }
+
+  if (!paramsForm['largura_modulo']) {
+    errosValidacao['largura_modulo'] = 'Selecione a largura do módulo (7, 8 ou 10 m).'
+  }
+
+  if (!paramsForm['vao']) {
+    errosValidacao['vao'] = 'Selecione o tamanho do vão (3 ou 4 m).'
+  }
+
+  if (vaoError) {
+    const vUlt = Number(vaoUltimo)
+    const vPadrao = Number(paramsForm['vao'] || 4)
+    if (vaoUltimo === '' || isNaN(vUlt) || vUlt <= 0) {
+      errosValidacao['vaoUltimo'] = 'O tamanho do último vão deve ser maior que 0.'
+      if (vaoUltimo !== '') valorInvalidoImediato['vaoUltimo'] = true
+    } else if (vUlt > vPadrao) {
+      errosValidacao['vaoUltimo'] = `O último vão não pode ser maior que ${vPadrao} m.`
+      valorInvalidoImediato['vaoUltimo'] = true
+    }
+  }
+
+  if (parametrosDef.some(p => p.nome_tecnico === 'tipo_arco') && !paramsForm['tipo_arco']) {
+    errosValidacao['tipo_arco'] = 'Selecione o tipo de arco.'
+  }
+
+  if (parametrosDef.some(p => p.nome_tecnico === 'calha_lateral') && !paramsForm['calha_lateral']) {
+    errosValidacao['calha_lateral'] = 'Selecione a fixação superior.'
+  }
+
+  if (paramsForm['master_travamentos_x']) {
+    const tx = paramsForm['travamentos_x']
+    const nTx = Number(tx)
+    if (tx === '' || tx === undefined) {
+      errosValidacao['travamentos_x'] = 'Informe quantos travamentos em X por linha (1 a 20).'
+    } else if (isNaN(nTx) || nTx < 1 || !Number.isInteger(nTx) || nTx > 20) {
+      errosValidacao['travamentos_x'] = 'Informe um número inteiro entre 1 e 20.'
+      valorInvalidoImediato['travamentos_x'] = true
+    }
+  }
+
+  if (paramsForm['arco_divisa']) {
+    const nd = paramsForm['n_divisas_por_modulo']
+    const nNd = Number(nd)
+    const nVaosAtual = Number(paramsForm['n_vaos']) || 0
+    if (nd === '' || nd === undefined) {
+      errosValidacao['n_divisas_por_modulo'] = 'Informe quantos arcos de divisa por módulo.'
+    } else if (isNaN(nNd) || nNd < 1 || !Number.isInteger(nNd) || nNd > 50) {
+      errosValidacao['n_divisas_por_modulo'] = 'Informe um número inteiro entre 1 e 50.'
+      valorInvalidoImediato['n_divisas_por_modulo'] = true
+    } else if (nVaosAtual > 1 && nNd >= nVaosAtual) {
+      errosValidacao['n_divisas_por_modulo'] = `Deve ser menor que o número de vãos (${nVaosAtual}).`
+      valorInvalidoImediato['n_divisas_por_modulo'] = true
+    }
+  }
+
+  if (paramsForm['fechamento_lateral'] && paramsForm['tipo_fechamento_material'] === 'tela') {
+    const rolo = paramsForm['tela_largura_rolo']
+    if (rolo !== '' && rolo !== undefined) {
+      const nRolo = Number(rolo)
+      if (isNaN(nRolo) || nRolo <= 0 || nRolo > 20) {
+        errosValidacao['tela_largura_rolo'] = 'A largura do rolo deve ser maior que 0 e até 20 m.'
+        valorInvalidoImediato['tela_largura_rolo'] = true
+      }
+    }
+  }
+
+  if (paramsForm['master_portas']) {
+    portasConfig.forEach((porta, idx) => {
+      const q = Number(porta.quantidade)
+      if (porta.quantidade === '' || isNaN(q) || q < 1 || !Number.isInteger(q) || q > 50) {
+        errosValidacao[`porta_qtd_${idx}`] = 'Informe entre 1 e 50 portas.'
+        if (porta.quantidade !== '') valorInvalidoImediato[`porta_qtd_${idx}`] = true
+      }
+      if (!porta.tipo) {
+        errosValidacao[`porta_tipo_${idx}`] = 'Selecione o modelo da porta.'
+      }
+    })
+  }
+
+  if (paramsForm['possui_anticamara']) {
+    anticamaraConfig.forEach((item, idx) => {
+      const q = Number(item.quantidade)
+      if (item.quantidade === '' || isNaN(q) || q < 1 || !Number.isInteger(q) || q > 20) {
+        errosValidacao[`anticamara_qtd_${idx}`] = 'Informe entre 1 e 20 anticâmaras.'
+        if (item.quantidade !== '') valorInvalidoImediato[`anticamara_qtd_${idx}`] = true
+      }
+      if (!item.modelo) {
+        errosValidacao[`anticamara_modelo_${idx}`] = 'Selecione o modelo da anticâmara.'
+      }
+    })
+  }
+
+  const obterErroVisivel = (campo: string): string | undefined => {
+    if (avisosDigitacao[campo]) return avisosDigitacao[campo]
+    if (errosValidacao[campo] && (tentouCalcular || camposTocados[campo] || valorInvalidoImediato[campo])) {
+      return errosValidacao[campo]
+    }
+    return undefined
+  }
+
+  const listaErrosAtivos = Object.values(errosValidacao)
+
   const handleCalcular = () => {
+    setTentouCalcular(true)
+    if (listaErrosAtivos.length > 0) {
+      setResultado([])
+      toast.error("Preencha os campos obrigatórios e corrija os valores inválidos antes de calcular.", {
+        description: listaErrosAtivos[0]
+      })
+      return
+    }
     const nDivisasPorModulo = Number(paramsForm['n_divisas_por_modulo']) || 0
     const nModulosCalc = Number(paramsForm['n_modulos']) || 0
     const paramsCalculo = {
@@ -558,6 +768,13 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
   }
 
   const handleSalvarOrcamento = async () => {
+    setTentouCalcular(true)
+    if (listaErrosAtivos.length > 0) {
+      toast.error("Corrija os campos inválidos antes de salvar o orçamento.", {
+        description: listaErrosAtivos[0]
+      })
+      return
+    }
     if (!selectedCliente) {
       toast.warning("Selecione um cliente antes de salvar o orçamento.")
       return
@@ -799,25 +1016,53 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
             {/* Primeira Linha: Largura, Comprimento e Altura */}
             <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
               <div className="grid gap-2">
-                <Label className="font-bold text-slate-800 uppercase text-xs">Largura da Estufa (m)</Label>
+                <Label htmlFor="campo-largura-estufa" className="font-bold text-slate-800 uppercase text-xs">Largura da Estufa (m) *</Label>
                 <Input 
+                  id="campo-largura-estufa"
                   type="number"
+                  min={7}
+                  max={500}
+                  step="any"
                   value={larguraTotal}
                   placeholder="Ex: 14"
-                  className="bg-white border-slate-300 text-lg py-6"
-                  onChange={(e) => setLarguraTotal(Number(e.target.value) || '')}
+                  aria-invalid={!!obterErroVisivel('larguraTotal')}
+                  className={`bg-white text-lg py-6 ${obterErroVisivel('larguraTotal') ? 'border-red-500 focus-visible:ring-red-500' : 'border-slate-300'}`}
+                  onKeyDown={handleNumericKeyDown('larguraTotal', true)}
+                  onChange={(e) => {
+                    marcarTocado('larguraTotal')
+                    limparAvisoDigitacao('larguraTotal')
+                    const raw = e.target.value.replace(',', '.')
+                    setLarguraTotal(raw === '' ? '' : Number(raw))
+                  }}
                 />
+                {obterErroVisivel('larguraTotal') && (
+                  <p className="text-xs text-red-600 font-medium">{obterErroVisivel('larguraTotal')}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
-                <Label className="font-bold text-slate-800 uppercase text-xs">Comprimento da Estufa (m)</Label>
+                <Label htmlFor="campo-comprimento-estufa" className="font-bold text-slate-800 uppercase text-xs">Comprimento da Estufa (m) *</Label>
                 <Input 
+                  id="campo-comprimento-estufa"
                   type="number"
+                  min={3}
+                  max={500}
+                  step="any"
                   value={comprimento}
                   placeholder="Ex: 50"
-                  className="bg-white border-slate-300 text-lg py-6"
-                  onChange={(e) => setComprimento(Number(e.target.value) || '')}
+                  aria-invalid={!!obterErroVisivel('comprimento')}
+                  className={`bg-white text-lg py-6 ${obterErroVisivel('comprimento') ? 'border-red-500 focus-visible:ring-red-500' : 'border-slate-300'}`}
+                  onKeyDown={handleNumericKeyDown('comprimento', true)}
+                  onChange={(e) => {
+                    marcarTocado('comprimento')
+                    limparAvisoDigitacao('comprimento')
+                    const raw = e.target.value.replace(',', '.')
+                    setComprimento(raw === '' ? '' : Number(raw))
+                  }}
                 />
+                {obterErroVisivel('comprimento') && (
+                  <p className="text-xs text-red-600 font-medium">{obterErroVisivel('comprimento')}</p>
+                )}
               </div>
 
               {(() => {
@@ -826,15 +1071,26 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                 const opcoes: string[] = Array.isArray(param.opcoes) ? param.opcoes : JSON.parse(param.opcoes as string || '[]')
                 return (
                   <div className="grid gap-2">
-                    <Label className="font-bold text-slate-800 uppercase text-xs">Altura (m)</Label>
-                    <Select value={paramsForm['pe_direito']?.toString() || ''} onValueChange={(val) => handleParamChange(param.nome_tecnico, Number(val))}>
-                      <SelectTrigger className="bg-white border-slate-300 text-lg py-6"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <Label htmlFor="campo-pe-direito" className="font-bold text-slate-800 uppercase text-xs">Altura / Pé-Direito (m) *</Label>
+                    <Select
+                      value={paramsForm['pe_direito']?.toString() || ''}
+                      onValueChange={(val) => {
+                        marcarTocado('pe_direito')
+                        handleParamChange(param.nome_tecnico, Number(val))
+                      }}
+                    >
+                      <SelectTrigger id="campo-pe-direito" aria-label="Altura / Pé-Direito (m)" className={`bg-white text-lg py-6 ${obterErroVisivel('pe_direito') ? 'border-red-500' : 'border-slate-300'}`}>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
-                          <SelectItem key={op} value={op}>{op}</SelectItem>
+                          <SelectItem key={op} value={op}>{op} m</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {obterErroVisivel('pe_direito') && (
+                      <p className="text-xs text-red-600 font-medium">{obterErroVisivel('pe_direito')}</p>
+                    )}
                   </div>
                 )
               })()}
@@ -844,18 +1100,32 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
             <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
               {(() => {
                 const paramModulos = parametrosDef.find(p => p.nome_tecnico === 'n_modulos')
-                return paramModulos ? (
+                const rotuloModulos = paramModulos?.rotulo || 'Número de Módulos'
+                return (
                   <div className="grid gap-2">
-                    <Label className="font-bold text-slate-800 uppercase text-xs">{paramModulos.rotulo}</Label>
+                    <Label htmlFor="campo-n-modulos" className="font-bold text-slate-800 uppercase text-xs">{rotuloModulos} *</Label>
                     <Input 
-                      type="number" 
-                      value={paramsForm['n_modulos'] as number || ''}
-                      placeholder="Ex: 2"
-                      className="bg-white border-slate-300 text-lg py-6"
-                      onChange={(e) => handleParamChange('n_modulos', Number(e.target.value))}
+                      id="campo-n-modulos"
+                      type="number"
+                      min={1}
+                      max={50}
+                      step={1}
+                      value={paramsForm['n_modulos'] !== undefined && paramsForm['n_modulos'] !== '' ? String(paramsForm['n_modulos']) : ''}
+                      placeholder="Ex: 2 módulos"
+                      aria-invalid={!!obterErroVisivel('n_modulos')}
+                      className={`bg-white text-lg py-6 ${obterErroVisivel('n_modulos') ? 'border-red-500 focus-visible:ring-red-500' : 'border-slate-300'}`}
+                      onKeyDown={handleNumericKeyDown('n_modulos', false)}
+                      onChange={(e) => {
+                        marcarTocado('n_modulos')
+                        limparAvisoDigitacao('n_modulos')
+                        handleParamChange('n_modulos', e.target.value === '' ? '' : Number(e.target.value))
+                      }}
                     />
+                    {obterErroVisivel('n_modulos') && (
+                      <p className="text-xs text-red-600 font-medium">{obterErroVisivel('n_modulos')}</p>
+                    )}
                   </div>
-                ) : null
+                )
               })()}
 
               {(() => {
@@ -864,15 +1134,26 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                 const opcoes: string[] = Array.isArray(paramLargura.opcoes) ? paramLargura.opcoes : JSON.parse(paramLargura.opcoes as string || '[]')
                 return (
                   <div className="grid gap-2">
-                    <Label className="font-bold text-slate-800 uppercase text-xs">{paramLargura.rotulo}</Label>
-                    <Select value={paramsForm['largura_modulo']?.toString() || ''} onValueChange={(val) => handleParamChange('largura_modulo', Number(val))}>
-                      <SelectTrigger className="bg-white border-slate-300 text-lg py-6"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <Label htmlFor="campo-largura-modulo" className="font-bold text-slate-800 uppercase text-xs">{paramLargura.rotulo} *</Label>
+                    <Select
+                      value={paramsForm['largura_modulo']?.toString() || ''}
+                      onValueChange={(val) => {
+                        marcarTocado('largura_modulo')
+                        handleParamChange('largura_modulo', Number(val))
+                      }}
+                    >
+                      <SelectTrigger id="campo-largura-modulo" aria-label={paramLargura.rotulo} className={`bg-white text-lg py-6 ${obterErroVisivel('largura_modulo') ? 'border-red-500' : 'border-slate-300'}`}>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
-                          <SelectItem key={op} value={op}>{op}</SelectItem>
+                          <SelectItem key={op} value={op}>{op} m</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {obterErroVisivel('largura_modulo') && (
+                      <p className="text-xs text-red-600 font-medium">{obterErroVisivel('largura_modulo')}</p>
+                    )}
                   </div>
                 )
               })()}
@@ -883,21 +1164,32 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                 const opcoes: string[] = Array.isArray(paramVao.opcoes) ? paramVao.opcoes : JSON.parse(paramVao.opcoes as string || '[]')
                 return (
                   <div className="grid gap-2">
-                    <Label className="font-bold text-slate-800 uppercase text-xs">{paramVao.rotulo}</Label>
-                    <Select value={paramsForm['vao']?.toString() || ''} onValueChange={(val) => handleParamChange('vao', Number(val))}>
-                      <SelectTrigger className="bg-white border-slate-300 text-lg py-6"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <Label htmlFor="campo-vao" className="font-bold text-slate-800 uppercase text-xs">{paramVao.rotulo} *</Label>
+                    <Select
+                      value={paramsForm['vao']?.toString() || ''}
+                      onValueChange={(val) => {
+                        marcarTocado('vao')
+                        handleParamChange('vao', Number(val))
+                      }}
+                    >
+                      <SelectTrigger id="campo-vao" aria-label={paramVao.rotulo} className={`bg-white text-lg py-6 ${obterErroVisivel('vao') ? 'border-red-500' : 'border-slate-300'}`}>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
-                          <SelectItem key={op} value={op}>{op}</SelectItem>
+                          <SelectItem key={op} value={op}>{op} m</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {obterErroVisivel('vao') && (
+                      <p className="text-xs text-red-600 font-medium">{obterErroVisivel('vao')}</p>
+                    )}
                   </div>
                 )
               })()}
             </div>
             
-            {comprimento && paramsForm['vao'] && !vaoError && (
+            {comprimento !== '' && Number(comprimento) >= 3 && Number(comprimento) <= 500 && paramsForm['vao'] && !vaoError && (
               <div className="text-sm text-slate-500 font-medium bg-slate-200/50 p-3 rounded-md mt-2 flex items-center gap-2">
                 <span className="text-[#d97021]">ℹ</span>
                 O sistema calculou automaticamente {paramsForm['n_vaos']} vãos para cobrir o comprimento de {comprimento}m.
@@ -910,13 +1202,26 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                   {vaoError}
                 </div>
                 <div className="grid gap-2 sm:w-1/3">
-                  <Label className="font-bold text-orange-900 uppercase text-xs">Tamanho do último vão (m)</Label>
+                  <Label htmlFor="campo-vao-ultimo" className="font-bold text-orange-900 uppercase text-xs">Tamanho do último vão (m) *</Label>
                   <Input 
+                    id="campo-vao-ultimo"
                     type="number"
+                    min={0.5}
+                    max={Number(paramsForm['vao']) || 4}
+                    step="any"
                     value={vaoUltimo}
-                    onChange={(e) => setVaoUltimo(Number(e.target.value) || '')}
-                    className="bg-white border-orange-300 text-lg py-6 focus-visible:ring-orange-500"
+                    onKeyDown={handleNumericKeyDown('vaoUltimo', true)}
+                    onChange={(e) => {
+                      marcarTocado('vaoUltimo')
+                      limparAvisoDigitacao('vaoUltimo')
+                      const raw = e.target.value.replace(',', '.')
+                      setVaoUltimo(raw === '' ? '' : Number(raw))
+                    }}
+                    className={`bg-white text-lg py-6 ${obterErroVisivel('vaoUltimo') ? 'border-red-500 focus-visible:ring-red-500' : 'border-orange-300 focus-visible:ring-orange-500'}`}
                   />
+                  {obterErroVisivel('vaoUltimo') && (
+                    <p className="text-xs text-red-600 font-medium">{obterErroVisivel('vaoUltimo')}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -1059,14 +1364,26 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                     {paramsForm['master_travamentos_x'] && (
                       <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[300px] max-w-full">
                         <div className="grid gap-2">
-                          <Label className="uppercase text-xs font-semibold text-slate-600">Quantos X por linha?</Label>
+                          <Label htmlFor="campo-travamentos-x" className="uppercase text-xs font-semibold text-slate-600">Quantos X por linha? *</Label>
                           <Input 
+                            id="campo-travamentos-x"
                             type="number"
+                            min={1}
+                            max={20}
+                            step={1}
                             placeholder="Ex: 1"
-                            value={paramsForm['travamentos_x']?.toString() || ''}
-                            onChange={(e) => handleParamChange('travamentos_x', Number(e.target.value) || '')}
-                            className="bg-white"
+                            value={paramsForm['travamentos_x'] !== undefined && paramsForm['travamentos_x'] !== '' ? String(paramsForm['travamentos_x']) : ''}
+                            onKeyDown={handleNumericKeyDown('travamentos_x', false)}
+                            onChange={(e) => {
+                              marcarTocado('travamentos_x')
+                              limparAvisoDigitacao('travamentos_x')
+                              handleParamChange('travamentos_x', e.target.value === '' ? '' : Number(e.target.value))
+                            }}
+                            className={`bg-white ${obterErroVisivel('travamentos_x') ? 'border-red-500' : ''}`}
                           />
+                          {obterErroVisivel('travamentos_x') && (
+                            <p className="text-xs text-red-600 font-medium">{obterErroVisivel('travamentos_x')}</p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1299,21 +1616,29 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
 
                             {paramsForm['tipo_fechamento_material'] === 'tela' && (
                               <div className="grid gap-2 pt-2 border-t border-slate-200">
-                                <Label className="uppercase text-xs font-semibold text-slate-600">
+                                <Label htmlFor="campo-tela-largura-rolo" className="uppercase text-xs font-semibold text-slate-600">
                                   Largura do rolo da tela escolhida (m)
                                 </Label>
                                 <Input
+                                  id="campo-tela-largura-rolo"
                                   type="number"
                                   step="any"
-                                  min={0}
+                                  min={0.5}
+                                  max={20}
                                   placeholder="Ex: 3 ou 4,2"
-                                  value={paramsForm['tela_largura_rolo']?.toString() || ''}
+                                  value={paramsForm['tela_largura_rolo'] !== undefined && paramsForm['tela_largura_rolo'] !== '' ? String(paramsForm['tela_largura_rolo']) : ''}
+                                  onKeyDown={handleNumericKeyDown('tela_largura_rolo', true)}
                                   onChange={(e) => {
+                                    marcarTocado('tela_largura_rolo')
+                                    limparAvisoDigitacao('tela_largura_rolo')
                                     const raw = e.target.value.replace(',', '.')
                                     handleParamChange('tela_largura_rolo', raw === '' ? '' : Number(raw))
                                   }}
-                                  className="bg-white"
+                                  className={`bg-white ${obterErroVisivel('tela_largura_rolo') ? 'border-red-500' : ''}`}
                                 />
+                                {obterErroVisivel('tela_largura_rolo') && (
+                                  <p className="text-xs text-red-600 font-medium">{obterErroVisivel('tela_largura_rolo')}</p>
+                                )}
                               </div>
                             )}
 
@@ -1344,10 +1669,11 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                     <div className="grid gap-3 pl-6">
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="grid gap-1.5">
-                                          <Label className="uppercase text-xs font-semibold text-slate-600">
+                                          <Label htmlFor="campo-divisas-frente" className="uppercase text-xs font-semibold text-slate-600">
                                             Quantas divisas na FRENTE?
                                           </Label>
                                           <Input
+                                            id="campo-divisas-frente"
                                             type="number"
                                             min={0}
                                             max={maxDivisas}
@@ -1363,10 +1689,11 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                           </span>
                                         </div>
                                         <div className="grid gap-1.5">
-                                          <Label className="uppercase text-xs font-semibold text-slate-600">
+                                          <Label htmlFor="campo-divisas-fundo" className="uppercase text-xs font-semibold text-slate-600">
                                             Quantas divisas no FUNDO?
                                           </Label>
                                           <Input
+                                            id="campo-divisas-fundo"
                                             type="number"
                                             min={0}
                                             max={maxDivisas}
@@ -1472,14 +1799,26 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                     {param.nome_tecnico === 'arco_divisa' && paramsForm['arco_divisa'] && (
                       <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
                         <div className="grid gap-2">
-                          <Label className="uppercase text-xs font-semibold text-slate-600">Quantos arcos de divisa por módulo?</Label>
+                          <Label htmlFor="campo-n-divisas-por-modulo" className="uppercase text-xs font-semibold text-slate-600">Quantos arcos de divisa por módulo? *</Label>
                           <Input 
+                            id="campo-n-divisas-por-modulo"
                             type="number"
+                            min={1}
+                            max={50}
+                            step={1}
                             placeholder="Ex: 1"
-                            value={paramsForm['n_divisas_por_modulo']?.toString() || ''}
-                            onChange={(e) => handleParamChange('n_divisas_por_modulo', Number(e.target.value) || '')}
-                            className="bg-white"
+                            value={paramsForm['n_divisas_por_modulo'] !== undefined && paramsForm['n_divisas_por_modulo'] !== '' ? String(paramsForm['n_divisas_por_modulo']) : ''}
+                            onKeyDown={handleNumericKeyDown('n_divisas_por_modulo', false)}
+                            onChange={(e) => {
+                              marcarTocado('n_divisas_por_modulo')
+                              limparAvisoDigitacao('n_divisas_por_modulo')
+                              handleParamChange('n_divisas_por_modulo', e.target.value === '' ? '' : Number(e.target.value))
+                            }}
+                            className={`bg-white ${obterErroVisivel('n_divisas_por_modulo') ? 'border-red-500' : ''}`}
                           />
+                          {obterErroVisivel('n_divisas_por_modulo') && (
+                            <p className="text-xs text-red-600 font-medium">{obterErroVisivel('n_divisas_por_modulo')}</p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1487,32 +1826,43 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                     {param.nome_tecnico === 'possui_anticamara' && paramsForm['possui_anticamara'] && (
                       <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
                         {anticamaraConfig.map((item, index) => (
-                          <div key={item.id} className="flex flex-col sm:flex-row items-end gap-4 relative pr-12">
+                          <div key={item.id} className="flex flex-col sm:flex-row items-start gap-4 relative pr-12">
                             <div className="grid gap-2 flex-1 w-full">
-                              <Label className="uppercase text-[10px] font-semibold text-slate-600">Quantas?</Label>
+                              <Label htmlFor={`campo-anticamara-qtd-${index}`} className="uppercase text-[10px] font-semibold text-slate-600">Quantidade de Anticâmaras *</Label>
                               <Input 
+                                id={`campo-anticamara-qtd-${index}`}
                                 type="number"
-                                placeholder="Ex: 2"
+                                min={1}
+                                max={20}
+                                step={1}
+                                placeholder="Ex: 1 anticâmara"
                                 value={item.quantidade}
+                                onKeyDown={handleNumericKeyDown(`anticamara_qtd_${index}`, false)}
                                 onChange={(e) => {
+                                  marcarTocado(`anticamara_qtd_${index}`)
+                                  limparAvisoDigitacao(`anticamara_qtd_${index}`)
                                   const newConfig = [...anticamaraConfig];
                                   newConfig[index].quantidade = e.target.value === '' ? '' : Number(e.target.value);
                                   setAnticamaraConfig(newConfig);
                                 }}
-                                className="bg-white"
+                                className={`bg-white ${obterErroVisivel(`anticamara_qtd_${index}`) ? 'border-red-500' : ''}`}
                               />
+                              {obterErroVisivel(`anticamara_qtd_${index}`) && (
+                                <p className="text-xs text-red-600 font-medium">{obterErroVisivel(`anticamara_qtd_${index}`)}</p>
+                              )}
                             </div>
                             <div className="grid gap-2 flex-[2] w-full">
-                              <Label className="uppercase text-[10px] font-semibold text-slate-600">Qual o modelo da anticâmara?</Label>
+                              <Label htmlFor={`campo-anticamara-modelo-${index}`} className="uppercase text-[10px] font-semibold text-slate-600">Qual o modelo da anticâmara? *</Label>
                               <Select 
                                 value={item.modelo}
                                 onValueChange={(val) => {
+                                  marcarTocado(`anticamara_modelo_${index}`)
                                   const newConfig = [...anticamaraConfig];
                                   newConfig[index].modelo = val ?? "";
                                   setAnticamaraConfig(newConfig);
                                 }}
                               >
-                                <SelectTrigger className="bg-white w-full">
+                                <SelectTrigger id={`campo-anticamara-modelo-${index}`} className={`bg-white w-full ${obterErroVisivel(`anticamara_modelo_${index}`) ? 'border-red-500' : ''}`}>
                                   <SelectValue placeholder="Selecione o produto...">
                                     {item.modelo
                                       ? (() => {
@@ -1532,6 +1882,9 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                   }
                                 </SelectContent>
                               </Select>
+                              {obterErroVisivel(`anticamara_modelo_${index}`) && (
+                                <p className="text-xs text-red-600 font-medium">{obterErroVisivel(`anticamara_modelo_${index}`)}</p>
+                              )}
                             </div>
                             {anticamaraConfig.length > 1 && (
                               <Button 
@@ -1603,39 +1956,59 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
 
               if (param.tipo === 'selecao' && param.opcoes) {
                 const opcoes: string[] = Array.isArray(param.opcoes) ? param.opcoes : JSON.parse(param.opcoes as string || '[]')
+                const obrigatorio = param.nome_tecnico === 'tipo_arco' || param.nome_tecnico === 'calha_lateral'
                 return (
                   <div key={param.nome_tecnico} className="grid gap-2">
-                    <Label className="uppercase text-xs font-semibold text-slate-600">{param.rotulo}</Label>
+                    <Label htmlFor={`campo-${param.nome_tecnico}`} className="uppercase text-xs font-semibold text-slate-600">
+                      {param.rotulo}{obrigatorio ? ' *' : ''}
+                    </Label>
                     <Select
                       value={paramsForm[param.nome_tecnico]?.toString() || ''}
                       onValueChange={(val) => {
+                        marcarTocado(param.nome_tecnico)
                         const num = Number(val)
                         handleParamChange(param.nome_tecnico, isNaN(num) ? val : num)
                       }}
                     >
-                      <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectTrigger
+                        id={`campo-${param.nome_tecnico}`}
+                        aria-label={param.rotulo}
+                        className={`w-full bg-white ${obterErroVisivel(param.nome_tecnico) ? 'border-red-500' : ''}`}
+                      >
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
                           <SelectItem key={op} value={op}>{op}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {obterErroVisivel(param.nome_tecnico) && (
+                      <p className="text-xs text-red-600 font-medium">{obterErroVisivel(param.nome_tecnico)}</p>
+                    )}
                   </div>
                 )
               }
 
               return (
                 <div key={param.nome_tecnico} className="grid gap-2">
-                  <Label className="uppercase text-xs font-semibold text-slate-600">{param.rotulo}</Label>
+                  <Label htmlFor={`campo-${param.nome_tecnico}`} className="uppercase text-xs font-semibold text-slate-600">{param.rotulo}</Label>
                   <Input 
+                    id={`campo-${param.nome_tecnico}`}
                     type={param.tipo === 'numero' ? 'number' : 'text'} 
-                    value={paramsForm[param.nome_tecnico]?.toString() || ''}
+                    value={paramsForm[param.nome_tecnico] !== undefined && paramsForm[param.nome_tecnico] !== '' ? String(paramsForm[param.nome_tecnico]) : ''}
                     placeholder={`Ex: ${param.tipo === 'numero' ? '10' : ''}`}
+                    onKeyDown={param.tipo === 'numero' ? handleNumericKeyDown(param.nome_tecnico, true) : undefined}
                     onChange={(e) => {
+                      marcarTocado(param.nome_tecnico)
+                      limparAvisoDigitacao(param.nome_tecnico)
                       const val = param.tipo === 'numero' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value
                       handleParamChange(param.nome_tecnico, val)
                     }}
                   />
+                  {obterErroVisivel(param.nome_tecnico) && (
+                    <p className="text-xs text-red-600 font-medium">{obterErroVisivel(param.nome_tecnico)}</p>
+                  )}
                 </div>
               )
             })}
@@ -1663,32 +2036,43 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
               {paramsForm['master_portas'] && (
                 <div className="grid gap-4 mt-4 ml-6 p-4 bg-slate-50 border border-slate-200 rounded-md w-full md:w-[600px] max-w-full">
                   {portasConfig.map((porta, index) => (
-                    <div key={porta.id} className="flex flex-col sm:flex-row items-end gap-4 relative pr-12">
+                    <div key={porta.id} className="flex flex-col sm:flex-row items-start gap-4 relative pr-12">
                       <div className="grid gap-2 flex-1 w-full">
-                        <Label className="uppercase text-[10px] font-semibold text-slate-600">Quantas Portas?</Label>
+                        <Label htmlFor={`campo-porta-qtd-${index}`} className="uppercase text-[10px] font-semibold text-slate-600">Quantas Portas? *</Label>
                         <Input 
+                          id={`campo-porta-qtd-${index}`}
                           type="number"
-                          placeholder="Ex: 2"
+                          min={1}
+                          max={50}
+                          step={1}
+                          placeholder="Ex: 2 portas"
                           value={porta.quantidade}
+                          onKeyDown={handleNumericKeyDown(`porta_qtd_${index}`, false)}
                           onChange={(e) => {
+                            marcarTocado(`porta_qtd_${index}`)
+                            limparAvisoDigitacao(`porta_qtd_${index}`)
                             const newConfig = [...portasConfig];
                             newConfig[index].quantidade = e.target.value === '' ? '' : Number(e.target.value);
                             setPortasConfig(newConfig);
                           }}
-                          className="bg-white"
+                          className={`bg-white ${obterErroVisivel(`porta_qtd_${index}`) ? 'border-red-500' : ''}`}
                         />
+                        {obterErroVisivel(`porta_qtd_${index}`) && (
+                          <p className="text-xs text-red-600 font-medium">{obterErroVisivel(`porta_qtd_${index}`)}</p>
+                        )}
                       </div>
                       <div className="grid gap-2 flex-[2] w-full">
-                        <Label className="uppercase text-[10px] font-semibold text-slate-600">Qual o modelo da porta?</Label>
+                        <Label htmlFor={`campo-porta-tipo-${index}`} className="uppercase text-[10px] font-semibold text-slate-600">Qual o modelo da porta? *</Label>
                         <Select 
                           value={porta.tipo}
                           onValueChange={(val) => {
+                            marcarTocado(`porta_tipo_${index}`)
                             const newConfig = [...portasConfig];
                             newConfig[index].tipo = val ?? "";
                             setPortasConfig(newConfig);
                           }}
                         >
-                          <SelectTrigger className="bg-white">
+                          <SelectTrigger id={`campo-porta-tipo-${index}`} className={`bg-white ${obterErroVisivel(`porta_tipo_${index}`) ? 'border-red-500' : ''}`}>
                             <SelectValue placeholder="Selecione o modelo...">
                               {porta.tipo === 'abrir'
                                 ? 'Porta de Abrir 2,00 x 1,00 m'
@@ -1705,6 +2089,9 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                             <SelectItem value="correr_grande">Porta de Correr 2,10 x 3,00 m</SelectItem>
                           </SelectContent>
                         </Select>
+                        {obterErroVisivel(`porta_tipo_${index}`) && (
+                          <p className="text-xs text-red-600 font-medium">{obterErroVisivel(`porta_tipo_${index}`)}</p>
+                        )}
                       </div>
                       {portasConfig.length > 1 && (
                         <Button 
@@ -1730,7 +2117,20 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
               )}
             </div>
           </CardContent>
-          <CardFooter className="bg-muted/30 pt-6">
+          <CardFooter className="bg-muted/30 pt-6 flex flex-col gap-4">
+            {tentouCalcular && listaErrosAtivos.length > 0 && (
+              <div role="alert" className="w-full rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                <div className="flex items-center gap-2 font-bold mb-1">
+                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                  <span>Preencha os dados obrigatórios e corrija os erros antes de calcular:</span>
+                </div>
+                <ul className="list-disc pl-5 space-y-0.5 text-xs">
+                  {listaErrosAtivos.map((erro, idx) => (
+                    <li key={idx}>{erro}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <Button onClick={handleCalcular} className="w-full gap-2 text-lg py-6 bg-[#d97021] hover:bg-[#c3631b] text-white">
               <Calculator className="h-5 w-5" />
               {orcamentoInicial ? "Recalcular Lista de Materiais" : "Calcular Lista de Materiais"}
@@ -1978,9 +2378,17 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
             <CardDescription className="text-zinc-500">Total calculado dinamicamente</CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
-            <div className="text-4xl font-bold text-[#d97021] mb-6">
+            <div className="text-4xl font-bold text-[#d97021] mb-4">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
             </div>
+            {valorTotal > 500000 && (
+              <div role="alert" className="mb-5 rounded-md border border-amber-500/40 bg-amber-950/60 p-3 text-xs text-amber-200 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Valor elevado:</strong> o total ultrapassa R$ 500.000,00. Confira se as medidas, módulos e quantidades digitadas estão corretas antes de salvar.
+                </span>
+              </div>
+            )}
             <div className="space-y-4">
               <div className="flex justify-between text-sm">
                 <span className="text-zinc-400">Itens de Estrutura</span>
