@@ -42,6 +42,11 @@ export type RegraPacote = {
   arredondamento?: Arredondamento
   margem_perda?: number
   obs?: string
+  /**
+   * Explicação em linguagem simples, mostrada ao vendedor no ícone "i" do item da lista de materiais.
+   * Pode usar {nome_da_variavel} (troca pelo valor usado no cálculo) e {resultado} (quantidade calculada).
+   */
+  explicacao?: string
 }
 
 export type ExemploPacote = {
@@ -324,6 +329,22 @@ export function validarPacote(pacote: Pacote, produtosAtivos: Produto[]): { prob
       // ok: o motor troca pelo produto escolhido no formulário
     }
     if (r.formula) conferirExpressao(String(r.formula), onde, "A fórmula")
+    if (r.explicacao !== undefined) {
+      if (typeof r.explicacao !== "string") {
+        erro(onde, "A explicação precisa ser um texto.")
+      } else if (r.formula) {
+        let usadas: string[] = []
+        try { usadas = parser.parse(String(r.formula)).variables() } catch { /* fórmula já acusada acima */ }
+        for (const m of r.explicacao.matchAll(/\{(\w+)\}/g)) {
+          const nome = m[1]
+          if (nome !== "resultado" && !usadas.includes(nome)) {
+            aviso(onde, `A explicação usa {${nome}}, mas a fórmula não usa essa variável: o valor não aparece (fica escrito {${nome}}).`)
+          }
+        }
+      }
+    } else {
+      aviso(onde, "Regra sem explicação: o vendedor vê só a fórmula no ícone de explicação do item.")
+    }
     const cond = normalizarCondicao(r.condicao)
     if (cond) conferirExpressao(cond, onde, "A condição")
 

@@ -5,6 +5,7 @@ import { ItemOrcamento } from "@/utils/engine"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
+import { anexarExplicacoes } from "@/lib/explicacoes-regras"
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -85,6 +86,8 @@ export default async function EditarOrcamentoPage({ params }: { params: Promise<
     `)
     .eq('ativo', true)
 
+  const regrasComExplicacao = await anexarExplicacoes(supabaseAdmin, regras as any[])
+
   let clientesQuery = supabaseAdmin
     .from('clientes')
     .select('id, nome, documento, cidade_uf')
@@ -114,7 +117,7 @@ export default async function EditarOrcamentoPage({ params }: { params: Promise<
 
       <OrcamentoForm
         parametrosDef={parametrosDef || []}
-        regras={regras as any || []}
+        regras={regrasComExplicacao as any}
         produtos={produtos || []}
         clientes={clientes || []}
         orcamentoInicial={{

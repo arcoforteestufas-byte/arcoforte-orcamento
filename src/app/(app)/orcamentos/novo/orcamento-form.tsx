@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks, Image as ImageIcon, Search, Check, ChevronDown, X } from "lucide-react"
-import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo } from "@/utils/engine"
+import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks, Image as ImageIcon, Search, Check, ChevronDown, X, Info } from "lucide-react"
+import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo, montarTextoExplicacao, formulaComValores } from "@/utils/engine"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { useRouter, useSearchParams } from "next/navigation"
 import { registrarOrcamentoNoLead } from "@/app/actions/crm"
@@ -207,6 +207,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
   const [isLoading, setIsLoading] = useState(false)
   const [novoCliente, setNovoCliente] = useState({ nome: '', documento: '', cidade_uf: '' })
   const [swapItemIndex, setSwapItemIndex] = useState<number | null>(null)
+  const [itemExplicado, setItemExplicado] = useState<ItemOrcamento | null>(null)
   
   const [comprimento, setComprimento] = useState<number | ''>(() => {
     const p = orcamentoInicial?.parametros_utilizados
@@ -1760,6 +1761,75 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
+                <Dialog open={!!itemExplicado} onOpenChange={(aberto) => { if (!aberto) setItemExplicado(null) }}>
+                  <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Como chegamos nesta quantidade</DialogTitle>
+                      <DialogDescription>
+                        {itemExplicado ? `${itemExplicado.produto_codigo} - ${itemExplicado.produto_descricao}` : ''}
+                      </DialogDescription>
+                    </DialogHeader>
+                    {itemExplicado && (() => {
+                      const detalhes = itemExplicado.detalhes || []
+                      const numero = (v: number) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(v)
+                      const calculado = detalhes.reduce((acc, d) => acc + d.quantidade_final, 0)
+                      return (
+                        <div className="space-y-4 text-sm">
+                          {detalhes.map((d, i) => {
+                            const texto = montarTextoExplicacao(d)
+                            const conta = formulaComValores(d)
+                            const nomesVariaveis = Object.keys(d.variaveis)
+                            return (
+                              <div key={i} className="rounded-md border border-slate-200 p-3 space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-semibold text-slate-800">{d.posicao_nome}</span>
+                                  <span className="font-bold text-[#d97021] whitespace-nowrap">{numero(d.quantidade_final)} {itemExplicado.unidade}</span>
+                                </div>
+                                {texto ? (
+                                  <p className="text-slate-700 leading-relaxed">{texto}</p>
+                                ) : (
+                                  <p className="text-slate-500 italic">Esta regra ainda não tem explicação escrita. Veja a conta abaixo.</p>
+                                )}
+                                {nomesVariaveis.length > 0 && conta.length <= 220 && (
+                                  <p className="text-xs text-slate-600">
+                                    <span className="font-medium">Conta:</span>{' '}
+                                    <code className="bg-slate-100 rounded px-1 py-0.5 break-all">{conta} = {numero(d.quantidade_bruta)}</code>
+                                  </p>
+                                )}
+                                {(d.margem_perda > 0 || d.arredondamento !== 'nenhum') && (
+                                  <p className="text-xs text-slate-600">
+                                    {d.margem_perda > 0 ? `+ ${numero(d.margem_perda)}% de perda. ` : ''}
+                                    {d.arredondamento === 'cima' ? 'Arredondado para cima.' : d.arredondamento === 'baixo' ? 'Arredondado para baixo.' : ''}
+                                  </p>
+                                )}
+                                {nomesVariaveis.length > 0 && (
+                                  <details className="text-xs text-slate-500">
+                                    <summary className="cursor-pointer select-none">Valores usados</summary>
+                                    <ul className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                                      {nomesVariaveis.map(n => (
+                                        <li key={n}><code>{n}</code> = {String(d.variaveis[n] === '' ? '(vazio)' : d.variaveis[n])}</li>
+                                      ))}
+                                    </ul>
+                                  </details>
+                                )}
+                              </div>
+                            )
+                          })}
+                          {detalhes.length > 1 && (
+                            <p className="text-right font-semibold text-slate-800">
+                              Total calculado: {numero(calculado)} {itemExplicado.unidade}
+                            </p>
+                          )}
+                          {itemExplicado.isManualChange && (
+                            <p className="rounded-md bg-orange-50 border border-orange-200 p-2 text-xs text-orange-700">
+                              Este item foi alterado manualmente. O sistema tinha calculado {numero(calculado)} {itemExplicado.unidade}.
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })()}
+                  </DialogContent>
+                </Dialog>
                 {/* Agrupar por grupo para exibição */}
                 {Array.from(new Set(resultado.map(i => i.grupo_nome))).map(grupo => (
                   <div key={grupo}>
@@ -1771,6 +1841,17 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                           <div key={idx} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm bg-slate-50 p-2 rounded">
                             <div className="flex-1">
                               <span className="font-medium">{item.produto_codigo} - {item.produto_descricao}</span>
+                              {item.detalhes && item.detalhes.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setItemExplicado(item)}
+                                  className="inline-flex align-middle ml-1.5 text-slate-400 hover:text-[#d97021]"
+                                  title="Como o sistema chegou nesta quantidade"
+                                  aria-label="Explicar o cálculo"
+                                >
+                                  <Info className="h-4 w-4" />
+                                </button>
+                              )}
                               <span className="text-xs text-muted-foreground ml-2">({item.posicao_nome})</span>
                               {item.isManualChange && (
                                 <Badge variant="outline" className="ml-2 mt-1 text-[10px] h-5 bg-orange-50 text-orange-600 border-orange-200 w-fit">Alterado Manualmente</Badge>

@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from "@/utils/supabase/server"
 import { OrcamentoForm } from "./orcamento-form"
+import { anexarExplicacoes } from "@/lib/explicacoes-regras"
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -45,6 +46,8 @@ export default async function NovoOrcamentoPage() {
     `)
     .eq('ativo', true)
 
+  const regrasComExplicacao = await anexarExplicacoes(supabaseAdmin, regras as any[])
+
   let clientesQuery = supabaseAdmin
     .from('clientes')
     .select('id, nome, documento, cidade_uf')
@@ -69,7 +72,7 @@ export default async function NovoOrcamentoPage() {
 
       <OrcamentoForm 
         parametrosDef={parametrosDef || []} 
-        regras={regras as any || []} 
+        regras={regrasComExplicacao as any} 
         produtos={produtos || []} 
         clientes={clientes || []}
       />

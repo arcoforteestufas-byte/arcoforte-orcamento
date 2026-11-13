@@ -299,6 +299,9 @@ export async function exportarPacoteAtual(): Promise<{ sucesso: boolean; texto?:
     const reg = await lerRegistroAplicado(admin)
     const mapa = reg?.mapa ?? {}
     const codigoPorId = new Map(Object.entries(mapa).map(([r, id]) => [id, r]))
+    // A explicação não fica no banco: vem do último pacote aplicado (mesmo código R)
+    const explicacaoPorCodigo = new Map<string, string>()
+    for (const rp of reg?.pacote.regras ?? []) if (rp.explicacao) explicacaoPorCodigo.set(rp.id, rp.explicacao)
 
     const ativas = estado.regras
       .filter(r => r.ativo !== false)
@@ -323,6 +326,8 @@ export async function exportarPacoteAtual(): Promise<{ sucesso: boolean; texto?:
       if (r.unidade !== "un") regra.unidade = r.unidade
       if (r.arredondamento !== "nenhum") regra.arredondamento = r.arredondamento as RegraPacote["arredondamento"]
       if (r.margem_perda) regra.margem_perda = r.margem_perda
+      const explicacao = explicacaoPorCodigo.get(id)
+      if (explicacao) regra.explicacao = explicacao
       return regra
     })
     regras.sort((a, b) => Number(a.id.replace(/\D/g, "")) - Number(b.id.replace(/\D/g, "")))

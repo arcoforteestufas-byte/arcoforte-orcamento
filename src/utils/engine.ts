@@ -11,6 +11,8 @@ export type RegraCalculo = {
   unidade_medida: string
   regra_arredondamento: 'cima' | 'baixo' | 'nenhum'
   margem_perda: number
+  /** Explicação em linguagem simples vinda do Pacote de Regras (campo "explicacao"). Pode ter {variavel} e {resultado}. */
+  explicacao?: string | null
   // Relacionamentos para facilitar o display
   posicoes?: {
     nome: string
@@ -49,6 +51,49 @@ export type ItemOrcamento = {
   isManualChange?: boolean
   manualOriginalProduto?: string
   manualUsuarioId?: string
+  /** Como o sistema chegou na quantidade: uma entrada por regra que somou neste item. */
+  detalhes?: DetalheCalculo[]
+}
+
+export type DetalheCalculo = {
+  posicao_nome: string
+  formula: string
+  condicao: string | null
+  /** Valores das variáveis que a fórmula usou, no momento do cálculo. */
+  variaveis: Record<string, string | number | boolean>
+  quantidade_bruta: number
+  margem_perda: number
+  arredondamento: string
+  quantidade_final: number
+  explicacao?: string | null
+}
+
+function formatarValor(v: unknown): string {
+  if (typeof v === 'number') return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(v)
+  if (typeof v === 'boolean') return v ? 'sim' : 'não'
+  if (v === '' || v === null || v === undefined) return '(vazio)'
+  return String(v)
+}
+
+/** Troca {variavel} e {resultado} do texto da explicação pelos valores usados no cálculo. */
+export function montarTextoExplicacao(d: DetalheCalculo): string | null {
+  if (!d.explicacao || !d.explicacao.trim()) return null
+  return d.explicacao.replace(/\{(\w+)\}/g, (_m, nome: string) => {
+    if (nome === 'resultado') return formatarValor(d.quantidade_bruta)
+    if (nome in d.variaveis) return formatarValor(d.variaveis[nome])
+    return `{${nome}}`
+  })
+}
+
+/** Mostra a fórmula com os números no lugar das variáveis (ex.: "(13 - 1) * 3 - 3"). */
+export function formulaComValores(d: DetalheCalculo): string {
+  return d.formula.replace(/[A-Za-z_][A-Za-z0-9_]*/g, (nome) => {
+    if (!(nome in d.variaveis)) return nome
+    const v = d.variaveis[nome]
+    if (typeof v === 'string') return `'${v}'`
+    if (typeof v === 'boolean') return v ? 'true' : 'false'
+    return String(v)
+  })
 }
 
 /**
@@ -157,6 +202,11 @@ export function calcularOrcamento(
       
       const qtyExpr = parser.parse(regra.formula_quantidade)
       const quantidadeBruta = Number(qtyExpr.evaluate(safeParametros as any)) || 0
+      const variaveisUsadas: Record<string, string | number | boolean> = {}
+      for (const nome of qtyExpr.variables()) {
+        const v = (safeParametros as any)[nome]
+        variaveisUsadas[nome] = (v === undefined || v === null) ? 0 : v
+      }
       
       // Se a quantidade calculada for 0 ou negativa, ignoramos o item
       if (quantidadeBruta <= 0) continue
@@ -207,7 +257,18 @@ export function calcularOrcamento(
         preco_unitario: precoUnitario,
         valor_total: valorTotal,
         peso_bruto_total: pesoBrutoTotal,
-        peso_liquido_total: pesoLiquidoTotal
+        peso_liquido_total: pesoLiquidoTotal,
+        detalhes: [{
+          posicao_nome: regra.posicoes?.nome || 'Desconhecida',
+          formula: regra.formula_quantidade,
+          condicao: regra.condicao_aplicabilidade,
+          variaveis: variaveisUsadas,
+          quantidade_bruta: quantidadeBruta,
+          margem_perda: regra.margem_perda || 0,
+          arredondamento: regra.regra_arredondamento || 'nenhum',
+          quantidade_final: quantidadeFinal,
+          explicacao: regra.explicacao ?? null
+        }]
       })
 
     } catch (err: any) {
@@ -229,6 +290,7 @@ export function calcularOrcamento(
       existente.valor_total += item.valor_total
       existente.peso_bruto_total += item.peso_bruto_total
       existente.peso_liquido_total += item.peso_liquido_total
+      existente.detalhes = [...(existente.detalhes || []), ...(item.detalhes || [])]
       
       // Adiciona a posição se ainda não estiver na lista (para mostrar na UI)
       if (!existente.posicao_nome.includes(item.posicao_nome)) {
