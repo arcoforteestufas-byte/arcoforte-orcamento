@@ -332,13 +332,15 @@ export function validarPacote(pacote: Pacote, produtosAtivos: Produto[]): { prob
     if (r.explicacao !== undefined) {
       if (typeof r.explicacao !== "string") {
         erro(onde, "A explicação precisa ser um texto.")
-      } else if (r.formula) {
-        let usadas: string[] = []
-        try { usadas = parser.parse(String(r.formula)).variables() } catch { /* fórmula já acusada acima */ }
-        for (const m of r.explicacao.matchAll(/\{(\w+)\}/g)) {
-          const nome = m[1]
-          if (nome !== "resultado" && !usadas.includes(nome)) {
-            aviso(onde, `A explicação usa {${nome}}, mas a fórmula não usa essa variável: o valor não aparece (fica escrito {${nome}}).`)
+      } else {
+        for (const m of r.explicacao.matchAll(/\{([^{}]+)\}/g)) {
+          const trecho = m[1].trim()
+          if (trecho === "resultado") continue
+          try {
+            const vars = parser.parse(trecho).variables().filter(v => v !== "resultado")
+            if (vars.length) conferirExpressao(vars.join(" + "), onde, `A explicação ({${trecho}})`)
+          } catch (e: any) {
+            erro(onde, `A explicação tem um trecho {${trecho}} que não é uma conta válida: ${e?.message || e}`)
           }
         }
       }

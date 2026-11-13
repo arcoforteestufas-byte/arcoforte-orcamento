@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks, Image as ImageIcon, Search, Check, ChevronDown, X, Info } from "lucide-react"
-import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo, montarTextoExplicacao, formulaComValores } from "@/utils/engine"
+import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo, montarTextoExplicacao } from "@/utils/engine"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { useRouter, useSearchParams } from "next/navigation"
 import { registrarOrcamentoNoLead } from "@/app/actions/crm"
@@ -1798,8 +1798,6 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                           )}
                           {detalhes.map((d, i) => {
                             const texto = montarTextoExplicacao(d)
-                            const conta = formulaComValores(d)
-                            const nomesVariaveis = Object.keys(d.variaveis)
                             return (
                               <div key={i} className="rounded-md border border-slate-200 p-3 space-y-2">
                                 <div className="flex items-center justify-between gap-2">
@@ -1809,29 +1807,13 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                 {texto ? (
                                   <p className="text-slate-700 leading-relaxed">{texto}</p>
                                 ) : (
-                                  <p className="text-slate-500 italic">Esta regra ainda não tem explicação escrita. Veja a conta abaixo.</p>
-                                )}
-                                {nomesVariaveis.length > 0 && conta.length <= 220 && (
-                                  <p className="text-xs text-slate-600">
-                                    <span className="font-medium">Conta:</span>{' '}
-                                    <code className="bg-slate-100 rounded px-1 py-0.5 break-all">{conta} = {numero(d.quantidade_bruta)}</code>
-                                  </p>
+                                  <p className="text-slate-500 italic">Esta regra ainda não tem explicação escrita.</p>
                                 )}
                                 {(d.margem_perda > 0 || d.arredondamento !== 'nenhum') && (
                                   <p className="text-xs text-slate-600">
-                                    {d.margem_perda > 0 ? `+ ${numero(d.margem_perda)}% de perda. ` : ''}
-                                    {d.arredondamento === 'cima' ? 'Arredondado para cima.' : d.arredondamento === 'baixo' ? 'Arredondado para baixo.' : ''}
+                                    {d.margem_perda > 0 ? `Somamos ${numero(d.margem_perda)}% de sobra. ` : ''}
+                                    {d.arredondamento === 'cima' ? 'Arredondamos para cima.' : d.arredondamento === 'baixo' ? 'Arredondamos para baixo.' : ''}
                                   </p>
-                                )}
-                                {nomesVariaveis.length > 0 && (
-                                  <details className="text-xs text-slate-500">
-                                    <summary className="cursor-pointer select-none">Valores usados</summary>
-                                    <ul className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-                                      {nomesVariaveis.map(n => (
-                                        <li key={n}><code>{n}</code> = {String(d.variaveis[n] === '' ? '(vazio)' : d.variaveis[n])}</li>
-                                      ))}
-                                    </ul>
-                                  </details>
                                 )}
                               </div>
                             )

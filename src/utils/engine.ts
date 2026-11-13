@@ -78,11 +78,35 @@ function formatarValor(v: unknown): string {
 /** Troca {variavel} e {resultado} do texto da explicação pelos valores usados no cálculo. */
 export function montarTextoExplicacao(d: DetalheCalculo): string | null {
   if (!d.explicacao || !d.explicacao.trim()) return null
-  return d.explicacao.replace(/\{(\w+)\}/g, (_m, nome: string) => {
-    if (nome === 'resultado') return formatarValor(d.quantidade_bruta)
-    if (nome in d.variaveis) return formatarValor(d.variaveis[nome])
-    return `{${nome}}`
+  const parser = criarParser()
+  const valores = new Proxy(d.variaveis, {
+    get(alvo, chave) {
+      if (chave === 'resultado') return d.quantidade_bruta
+      if (typeof chave === 'string' && chave in alvo) return (alvo as any)[chave]
+      return 0
+    }
   })
+  // {nome} troca pelo valor; {conta} (ex.: {n_modulos + 1}) calcula com os mesmos valores do cálculo
+  return d.explicacao.replace(/\{([^{}]+)\}/g, (original, conteudo: string) => {
+    try {
+      return formatarValor(parser.evaluate(conteudo.trim(), valores as any))
+    } catch {
+      return original
+    }
+  })
+}
+
+/** Variáveis usadas nos trechos {...} de uma explicação. */
+export function variaveisDaExplicacao(texto: string | null | undefined): string[] {
+  if (!texto) return []
+  const parser = criarParser()
+  const nomes = new Set<string>()
+  for (const m of texto.matchAll(/\{([^{}]+)\}/g)) {
+    try {
+      for (const v of parser.parse(m[1].trim()).variables()) if (v !== 'resultado') nomes.add(v)
+    } catch { /* trecho inválido: o validador do pacote avisa */ }
+  }
+  return [...nomes]
 }
 
 /** Mostra a fórmula com os números no lugar das variáveis (ex.: "(13 - 1) * 3 - 3"). */
@@ -203,7 +227,7 @@ export function calcularOrcamento(
       const qtyExpr = parser.parse(regra.formula_quantidade)
       const quantidadeBruta = Number(qtyExpr.evaluate(safeParametros as any)) || 0
       const variaveisUsadas: Record<string, string | number | boolean> = {}
-      for (const nome of qtyExpr.variables()) {
+      for (const nome of [...qtyExpr.variables(), ...variaveisDaExplicacao(regra.explicacao)]) {
         const v = (safeParametros as any)[nome]
         variaveisUsadas[nome] = (v === undefined || v === null) ? 0 : v
       }
