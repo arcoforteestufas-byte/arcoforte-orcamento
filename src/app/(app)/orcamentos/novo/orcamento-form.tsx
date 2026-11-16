@@ -469,9 +469,9 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
     }
   }, [paramsForm['tipo_poste']])
 
-  // Voltar tipo_poste para 100X50 GALVANIZADO se estiver 75X40 GALVANIZADO e o pé-direito deixar de ser 4
+  // Voltar tipo_poste para 100X50 GALVANIZADO se estiver 75X40 GALVANIZADO e o pé-direito for 5 m (único sem poste 75x40)
   useEffect(() => {
-    if (paramsForm['tipo_poste'] === '75X40 GALVANIZADO' && Number(paramsForm['pe_direito']) !== 4) {
+    if (paramsForm['tipo_poste'] === '75X40 GALVANIZADO' && Number(paramsForm['pe_direito']) === 5) {
       setParamsForm(prev => ({
         ...prev,
         tipo_poste: '100X50 GALVANIZADO'
@@ -2137,7 +2137,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
               }
 
               if (param.nome_tecnico === 'tipo_poste') {
-                const permite75x40 = Number(paramsForm['pe_direito']) === 4
+                const permite75x40 = Number(paramsForm['pe_direito']) !== 5
                 return (
                   <div key="tipo_poste" className="grid gap-2">
                     <div className="flex items-center justify-between">
@@ -2153,7 +2153,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       <SelectTrigger id="campo-tipo-poste" className="w-full bg-white">
                         <SelectValue placeholder="Selecione...">
                           {paramsForm['tipo_poste'] === '75X40 GALVANIZADO'
-                            ? (permite75x40 ? '75x40 Galvanizado (somente pé-direito 4 m)' : '75x40 Galvanizado (disponível só com pé-direito 4 m)')
+                            ? (permite75x40 ? '75x40 Galvanizado' : '75x40 Galvanizado (não existe para pé-direito 5 m)')
                             : paramsForm['tipo_poste'] === 'EUCALIPTO'
                               ? 'Eucalipto Tratado (Aguardando aprovação de regras)'
                               : '100x50 Galvanizado (Padrão Homologado ArcoForte)'}
@@ -2169,8 +2169,8 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                           className={!permite75x40 ? "opacity-50 text-slate-400" : undefined}
                         >
                           {permite75x40
-                            ? "75x40 Galvanizado (somente pé-direito 4 m)"
-                            : "75x40 Galvanizado (disponível só com pé-direito 4 m)"}
+                            ? "75x40 Galvanizado"
+                            : "75x40 Galvanizado (não existe para pé-direito 5 m)"}
                         </SelectItem>
                         <SelectItem value="EUCALIPTO" disabled className="opacity-50 text-slate-400">
                           Eucalipto Tratado (Aguardando aprovação de regras)
@@ -2178,7 +2178,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground leading-tight">
-                      * Postes 100x50 Galvanizados são o padrão. Com pé-direito de 4 m é possível usar 75x40 Galvanizado (poste 3300) nos postes de canto, laterais e de divisa modular; os postes centrais de topo de arco continuam 100x50. Eucalipto aguarda aprovação de regras.
+                      * Postes 100x50 Galvanizados são o padrão. Em todos os pés-direitos, menos o de 5 m, é possível usar 75x40 Galvanizado nos postes de canto, laterais e de divisa modular; os postes centrais de topo de arco continuam 100x50. Eucalipto aguarda aprovação de regras.
                     </p>
                   </div>
                 )
