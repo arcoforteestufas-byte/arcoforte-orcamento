@@ -177,13 +177,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const resSrv = await salvarConfiguracoesServidor(payload)
     if (!resSrv.sucesso) {
-      // Fallback pelo cliente caso necessário
+      // Fallback pelo cliente apenas com as colunas básicas caso necessário
       const supabase = createClient()
       const { error } = await supabase
         .from('configuracoes')
         .upsert({
           id: '00000000-0000-0000-0000-000000000000',
-          ...payload,
+          nome_empresa: updated.nome_empresa,
+          cor_primaria: updated.cor_primaria,
+          logo_url: updated.logo_url,
+          estilo_pdf: updated.estilo_pdf,
           updated_at: new Date().toISOString()
         })
       if (error) {
