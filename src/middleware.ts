@@ -25,9 +25,11 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const isLoginPage = request.nextUrl.pathname === '/login'
+  // Link do motorista (roteiro + localização): público, protegido pelo código da viagem
+  const isPaginaMotorista = request.nextUrl.pathname.startsWith('/motorista/')
 
   // Redirecionamentos de Segurança
-  if (!user && !isLoginPage) {
+  if (!user && !isLoginPage && !isPaginaMotorista) {
     // Redireciona para o login se não estiver logado e não estiver na página de login
     return NextResponse.redirect(new URL('/login', request.url))
   }

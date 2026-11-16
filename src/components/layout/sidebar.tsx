@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, FileSearch, BookOpen, Kanban } from "lucide-react"
+import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, FileSearch, BookOpen, Kanban, Truck } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ const navigation = [
   { name: "CRM", href: "/crm", icon: Kanban, adminOnly: false },
   { name: "Orçamentos", href: "/orcamentos", icon: FileText, adminOnly: false },
   { name: "Propostas", href: "/propostas", icon: FileText, adminOnly: false },
+  { name: "Entregas", href: "/entregas", icon: Truck, adminOnly: false },
   { name: "Croquis", href: "/croquis", icon: FileSearch, adminOnly: false },
   { name: "Clientes", href: "/clientes", icon: Users, adminOnly: false },
   { name: "Produtos", href: "/produtos", icon: Package, adminOnly: true },

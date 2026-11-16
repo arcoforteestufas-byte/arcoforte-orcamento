@@ -159,7 +159,8 @@ export function UsersManager() {
                     <td className="px-4 py-3">
                       <Badge variant="outline" className={
                         u.user_metadata?.cargo === 'Administrador' ? 'border-primary text-primary bg-primary/5' : 
-                        u.user_metadata?.cargo === 'Vendedor' ? 'border-blue-500 text-blue-600 bg-blue-50' : 'bg-slate-50'
+                        u.user_metadata?.cargo === 'Vendedor' ? 'border-blue-500 text-blue-600 bg-blue-50' :
+                        u.user_metadata?.cargo === 'Logística' ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'bg-slate-50'
                       }>
                         {u.user_metadata?.cargo === 'Administrador' && <ShieldAlert size={12} className="mr-1" />}
                         {u.user_metadata?.cargo === 'Vendedor' && <Shield size={12} className="mr-1" />}
@@ -225,6 +226,7 @@ export function UsersManager() {
                 <SelectContent>
                   <SelectItem value="Administrador">Administrador (Acesso Total)</SelectItem>
                   <SelectItem value="Vendedor">Vendedor (Pode criar orçamentos)</SelectItem>
+                  <SelectItem value="Logística">Logística (Programa entregas e viagens)</SelectItem>
                   <SelectItem value="Visualizador">Visualizador (Apenas consulta)</SelectItem>
                 </SelectContent>
               </Select>

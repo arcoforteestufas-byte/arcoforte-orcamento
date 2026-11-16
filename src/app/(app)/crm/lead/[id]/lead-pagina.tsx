@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
   ArrowLeft, CalendarClock, Check, CheckCircle2, ChevronRight, ClipboardList, FileSignature, FileText,
-  Link2, ListTodo, MapPin, MessageCircle, Phone, Plus, Save, Send, Trash2, Unlink, UserRound, X, XCircle,
+  Link2, ListTodo, MapPin, MessageCircle, Phone, Plus, Save, Send, Trash2, Truck, Unlink, UserRound, X, XCircle,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -211,6 +211,11 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null }: { ficha: 
                 </div>
               )}
             </div>
+            {lead.status === "ganho" && (
+              <Link href={`/entregas?lead=${lead.id}`} className={buttonVariants({ className: "gap-1 bg-emerald-600 hover:bg-emerald-700" })}>
+                <Truck className="h-4 w-4" /> Programar entrega
+              </Link>
+            )}
             {podeAssumir && (
               <Button className="gap-1 bg-[#d97021] hover:bg-[#c3631b]" onClick={async () => {
                 const r = await assumirLead(lead.id)
