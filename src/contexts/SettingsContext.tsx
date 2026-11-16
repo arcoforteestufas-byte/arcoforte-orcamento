@@ -117,19 +117,30 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (data) {
+          let extra: any = {}
+          let estiloLimpo = data.estilo_pdf || defaultSettings.estilo_pdf
+          if (typeof data.estilo_pdf === 'string' && data.estilo_pdf.trim().startsWith('{')) {
+            try {
+              extra = JSON.parse(data.estilo_pdf) || {}
+              estiloLimpo = extra.estilo_pdf || defaultSettings.estilo_pdf
+            } catch {
+              extra = {}
+            }
+          }
+
           const loadedSettings: Settings = {
             nome_empresa: data.nome_empresa || defaultSettings.nome_empresa,
             cor_primaria: data.cor_primaria || defaultSettings.cor_primaria,
             logo_url: data.logo_url ?? null,
-            estilo_pdf: data.estilo_pdf || defaultSettings.estilo_pdf,
-            proposta_topicos: data.proposta_topicos || defaultSettings.proposta_topicos,
-            instagram: data.instagram || defaultSettings.instagram,
-            email: data.email || defaultSettings.email,
-            endereco: data.endereco || defaultSettings.endereco,
-            capa_pdf_url: data.capa_pdf_url ?? null,
-            fundo_pdf_url: data.fundo_pdf_url ?? null,
-            frase_final: data.frase_final || defaultSettings.frase_final,
-            modelo_word_url: data.modelo_word_url ?? null
+            estilo_pdf: estiloLimpo,
+            proposta_topicos: extra.proposta_topicos ?? data.proposta_topicos ?? defaultSettings.proposta_topicos,
+            instagram: extra.instagram ?? data.instagram ?? defaultSettings.instagram,
+            email: extra.email ?? data.email ?? defaultSettings.email,
+            endereco: extra.endereco ?? data.endereco ?? defaultSettings.endereco,
+            capa_pdf_url: extra.capa_pdf_url ?? data.capa_pdf_url ?? null,
+            fundo_pdf_url: extra.fundo_pdf_url ?? data.fundo_pdf_url ?? null,
+            frase_final: extra.frase_final ?? data.frase_final ?? defaultSettings.frase_final,
+            modelo_word_url: extra.modelo_word_url ?? data.modelo_word_url ?? null
           }
           settingsRef.current = loadedSettings
           setSettings(loadedSettings)
@@ -177,18 +188,43 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const resSrv = await salvarConfiguracoesServidor(payload)
     if (!resSrv.sucesso) {
-      // Fallback pelo cliente apenas com as colunas básicas caso necessário
+      // Fallback pelo cliente empacotando os campos extras na coluna estilo_pdf (que sempre existe)
       const supabase = createClient()
-      const { error } = await supabase
+      const estiloEmpacotado = JSON.stringify({
+        __arcoforte_ext: 1,
+        estilo_pdf:
+          typeof updated.estilo_pdf === 'string' && !updated.estilo_pdf.trim().startsWith('{')
+            ? updated.estilo_pdf
+            : 'padrao',
+        proposta_topicos: updated.proposta_topicos,
+        instagram: updated.instagram,
+        email: updated.email,
+        endereco: updated.endereco,
+        capa_pdf_url: updated.capa_pdf_url,
+        fundo_pdf_url: updated.fundo_pdf_url,
+        frase_final: updated.frase_final,
+        modelo_word_url: updated.modelo_word_url,
+      })
+
+      const { data: rowExistente } = await supabase
         .from('configuracoes')
-        .upsert({
-          id: '00000000-0000-0000-0000-000000000000',
-          nome_empresa: updated.nome_empresa,
-          cor_primaria: updated.cor_primaria,
-          logo_url: updated.logo_url,
-          estilo_pdf: updated.estilo_pdf,
-          updated_at: new Date().toISOString()
-        })
+        .select('id')
+        .limit(1)
+        .maybeSingle()
+
+      const idAlvo = rowExistente?.id || '00000000-0000-0000-0000-000000000000'
+      const dadosBasicos = {
+        nome_empresa: updated.nome_empresa,
+        cor_primaria: updated.cor_primaria,
+        logo_url: updated.logo_url,
+        estilo_pdf: estiloEmpacotado,
+        updated_at: new Date().toISOString()
+      }
+
+      const { error } = rowExistente?.id
+        ? await supabase.from('configuracoes').update(dadosBasicos).eq('id', idAlvo)
+        : await supabase.from('configuracoes').upsert({ id: idAlvo, ...dadosBasicos })
+
       if (error) {
         console.error('Erro ao salvar configurações:', resSrv.erro || error.message)
         throw new Error(resSrv.erro || error.message)

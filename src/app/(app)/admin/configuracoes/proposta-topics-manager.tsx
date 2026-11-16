@@ -18,7 +18,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-export function PropostaTopicsManager() {
+export function PropostaTopicsManager({
+  registerSaveHandler,
+}: {
+  registerSaveHandler?: (fn: () => Promise<void>) => void
+} = {}) {
   const { settings, updateSettings, isLoading } = useSettings()
   const [topicos, setTopicos] = useState<any[]>(settings.proposta_topicos || [])
   const [instagram, setInstagram] = useState(settings.instagram || "")
@@ -31,6 +35,7 @@ export function PropostaTopicsManager() {
 
   const capaInputRef = useRef<HTMLInputElement>(null)
   const fundoInputRef = useRef<HTMLInputElement>(null)
+  const jaSincronizouRef = useRef(false)
   
   const [isUploadingCapa, setIsUploadingCapa] = useState(false)
   const [isUploadingFundo, setIsUploadingFundo] = useState(false)
@@ -43,9 +48,10 @@ export function PropostaTopicsManager() {
   const [modeloWordUrl, setModeloWordUrl] = useState(settings.modelo_word_url || "")
   const [mostrarVariaveis, setMostrarVariaveis] = useState(false)
 
-  // Sincroniza os estados locais assim que as configurações do banco terminam de carregar
+  // Sincroniza os estados locais uma única vez assim que as configurações do banco terminam de carregar
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && !jaSincronizouRef.current) {
+      jaSincronizouRef.current = true
       setTopicos(settings.proposta_topicos || [])
       setInstagram(settings.instagram || "")
       setEmail(settings.email || "")
@@ -67,7 +73,17 @@ export function PropostaTopicsManager() {
       const publicUrl = await uploadArquivoParaAssets(file, filename, true)
 
       setModeloWordUrl(publicUrl)
-      await updateSettings({ modelo_word_url: publicUrl })
+      const ordenados = topicos.map((t, i) => ({ ...t, ordem: i + 1 }))
+      await updateSettings({
+        proposta_topicos: ordenados,
+        instagram,
+        email,
+        endereco,
+        frase_final: fraseFinal,
+        capa_pdf_url: capaUrl || null,
+        fundo_pdf_url: fundoUrl || null,
+        modelo_word_url: publicUrl,
+      })
     } catch (err: any) {
       console.error('Erro ao fazer upload do modelo Word:', err)
       alert('Erro ao fazer upload do arquivo: ' + (err?.message || 'erro desconhecido'))
@@ -96,12 +112,22 @@ export function PropostaTopicsManager() {
     try {
       setUploading(true)
       const arquivoPronto = await prepararArquivoVisualProposta(file)
-      const ext = (arquivoPronto.name.split('.').pop() || 'png').toLowerCase()
+      const ext = (arquivoPronto.name.split('.').pop() || 'jpg').toLowerCase()
       const filename = `${type}_${Date.now()}.${ext}`
 
       const publicUrl = await uploadArquivoParaAssets(arquivoPronto, filename, true)
       setUrl(publicUrl)
-      await updateSettings(isCapa ? { capa_pdf_url: publicUrl } : { fundo_pdf_url: publicUrl })
+      const ordenados = topicos.map((t, i) => ({ ...t, ordem: i + 1 }))
+      await updateSettings({
+        proposta_topicos: ordenados,
+        instagram,
+        email,
+        endereco,
+        frase_final: fraseFinal,
+        capa_pdf_url: isCapa ? publicUrl : (capaUrl || null),
+        fundo_pdf_url: !isCapa ? publicUrl : (fundoUrl || null),
+        modelo_word_url: modeloWordUrl || null,
+      })
     } catch (err: any) {
       console.error(`Erro ao fazer upload de ${type}:`, err)
       alert(`Erro ao fazer upload do arquivo: ${err?.message || 'Tente novamente.'}`)
@@ -156,24 +182,35 @@ export function PropostaTopicsManager() {
   }
 
   const handleSave = async () => {
-    setIsSaving(true)
-    const ordenados = topicos.map((t, i) => ({ ...t, ordem: i + 1 }))
-    await updateSettings({ 
-      proposta_topicos: ordenados,
-      instagram,
-      email,
-      endereco,
-      frase_final: fraseFinal,
-      capa_pdf_url: capaUrl,
-      fundo_pdf_url: fundoUrl,
-      modelo_word_url: modeloWordUrl || null
-    })
-    setTopicos(ordenados)
-    setIsSaving(false)
-    
-    setSavedMsg(true)
-    setTimeout(() => setSavedMsg(false), 3000)
+    try {
+      setIsSaving(true)
+      const ordenados = topicos.map((t, i) => ({ ...t, ordem: i + 1 }))
+      await updateSettings({ 
+        proposta_topicos: ordenados,
+        instagram,
+        email,
+        endereco,
+        frase_final: fraseFinal,
+        capa_pdf_url: capaUrl || null,
+        fundo_pdf_url: fundoUrl || null,
+        modelo_word_url: modeloWordUrl || null
+      })
+      setTopicos(ordenados)
+      setSavedMsg(true)
+      setTimeout(() => setSavedMsg(false), 3000)
+    } catch (err: any) {
+      console.error('Erro ao salvar configurações da proposta:', err)
+      alert('Erro ao salvar configurações: ' + (err?.message || 'Tente novamente.'))
+    } finally {
+      setIsSaving(false)
+    }
   }
+
+  useEffect(() => {
+    if (registerSaveHandler) {
+      registerSaveHandler(handleSave)
+    }
+  })
 
   // OLD UI Component for editing text
   const TextEditorDialog = () => (

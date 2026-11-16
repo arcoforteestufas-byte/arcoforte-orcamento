@@ -16,31 +16,61 @@ function lerComoDataUrl(blob: Blob): Promise<string> {
   })
 }
 
-async function converterWebpParaPng(file: File): Promise<File> {
-  return new Promise((resolve, reject) => {
+function redimensionarCanvasParaJpeg(
+  source: HTMLImageElement | HTMLCanvasElement,
+  larguraOrig: number,
+  alturaOrig: number,
+  nomeBase: string
+): Promise<File | null> {
+  return new Promise((resolve) => {
+    try {
+      const MAX_W = 1240
+      const MAX_H = 1754
+      let w = larguraOrig || 1240
+      let h = alturaOrig || 1754
+      const ratio = Math.min(MAX_W / w, MAX_H / h, 1)
+      w = Math.round(w * ratio)
+      h = Math.round(h * ratio)
+
+      const canvas = document.createElement("canvas")
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext("2d")
+      if (!ctx) return resolve(null)
+
+      // Fundo branco para imagens com transparência
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, w, h)
+      ctx.drawImage(source, 0, 0, w, h)
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return resolve(null)
+          resolve(new File([blob], `${nomeBase}.jpg`, { type: "image/jpeg" }))
+        },
+        "image/jpeg",
+        0.85
+      )
+    } catch {
+      resolve(null)
+    }
+  })
+}
+
+async function converterImagemParaJpegOtimizado(file: File): Promise<File> {
+  return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas")
-        canvas.width = img.naturalWidth || img.width
-        canvas.height = img.naturalHeight || img.height
-        const ctx = canvas.getContext("2d")
-        if (!ctx) {
-          URL.revokeObjectURL(url)
-          return resolve(file)
-        }
-        ctx.drawImage(img, 0, 0)
-        canvas.toBlob((blob) => {
-          URL.revokeObjectURL(url)
-          if (!blob) return resolve(file)
-          const baseName = file.name.replace(/\.[^.]+$/, "")
-          resolve(new File([blob], `${baseName}.png`, { type: "image/png" }))
-        }, "image/png")
-      } catch (err) {
-        URL.revokeObjectURL(url)
-        reject(err)
-      }
+    img.onload = async () => {
+      const baseName = file.name.replace(/\.[^.]+$/, "")
+      const convertido = await redimensionarCanvasParaJpeg(
+        img,
+        img.naturalWidth || img.width,
+        img.naturalHeight || img.height,
+        baseName
+      )
+      URL.revokeObjectURL(url)
+      resolve(convertido || file)
     }
     img.onerror = () => {
       URL.revokeObjectURL(url)
@@ -50,7 +80,7 @@ async function converterWebpParaPng(file: File): Promise<File> {
   })
 }
 
-async function converterPdfPrimeiraPaginaParaPng(file: File): Promise<File> {
+async function converterPdfPrimeiraPaginaParaJpeg(file: File): Promise<File> {
   try {
     const importDinamico = new Function("url", "return import(url)")
     const pdfjsLib: any = await importDinamico(
@@ -66,22 +96,25 @@ async function converterPdfPrimeiraPaginaParaPng(file: File): Promise<File> {
     const pdf = await loadingTask.promise
     const page = await pdf.getPage(1)
 
-    const viewport = page.getViewport({ scale: 2.5 })
+    const viewport = page.getViewport({ scale: 2.0 })
     const canvas = document.createElement("canvas")
     canvas.width = viewport.width
     canvas.height = viewport.height
     const context = canvas.getContext("2d")
     if (!context) return file
 
+    context.fillStyle = "#ffffff"
+    context.fillRect(0, 0, canvas.width, canvas.height)
     await page.render({ canvasContext: context, viewport }).promise
 
-    const blob: Blob | null = await new Promise((resolve) =>
-      canvas.toBlob((b) => resolve(b), "image/png")
-    )
-    if (!blob) return file
-
     const baseName = file.name.replace(/\.[^.]+$/, "")
-    return new File([blob], `${baseName}.png`, { type: "image/png" })
+    const convertido = await redimensionarCanvasParaJpeg(
+      canvas,
+      canvas.width,
+      canvas.height,
+      baseName
+    )
+    return convertido || file
   } catch (err) {
     console.warn("Não foi possível rasterizar o PDF no navegador, mantendo arquivo original:", err)
     return file
@@ -91,13 +124,13 @@ async function converterPdfPrimeiraPaginaParaPng(file: File): Promise<File> {
 export async function prepararArquivoVisualProposta(file: File): Promise<File> {
   const ext = (file.name.split(".").pop() || "").toLowerCase()
   const isPdf = file.type === "application/pdf" || ext === "pdf"
-  const isWebp = file.type === "image/webp" || ext === "webp"
+  const isImagem = file.type.startsWith("image/") || ["png", "jpg", "jpeg", "webp"].includes(ext)
 
   if (isPdf) {
-    return await converterPdfPrimeiraPaginaParaPng(file)
+    return await converterPdfPrimeiraPaginaParaJpeg(file)
   }
-  if (isWebp) {
-    return await converterWebpParaPng(file)
+  if (isImagem) {
+    return await converterImagemParaJpegOtimizado(file)
   }
   return file
 }
@@ -110,7 +143,7 @@ export async function uploadArquivoParaAssets(
   const erros: string[] = []
   const contentType = arquivo.type || "application/octet-stream"
 
-  // 1) Tenta via URL assinada gerada no servidor com service_role (cria o bucket automaticamente se não existir)
+  // 1) Tenta via URL assinada gerada no servidor com service_role
   try {
     const prep = await prepararUploadAsset(filename)
     if (prep.sucesso && prep.signedUrl && prep.publicUrl) {
@@ -157,7 +190,7 @@ export async function uploadArquivoParaAssets(
     }
   }
 
-  // 3) Tenta upload pelo cliente Supabase do navegador
+  // 3) Tenta upload pelo cliente Supabase do navegador (bucket 'assets' e fallback bucket 'croquis')
   try {
     const supabase = createClient()
     const { error: uploadError } = await supabase.storage
@@ -173,13 +206,30 @@ export async function uploadArquivoParaAssets(
         return data.publicUrl
       }
     } else {
-      erros.push(`Storage client: ${uploadError.message}`)
+      erros.push(`Storage assets: ${uploadError.message}`)
+    }
+
+    // Tenta no bucket 'croquis' caso 'assets' não exista na produção e o arquivo seja imagem
+    if (contentType.startsWith("image/")) {
+      const caminhoCroquis = `uploads/${filename}`
+      const { error: croquiErr } = await supabase.storage
+        .from("croquis")
+        .upload(caminhoCroquis, arquivo, {
+          contentType,
+          upsert: true,
+        })
+      if (!croquiErr) {
+        const { data } = supabase.storage.from("croquis").getPublicUrl(caminhoCroquis)
+        if (data?.publicUrl) {
+          return data.publicUrl
+        }
+      }
     }
   } catch (err: any) {
     erros.push(`Browser client: ${err?.message || "erro"}`)
   }
 
-  // 4) Fallback final: se o bucket não estiver acessível no ambiente de produção, salva como Data URL (Base64)
+  // 4) Fallback final: salva como Data URL (Base64) diretamente no banco de dados
   if (permitirFallbackDataUrl && arquivo.size <= 6 * 1024 * 1024) {
     try {
       return await lerComoDataUrl(arquivo)

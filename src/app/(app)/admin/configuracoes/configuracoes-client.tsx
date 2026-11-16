@@ -26,6 +26,8 @@ export function ConfiguracoesClient({
   const { settings, updateSettings, isLoading } = useSettings()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const jaSincronizouRef = useRef(false)
+  const salvarPropostaRef = useRef<(() => Promise<void>) | null>(null)
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -47,7 +49,8 @@ export function ConfiguracoesClient({
   const [savedMsg, setSavedMsg] = useState(false)
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && !jaSincronizouRef.current) {
+      jaSincronizouRef.current = true
       setNome(settings.nome_empresa)
       setLogo(settings.logo_url || "")
       setCor(settings.cor_primaria)
@@ -64,15 +67,25 @@ export function ConfiguracoesClient({
   }, [])
 
   const handleSave = async () => {
-    setIsSaving(true)
-    await updateSettings({
-      nome_empresa: nome,
-      logo_url: logo === "" ? null : logo,
-      cor_primaria: cor
-    })
-    setIsSaving(false)
-    setSavedMsg(true)
-    setTimeout(() => setSavedMsg(false), 3000)
+    try {
+      setIsSaving(true)
+      if (tabAtiva === "proposta" && salvarPropostaRef.current) {
+        await salvarPropostaRef.current()
+      } else {
+        await updateSettings({
+          nome_empresa: nome,
+          logo_url: logo === "" ? null : logo,
+          cor_primaria: cor
+        })
+      }
+      setSavedMsg(true)
+      setTimeout(() => setSavedMsg(false), 3000)
+    } catch (err: any) {
+      console.error("Erro ao salvar configurações:", err)
+      alert("Erro ao salvar configurações: " + (err?.message || "Tente novamente."))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   // Predefinições de Cores Premium
@@ -255,7 +268,7 @@ export function ConfiguracoesClient({
         </TabsContent>
         {/* ABA PROPOSTA */}
         <TabsContent value="proposta" className="mt-6">
-          <PropostaTopicsManager />
+          <PropostaTopicsManager registerSaveHandler={(fn) => { salvarPropostaRef.current = fn }} />
         </TabsContent>
 
         {/* ABA REGRAS */}

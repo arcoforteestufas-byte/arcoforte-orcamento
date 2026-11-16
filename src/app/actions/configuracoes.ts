@@ -8,6 +8,57 @@ const ARQUIVO_CONFIG_JSON = "configuracoes_sistema.json"
 const LIMITE_50MB = 52428800 // 50 MB
 const ID_PADRAO_CONFIG = "00000000-0000-0000-0000-000000000000"
 
+function empacotarEstiloPdf(dados: Record<string, any>): string {
+  return JSON.stringify({
+    __arcoforte_ext: 1,
+    estilo_pdf:
+      typeof dados.estilo_pdf === "string" && !dados.estilo_pdf.trim().startsWith("{")
+        ? dados.estilo_pdf
+        : "padrao",
+    proposta_topicos: dados.proposta_topicos,
+    instagram: dados.instagram,
+    email: dados.email,
+    endereco: dados.endereco,
+    capa_pdf_url: dados.capa_pdf_url,
+    fundo_pdf_url: dados.fundo_pdf_url,
+    frase_final: dados.frase_final,
+    modelo_word_url: dados.modelo_word_url,
+  })
+}
+
+function desempacotarLinhaConfiguracoes(row: Record<string, any> | null): Record<string, any> | null {
+  if (!row) return null
+  const resultado: Record<string, any> = { ...row }
+
+  if (typeof row.estilo_pdf === "string" && row.estilo_pdf.trim().startsWith("{")) {
+    try {
+      const extra = JSON.parse(row.estilo_pdf)
+      if (extra && typeof extra === "object") {
+        resultado.estilo_pdf = extra.estilo_pdf || "padrao"
+        const camposExtras = [
+          "proposta_topicos",
+          "instagram",
+          "email",
+          "endereco",
+          "capa_pdf_url",
+          "fundo_pdf_url",
+          "frase_final",
+          "modelo_word_url",
+        ]
+        for (const campo of camposExtras) {
+          if (extra[campo] !== undefined) {
+            resultado[campo] = extra[campo]
+          }
+        }
+      }
+    } catch {
+      // Se não for JSON válido, mantém o valor original
+    }
+  }
+
+  return resultado
+}
+
 async function garantirBucketAssets(adminClient: any): Promise<{ ok: boolean; erro?: string }> {
   try {
     const { error: updateErr } = await adminClient.storage.updateBucket(BUCKET_ASSETS, {
@@ -199,30 +250,29 @@ export async function carregarConfiguracoesServidor(): Promise<{
   erro?: string
 }> {
   try {
+    const sessionClient = await createClient()
     const adminClient = await createAdminClient()
     let dadosTabela: Record<string, any> | null = null
 
-    const { data, error } = await adminClient
+    const { data: sData, error: sErr } = await sessionClient
       .from("configuracoes")
       .select("*")
       .limit(1)
       .maybeSingle()
 
-    if (!error && data) {
-      dadosTabela = data
+    if (!sErr && sData) {
+      dadosTabela = desempacotarLinhaConfiguracoes(sData)
     } else {
-      const sessionClient = await createClient()
-      const retry = await sessionClient
+      const { data: aData, error: aErr } = await adminClient
         .from("configuracoes")
         .select("*")
         .limit(1)
         .maybeSingle()
-      if (!retry.error && retry.data) {
-        dadosTabela = retry.data
+      if (!aErr && aData) {
+        dadosTabela = desempacotarLinhaConfiguracoes(aData)
       }
     }
 
-    // Lê também o JSON completo salvo no Storage (garante funcionamento mesmo se faltarem colunas na tabela de produção)
     const dadosStorage = await lerConfigJsonStorage(adminClient)
 
     if (!dadosTabela && !dadosStorage) {
@@ -232,7 +282,7 @@ export async function carregarConfiguracoesServidor(): Promise<{
     const mesclado: Record<string, any> = { ...(dadosTabela || {}) }
     if (dadosStorage) {
       for (const [chave, valor] of Object.entries(dadosStorage)) {
-        if (valor !== undefined) {
+        if (valor !== undefined && (mesclado[chave] === undefined || mesclado[chave] === null)) {
           mesclado[chave] = valor
         }
       }
@@ -247,23 +297,49 @@ export async function carregarConfiguracoesServidor(): Promise<{
 async function gravarLinhaConfiguracoes(client: any, payload: Record<string, any>) {
   const { data: existente } = await client
     .from("configuracoes")
-    .select("id")
+    .select("*")
     .limit(1)
     .maybeSingle()
 
+  const existenteDesempacotado = desempacotarLinhaConfiguracoes(existente) || {}
+  const mescladoCompleto = {
+    ...existenteDesempacotado,
+    ...payload,
+  }
+
   const idAlvo = existente?.id || ID_PADRAO_CONFIG
-  const dadosParaGravar = { ...payload, updated_at: new Date().toISOString() }
+  const dadosParaGravar: Record<string, any> = {
+    ...mescladoCompleto,
+    // Empacota todas as configurações extras dentro da coluna texto estilo_pdf (que sempre existe na tabela configuracoes)
+    estilo_pdf: empacotarEstiloPdf(mescladoCompleto),
+    updated_at: new Date().toISOString(),
+  }
+  delete dadosParaGravar.id
 
   const executar = async (campos: Record<string, any>) => {
     if (existente?.id) {
-      return await client.from("configuracoes").update(campos).eq("id", idAlvo)
+      const res = await client
+        .from("configuracoes")
+        .update(campos)
+        .eq("id", idAlvo)
+        .select("id")
+      if (!res.error && (!res.data || res.data.length === 0)) {
+        return await client
+          .from("configuracoes")
+          .upsert({ id: idAlvo, ...campos })
+          .select("id")
+      }
+      return res
     }
-    return await client.from("configuracoes").upsert({ id: idAlvo, ...campos })
+    return await client
+      .from("configuracoes")
+      .upsert({ id: idAlvo, ...campos })
+      .select("id")
   }
 
-  let { error } = await executar(dadosParaGravar)
+  let { data: gravado, error } = await executar(dadosParaGravar)
 
-  // Se colunas novas não existirem na tabela do banco de produção, remove-as uma a uma e grava as que existem
+  // Se colunas novas não existirem na tabela do banco de produção, remove-as uma a uma e grava as colunas existentes (incluindo estilo_pdf com o JSON completo)
   let tentativas = 0
   const copiaCampos: Record<string, any> = { ...dadosParaGravar }
   while (error && tentativas < 25) {
@@ -272,16 +348,20 @@ async function gravarLinhaConfiguracoes(client: any, payload: Record<string, any
       error.message?.match(/Could not find the ['"]([a-zA-Z0-9_]+)['"] column/i)
     if (matchCol && matchCol[1] && matchCol[1] in copiaCampos) {
       delete copiaCampos[matchCol[1]]
-      if (Object.keys(copiaCampos).length <= 1) {
-        error = null
+      if (Object.keys(copiaCampos).length === 0) {
         break
       }
       const res = await executar(copiaCampos)
+      gravado = res.data
       error = res.error
       tentativas++
     } else {
       break
     }
+  }
+
+  if (!error && (!gravado || gravado.length === 0)) {
+    return { error: { message: "Nenhuma linha foi atualizada na tabela configuracoes (verifique permissões RLS)." } }
   }
 
   return { error }
@@ -291,27 +371,26 @@ export async function salvarConfiguracoesServidor(
   novosDados: Record<string, any>
 ): Promise<{ sucesso: boolean; erro?: string }> {
   try {
+    // 1) Tenta primeiro com o cliente autenticado da sessão do usuário logado (Administrador)
+    const sessionClient = await createClient()
+    let { error } = await gravarLinhaConfiguracoes(sessionClient, novosDados)
+
+    // 2) Se falhar, tenta com o adminClient (service_role)
     const adminClient = await createAdminClient()
-
-    // 1) Sempre salva o JSON completo no Storage (suporta todos os campos mesmo sem migration no banco de produção)
-    const atualStorage = (await lerConfigJsonStorage(adminClient)) || {}
-    const jsonCompleto = {
-      ...atualStorage,
-      ...novosDados,
-      updated_at: new Date().toISOString(),
-    }
-    const resStorage = await gravarConfigJsonStorage(adminClient, jsonCompleto)
-
-    // 2) Atualiza na tabela configuracoes todas as colunas que existirem no banco
-    let { error } = await gravarLinhaConfiguracoes(adminClient, novosDados)
-
     if (error) {
-      const sessionClient = await createClient()
-      const retry = await gravarLinhaConfiguracoes(sessionClient, novosDados)
+      const retry = await gravarLinhaConfiguracoes(adminClient, novosDados)
       error = retry.error
     }
 
-    if (error && !resStorage.ok) {
+    // 3) Também tenta salvar espelho no Storage se disponível
+    const atualStorage = (await lerConfigJsonStorage(adminClient)) || {}
+    await gravarConfigJsonStorage(adminClient, {
+      ...atualStorage,
+      ...novosDados,
+      updated_at: new Date().toISOString(),
+    })
+
+    if (error) {
       return { sucesso: false, erro: error.message }
     }
 
