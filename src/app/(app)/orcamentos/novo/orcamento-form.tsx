@@ -483,7 +483,11 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
         tipo_poste: '75X40 GALVANIZADO'
       }))
     }
-  }, [paramsForm['pe_direito'], paramsForm['tipo_poste']])
+    // Pé-direito 4 e 5 m não têm poste central 75x40
+    if (pd >= 4 && paramsForm['tipo_poste_central'] === '75X40 GALVANIZADO') {
+      setParamsForm(prev => ({ ...prev, tipo_poste_central: '' }))
+    }
+  }, [paramsForm['pe_direito'], paramsForm['tipo_poste'], paramsForm['tipo_poste_central']])
 
   // Efeito para sincronizar divisas de frente/fundo, perfil na divisa, largura do rolo de tela e meia lua
   useEffect(() => {
@@ -1413,6 +1417,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                 const getWeight = (nome: string) => {
                   if (nome === 'tipo_arco') return 1;
                   if (nome === 'tipo_poste') return 2;
+                  if (nome === 'tipo_poste_central') return 2.5;
                   if (nome === 'calha_lateral') return 3;
                   if (nome.includes('poste')) return 4;
                   if (nome === 'arco_divisa') return 5;
@@ -2194,8 +2199,45 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground leading-tight">
-                      * Postes 100x50 Galvanizados são o padrão. Em todos os pés-direitos, menos o de 5 m, é possível usar 75x40 Galvanizado nos postes de canto, laterais e de divisa modular; os postes centrais de topo de arco continuam 100x50. Eucalipto aguarda aprovação de regras.
+                      * Postes 100x50 Galvanizados são o padrão. Em todos os pés-direitos, menos o de 5 m, é possível usar 75x40 Galvanizado nos postes de canto, laterais e de divisa modular. Eucalipto aguarda aprovação de regras.
                     </p>
+                  </div>
+                )
+              }
+
+              if (param.nome_tecnico === 'tipo_poste_central') {
+                const pdCentral = Number(paramsForm['pe_direito'])
+                const semCentral75 = pdCentral >= 4
+                const valorCentral = String(paramsForm['tipo_poste_central'] || '')
+                const lateral75 = paramsForm['tipo_poste'] === '75X40 GALVANIZADO'
+                const rotuloCentral = valorCentral === '100X50 GALVANIZADO'
+                  ? '100x50 Galvanizado'
+                  : valorCentral === '75X40 GALVANIZADO'
+                    ? '75x40 Galvanizado'
+                    : `Igual aos postes da lateral (${lateral75 ? '75x40' : '100x50'})`
+                return (
+                  <div key="tipo_poste_central" className="grid gap-2 content-start">
+                    <Label className="uppercase text-xs font-semibold text-slate-600">{param.rotulo}</Label>
+                    {semCentral75 ? (
+                      <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                        100x50 Galvanizado (não existe poste central 75x40 com pé-direito de {pdCentral} m)
+                      </p>
+                    ) : (
+                      <Select
+                        value={valorCentral || 'IGUAL AOS POSTES DA LATERAL'}
+                        onValueChange={(val) => handleParamChange('tipo_poste_central', val === 'IGUAL AOS POSTES DA LATERAL' ? '' : val)}
+                      >
+                        <SelectTrigger id="campo-tipo-poste-central" className="w-full bg-white">
+                          <SelectValue>{rotuloCentral}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="IGUAL AOS POSTES DA LATERAL">Igual aos postes da lateral ({lateral75 ? '75x40' : '100x50'})</SelectItem>
+                          <SelectItem value="100X50 GALVANIZADO">100x50 Galvanizado</SelectItem>
+                          <SelectItem value="75X40 GALVANIZADO">75x40 Galvanizado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <p className="text-[11px] text-muted-foreground leading-tight">Poste do meio da frente e do fundo, que segura o topo do arco. Módulos de 3 e 4 m não têm.</p>
                   </div>
                 )
               }
