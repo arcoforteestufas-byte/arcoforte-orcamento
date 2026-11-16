@@ -972,12 +972,19 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
         router.push(`/orcamentos/${orcamentoId}`)
         router.refresh()
       } else if (leadIdCrm && orcamentoId) {
-        await registrarOrcamentoNoLead(leadIdCrm, orcamentoId, valorTotal)
+        // O orçamento já está salvo; se o registro no histórico do lead falhar, não perde o orçamento
+        try {
+          await registrarOrcamentoNoLead(leadIdCrm, orcamentoId, valorTotal)
+        } catch (err) {
+          console.error("registrarOrcamentoNoLead", err)
+        }
         toast.success("Orçamento salvo e ligado ao lead!")
-        router.push(`/crm/lead/${leadIdCrm}`)
+        // A página do lead mostra uma faixa fixa "Orçamento salvo" com o botão para abrir
+        router.push(`/crm/lead/${leadIdCrm}?salvo=${orcamentoId}`)
       } else {
-        toast.success("Orçamento salvo com sucesso!")
-        router.push('/orcamentos')
+        toast.success("Orçamento salvo!")
+        // Abre o orçamento salvo (antes voltava para a lista e parecia que nada tinha acontecido)
+        router.push(`/orcamentos/${orcamentoId}`)
       }
     } catch (e: any) {
       toast.error("Erro ao salvar orçamento: " + e.message)

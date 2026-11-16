@@ -5,8 +5,15 @@ import { LeadPagina } from "./lead-pagina"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function LeadPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ salvo?: string }>
+}) {
   const { id } = await params
+  const { salvo } = await searchParams
   const ficha = await obterFichaLead(id)
 
   if (!ficha.ok) {
@@ -19,5 +26,5 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   }
 
   const quadro = await obterQuadro(ficha.dados!.lead.funil_id, { semLeads: true })
-  return <LeadPagina ficha={ficha.dados!} quadro={quadro} />
+  return <LeadPagina ficha={ficha.dados!} quadro={quadro} orcamentoSalvoId={salvo || null} />
 }

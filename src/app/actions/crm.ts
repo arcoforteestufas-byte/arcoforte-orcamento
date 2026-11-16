@@ -340,6 +340,14 @@ export async function criarLead(
 
   if (!campos.vendedor_id || !ehAdmin(user)) campos.vendedor_id = user.id
 
+  // Evita lead repetido por clique duplo / envio duplo: mesmo nome, mesmo funil, criado há menos de 2 minutos
+  const doisMinAtras = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+  const { data: repetido } = await supabase
+    .from("crm_leads").select("id")
+    .eq("funil_id", dados.funil_id).ilike("titulo", String(campos.titulo).replace(/[\\%_]/g, "\\$&")).gte("criado_em", doisMinAtras)
+    .limit(1).maybeSingle()
+  if (repetido) return { ok: false, erro: "Um lead com este nome acabou de ser criado neste funil. Confira no quadro antes de criar de novo." }
+
   const defs = await lerCampos(supabase)
   const valoresCampos = limparCampos(defs, dados.campos)
 
@@ -412,10 +420,15 @@ export async function moverLead(id: string, etapaId: string, ordem: number): Pro
   if (!user) return { ok: false, erro: "Não autenticado" }
 
   const [{ data: lead }, { data: etapa }] = await Promise.all([
-    supabase.from("crm_leads").select("etapa_id, status, crm_etapas(nome)").eq("id", id).maybeSingle(),
-    supabase.from("crm_etapas").select("id, nome, tipo").eq("id", etapaId).maybeSingle(),
+    supabase.from("crm_leads").select("etapa_id, funil_id, status, crm_etapas(nome)").eq("id", id).maybeSingle(),
+    supabase.from("crm_etapas").select("id, nome, tipo, funil_id").eq("id", etapaId).maybeSingle(),
   ])
   if (!lead || !etapa) return { ok: false, erro: "Lead ou etapa não encontrados." }
+  // A tela pode estar desatualizada (ex.: o lead acabou de ser enviado para outro funil).
+  // Sem esta trava o lead ficava com etapa de outro funil e sumia do quadro.
+  if (etapa.funil_id !== lead.funil_id) {
+    return { ok: false, erro: "Este lead já está em outro funil. A tela foi atualizada; tente de novo." }
+  }
   if (etapa.tipo !== "aberta") return { ok: false, erro: "Use Ganho/Perdido para fechar o lead." }
 
   const mudouEtapa = lead.etapa_id !== etapaId
@@ -731,6 +744,12 @@ export async function registrarOrcamentoNoLead(leadId: string, orcamentoId: stri
   const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
   await supabase.from("orcamentos").update({ lead_id: leadId }).eq("id", orcamentoId)
   await registrar(supabase, leadId, "orcamento", `Novo orçamento criado — ${brl.format(valor || 0)}`)
+  // Lead ainda sem valor: o valor do negócio passa a ser o do orçamento.
+  // Se já tinha valor, a página do lead sugere atualizar (não troca sozinho).
+  const { data: lead } = await supabase.from("crm_leads").select("valor_estimado, status").eq("id", leadId).maybeSingle()
+  if (lead && lead.status === "aberto" && !Number(lead.valor_estimado) && valor > 0) {
+    await supabase.from("crm_leads").update({ valor_estimado: Math.round(valor * 100) / 100 }).eq("id", leadId)
+  }
   revalidar(leadId)
   return { ok: true }
 }

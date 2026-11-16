@@ -52,7 +52,7 @@ function Cartao({ titulo, icone, acoes, children, className = "" }: {
   )
 }
 
-export function LeadPagina({ ficha, quadro }: { ficha: CrmFichaLead; quadro: CrmQuadro }) {
+export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null }: { ficha: CrmFichaLead; quadro: CrmQuadro; orcamentoSalvoId?: string | null }) {
   const router = useRouter()
   const { lead, cliente, orcamentos, atividades, tarefas, podeEditar } = ficha
   const funil = quadro.funis.find(f => f.id === lead.funil_id)
@@ -119,8 +119,49 @@ export function LeadPagina({ ficha, quadro }: { ficha: CrmFichaLead; quadro: Crm
     ? Number(lead.valor_fechado)
     : Number(lead.valor_estimado) || Math.max(0, ...orcamentos.map(o => o.valor_total))
 
+  // Orçamento mais recente (fora os perdidos): sugere usar o valor dele no negócio
+  const orcRecente = orcamentos.find(o => o.status !== "Perdido")
+  const sugerirValor = podeEditar && lead.status === "aberto" && !!orcRecente && orcRecente.valor_total > 0
+    && Math.abs(orcRecente.valor_total - Number(lead.valor_estimado || 0)) >= 0.01
+  const [usandoValor, setUsandoValor] = useState(false)
+  const usarValorDoOrcamento = async () => {
+    if (!orcRecente) return
+    setUsandoValor(true)
+    const r = await atualizarLead(lead.id, { valor_estimado: orcRecente.valor_total.toFixed(2).replace(".", ",") })
+    setUsandoValor(false)
+    if (!r.ok) return toast.error(r.erro)
+    toast.success("Valor do negócio atualizado")
+    atualizar()
+  }
+
+  // Faixa de confirmação depois de salvar um orçamento a partir do lead
+  const orcSalvo = orcamentoSalvoId ? orcamentos.find(o => o.id === orcamentoSalvoId) : null
+  const [mostrarSalvo, setMostrarSalvo] = useState(!!orcamentoSalvoId)
+  const fecharSalvo = () => {
+    setMostrarSalvo(false)
+    router.replace(`/crm/lead/${lead.id}`, { scroll: false })
+  }
+
   return (
     <div className="flex flex-col gap-5 pb-12">
+      {mostrarSalvo && orcamentoSalvoId && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold">
+              Orçamento salvo{orcSalvo ? ` — ${orcSalvo.numero_pedido || `#${orcSalvo.id.slice(0, 8).toUpperCase()}`} · ${brlCentavos.format(orcSalvo.valor_total)}` : ""}
+            </div>
+            <div className="text-xs text-emerald-800">
+              Ele já está ligado a este lead.
+              {orcSalvo && Number(lead.valor_estimado) === Math.round(orcSalvo.valor_total * 100) / 100 ? " O valor do negócio foi atualizado com o valor dele." : ""}
+            </div>
+          </div>
+          <Link href={`/orcamentos/${orcamentoSalvoId}`} className={buttonVariants({ size: "sm", className: "bg-emerald-600 hover:bg-emerald-700 gap-1" })}>
+            <FileText className="h-4 w-4" /> Abrir orçamento
+          </Link>
+          <button onClick={fecharSalvo} className="text-emerald-700 hover:text-emerald-900" title="Fechar"><X className="h-4 w-4" /></button>
+        </div>
+      )}
       {/* ------------------------------------------------ Cabeçalho */}
       <div className="rounded-2xl border bg-background shadow-sm overflow-hidden">
         <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${funil?.cor || "#d97021"}, ${etapa?.cor || "#d97021"})` }} />
@@ -160,6 +201,15 @@ export function LeadPagina({ ficha, quadro }: { ficha: CrmFichaLead; quadro: Crm
             <div className="text-left lg:text-right">
               <div className="text-xs uppercase tracking-wider text-muted-foreground">{lead.status === "ganho" ? "Valor fechado" : "Valor do negócio"}</div>
               <div className={`text-2xl font-bold ${lead.status === "ganho" ? "text-emerald-700" : ""}`}>{valor ? brlCentavos.format(valor) : "—"}</div>
+              {sugerirValor && (
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs lg:justify-end">
+                  <span className="text-muted-foreground">Último orçamento: <b className="text-foreground">{brlCentavos.format(orcRecente!.valor_total)}</b></span>
+                  <button disabled={usandoValor} onClick={usarValorDoOrcamento}
+                    className="rounded-md bg-orange-50 px-2 py-0.5 font-medium text-[#a8541a] ring-1 ring-inset ring-orange-200 hover:bg-orange-100 disabled:opacity-50">
+                    {usandoValor ? "Atualizando..." : "Usar este valor"}
+                  </button>
+                </div>
+              )}
             </div>
             {podeAssumir && (
               <Button className="gap-1 bg-[#d97021] hover:bg-[#c3631b]" onClick={async () => {
@@ -364,19 +414,24 @@ function OrcamentoFluxo({ o, fechado, podeEditar, onDesligar }: {
   const detalhesOk = faltam.length === 0
   const propostaOk = !!o.proposta
 
-  const passos = [
-    { nome: "Orçamento", ok: true, texto: brlCentavos.format(o.valor_total), href: `/orcamentos/${o.id}`, acao: "Abrir" },
+  type Passo = {
+    nome: string; ok: boolean; texto: string; dica?: string; emBreve?: boolean
+    href?: string; acao?: string; principal?: boolean
+    bloqueado?: string // motivo: mostra o botão desabilitado com o motivo ao lado
+  }
+  const passos: Passo[] = [
+    { nome: "Orçamento", ok: true, texto: brlCentavos.format(o.valor_total), href: `/orcamentos/${o.id}`, acao: "Abrir orçamento" },
     {
       nome: "Detalhes comerciais", ok: detalhesOk,
       texto: detalhesOk ? "Completo" : `Faltam ${faltam.length}`, dica: faltam.join(", "),
-      href: `/orcamentos/${o.id}`, acao: detalhesOk ? "Ver" : "Preencher",
+      href: `/orcamentos/${o.id}`, acao: detalhesOk ? "Ver detalhes comerciais" : "Abrir detalhes comerciais",
+      principal: !detalhesOk,
     },
-    {
-      nome: "Proposta", ok: propostaOk,
-      texto: propostaOk ? `${o.proposta!.status} · ${formatarData(o.proposta!.criado_em)}` : detalhesOk ? "Pronta para gerar" : "Aguardando detalhes",
-      href: propostaOk ? `/propostas/${o.proposta!.id}` : detalhesOk ? `/orcamentos/${o.id}/proposta` : undefined,
-      acao: propostaOk ? "Ver proposta" : "Gerar proposta",
-    },
+    propostaOk
+      ? { nome: "Proposta", ok: true, texto: `${o.proposta!.status} · ${formatarData(o.proposta!.criado_em)}`, href: `/propostas/${o.proposta!.id}`, acao: "Ver proposta" }
+      : detalhesOk
+        ? { nome: "Proposta", ok: false, texto: "Pronta para gerar", href: `/orcamentos/${o.id}/proposta`, acao: "Gerar proposta", principal: true }
+        : { nome: "Proposta", ok: false, texto: "Bloqueada", acao: "Gerar proposta", bloqueado: `Preencha antes os detalhes comerciais (faltam ${faltam.length}).` },
     { nome: "Contrato", ok: false, texto: "Em breve", emBreve: true },
   ]
 
@@ -409,13 +464,23 @@ function OrcamentoFluxo({ o, fechado, podeEditar, onDesligar }: {
             <div className="mt-1 text-sm font-medium truncate" title={p.dica || p.texto}>{p.texto}</div>
             {p.emBreve ? (
               <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground"><FileSignature className="h-3 w-3" /> em desenvolvimento</span>
+            ) : p.bloqueado ? (
+              <div className="mt-1.5 space-y-1">
+                <button disabled title={p.bloqueado}
+                  className="inline-flex cursor-not-allowed items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                  {p.acao}
+                </button>
+                <p className="text-[11px] leading-snug text-amber-700">{p.bloqueado}</p>
+              </div>
+            ) : p.href && p.principal ? (
+              <Link href={p.href} className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-[#d97021] px-2 py-1 text-xs font-medium text-white hover:bg-[#c3631b]">
+                {p.acao} <ChevronRight className="h-3 w-3" />
+              </Link>
             ) : p.href ? (
               <Link href={p.href} className="mt-1 inline-flex items-center gap-0.5 text-xs font-medium text-[#d97021] hover:underline">
                 {p.acao} <ChevronRight className="h-3 w-3" />
               </Link>
-            ) : (
-              <span className="mt-1 inline-block text-xs text-muted-foreground">{p.acao}</span>
-            )}
+            ) : null}
           </li>
         ))}
       </ol>

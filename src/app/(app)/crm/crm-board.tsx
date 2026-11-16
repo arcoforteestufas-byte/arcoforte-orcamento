@@ -83,10 +83,21 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
     })
   }, [leads, busca, vendedor, temp, periodoFechados, quadro.config, equipe])
 
+  // Lead com etapa que não é deste funil (dado antigo/inconsistente): mostra na primeira
+  // coluna com aviso, em vez de sumir do quadro. Arrastar para uma coluna corrige.
+  const orfaos = useMemo(() => {
+    const ids = new Set(quadro.etapas.map(e => e.id))
+    return new Set(filtrados.filter(l => !ids.has(l.etapa_id)).map(l => l.id))
+  }, [filtrados, quadro.etapas])
+
   const porEtapa = useMemo(() => {
     const m: Record<string, CrmLead[]> = {}
     for (const e of quadro.etapas) m[e.id] = []
-    for (const l of filtrados) (m[l.etapa_id] ||= []).push(l)
+    const primeira = quadro.etapas.find(e => e.tipo === "aberta") || quadro.etapas[0]
+    for (const l of filtrados) {
+      const destino = m[l.etapa_id] ? l.etapa_id : primeira?.id
+      if (destino) m[destino].push(l)
+    }
     for (const k of Object.keys(m)) {
       m[k].sort(ordenacao === "score" ? (a, b) => b.score - a.score || a.ordem - b.ordem : (a, b) => a.ordem - b.ordem)
     }
@@ -338,6 +349,7 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
                       onDragOver={() => { if (cartaoAlvo !== l.id) setCartaoAlvo(l.id) }}
                       onAbrir={() => router.push(`/crm/lead/${l.id}`)}
                       naFila={equipe.length > 0 && !equipe.includes(l.vendedor_id)}
+                      foraDeEtapa={orfaos.has(l.id)}
                       onAssumir={podeAssumir && l.status === "aberto" && l.vendedor_id !== quadro.userId ? () => assumir(l) : undefined} />
                   ))}
                   {cards.length === 0 && (
@@ -422,7 +434,7 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
 
 // ======================================================================
 
-function CartaoLead({ l, quadro, nomeUsuario, arrastando, cartaoAlvo, onDragStart, onDragEnd, onDragOver, onAbrir, naFila, onAssumir }: {
+function CartaoLead({ l, quadro, nomeUsuario, arrastando, cartaoAlvo, onDragStart, onDragEnd, onDragOver, onAbrir, naFila, foraDeEtapa = false, onAssumir }: {
   l: CrmLead
   quadro: CrmQuadro
   nomeUsuario: (id: string) => string
@@ -433,6 +445,7 @@ function CartaoLead({ l, quadro, nomeUsuario, arrastando, cartaoAlvo, onDragStar
   onDragOver: () => void
   onAbrir: () => void
   naFila: boolean
+  foraDeEtapa?: boolean
   onAssumir?: () => void
 }) {
   const dias = diasDesde(l.etapa_desde)
@@ -501,6 +514,11 @@ function CartaoLead({ l, quadro, nomeUsuario, arrastando, cartaoAlvo, onDragStar
         {l.proxima_acao_em && l.status === "aberto" && (
           <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 ${contatoAtrasado ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`} title="Próximo contato">
             <CalendarClock className="h-3 w-3" />{formatarData(l.proxima_acao_em).slice(0, 5)}
+          </span>
+        )}
+        {foraDeEtapa && (
+          <span className="rounded bg-red-100 text-red-700 px-1.5 py-0.5 font-medium" title="A etapa gravada não é deste funil. Arraste o cartão para a coluna certa.">
+            sem etapa — arraste para uma coluna
           </span>
         )}
         {naFila && l.status === "aberto" && (
