@@ -11,6 +11,7 @@ import { Loader2, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { construirVariaveisDocx } from "@/utils/construir-variaveis-docx"
 import { preencherDocxTemplate } from "@/utils/preencher-docx"
+import { uploadArquivoParaAssets } from "@/utils/upload-asset"
 
 // Textos padrão da proposta — os mesmos valores fixos que o formulário manual
 // (Nova Proposta Avulsa) sempre usou como default. Não vêm do orçamento porque
@@ -133,11 +134,7 @@ export function PropostaClient({ orcamento, itens }: { orcamento: any, itens: It
         const docxBlob = preencherDocxTemplate(templateBuffer, variaveisDocx)
         const nomeArquivo = `proposta_${orcamento.id}_${Date.now()}.docx`
 
-        const { error: uploadError } = await supabase.storage.from('assets').upload(nomeArquivo, docxBlob)
-        if (uploadError) throw new Error('Erro ao salvar o Word gerado: ' + uploadError.message)
-
-        const { data: publicUrlData } = supabase.storage.from('assets').getPublicUrl(nomeArquivo)
-        arquivoDocxUrl = publicUrlData?.publicUrl || null
+        arquivoDocxUrl = await uploadArquivoParaAssets(docxBlob, nomeArquivo, true)
       }
 
       const { data, error } = await supabase.from('propostas').insert({

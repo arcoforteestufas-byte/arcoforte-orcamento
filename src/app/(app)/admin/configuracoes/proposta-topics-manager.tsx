@@ -1,15 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSettings } from "@/contexts/SettingsContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Trash2, Plus, GripVertical, CheckCircle2, FileText, Image as ImageIcon, Edit, Loader2, FileType2, X } from "lucide-react"
-import { createClient } from "@/utils/supabase/client"
-import { useRef } from "react"
 import { DESCRICAO_VARIAVEIS_DOCX } from "@/utils/construir-variaveis-docx"
+import { prepararArquivoVisualProposta, uploadArquivoParaAssets } from "@/utils/upload-asset"
 import {
   Dialog,
   DialogContent,
@@ -20,7 +19,7 @@ import {
 } from "@/components/ui/dialog"
 
 export function PropostaTopicsManager() {
-  const { settings, updateSettings } = useSettings()
+  const { settings, updateSettings, isLoading } = useSettings()
   const [topicos, setTopicos] = useState<any[]>(settings.proposta_topicos || [])
   const [instagram, setInstagram] = useState(settings.instagram || "")
   const [email, setEmail] = useState(settings.email || "")
@@ -44,23 +43,31 @@ export function PropostaTopicsManager() {
   const [modeloWordUrl, setModeloWordUrl] = useState(settings.modelo_word_url || "")
   const [mostrarVariaveis, setMostrarVariaveis] = useState(false)
 
+  // Sincroniza os estados locais assim que as configurações do banco terminam de carregar
+  useEffect(() => {
+    if (!isLoading) {
+      setTopicos(settings.proposta_topicos || [])
+      setInstagram(settings.instagram || "")
+      setEmail(settings.email || "")
+      setEndereco(settings.endereco || "")
+      setFraseFinal(settings.frase_final || "")
+      setCapaUrl(settings.capa_pdf_url || "")
+      setFundoUrl(settings.fundo_pdf_url || "")
+      setModeloWordUrl(settings.modelo_word_url || "")
+    }
+  }, [isLoading, settings])
+
   const handleUploadModeloWord = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     try {
       setIsUploadingModeloWord(true)
-      const supabase = createClient()
       const filename = `modelo_proposta_${Date.now()}.docx`
+      const publicUrl = await uploadArquivoParaAssets(file, filename, true)
 
-      const { error: uploadError } = await supabase.storage.from('assets').upload(filename, file)
-      if (uploadError) throw uploadError
-
-      const { data } = supabase.storage.from('assets').getPublicUrl(filename)
-      if (data?.publicUrl) {
-        setModeloWordUrl(data.publicUrl)
-        await updateSettings({ modelo_word_url: data.publicUrl })
-      }
+      setModeloWordUrl(publicUrl)
+      await updateSettings({ modelo_word_url: publicUrl })
     } catch (err: any) {
       console.error('Erro ao fazer upload do modelo Word:', err)
       alert('Erro ao fazer upload do arquivo: ' + (err?.message || 'erro desconhecido'))
@@ -88,25 +95,16 @@ export function PropostaTopicsManager() {
 
     try {
       setUploading(true)
-      const supabase = createClient()
-      const ext = file.name.split('.').pop()
+      const arquivoPronto = await prepararArquivoVisualProposta(file)
+      const ext = (arquivoPronto.name.split('.').pop() || 'png').toLowerCase()
       const filename = `${type}_${Date.now()}.${ext}`
-      
-      const { error: uploadError } = await supabase.storage
-        .from('assets')
-        .upload(filename, file)
-        
-      if (uploadError) throw uploadError
 
-      const { data } = supabase.storage.from('assets').getPublicUrl(filename)
-      if (data?.publicUrl) {
-        setUrl(data.publicUrl)
-        // Auto-save the specific setting
-        await updateSettings(isCapa ? { capa_pdf_url: data.publicUrl } : { fundo_pdf_url: data.publicUrl })
-      }
-    } catch (err) {
+      const publicUrl = await uploadArquivoParaAssets(arquivoPronto, filename, true)
+      setUrl(publicUrl)
+      await updateSettings(isCapa ? { capa_pdf_url: publicUrl } : { fundo_pdf_url: publicUrl })
+    } catch (err: any) {
       console.error(`Erro ao fazer upload de ${type}:`, err)
-      alert(`Erro ao fazer upload do arquivo. Tente novamente.`)
+      alert(`Erro ao fazer upload do arquivo: ${err?.message || 'Tente novamente.'}`)
     } finally {
       setUploading(false)
       if (e.target) e.target.value = ''

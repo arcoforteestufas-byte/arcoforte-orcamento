@@ -8,6 +8,7 @@ import { ProposalWizard } from "@/components/propostas/ProposalWizard"
 import { construirDadosJsonParaPDF } from "@/utils/construir-dados-pdf"
 import { construirVariaveisDocx } from "@/utils/construir-variaveis-docx"
 import { preencherDocxTemplate } from "@/utils/preencher-docx"
+import { uploadArquivoParaAssets } from "@/utils/upload-asset"
 
 export function PropostaAvulsaClient() {
   const { settings, isLoading } = useSettings()
@@ -58,11 +59,7 @@ export function PropostaAvulsaClient() {
         const docxBlob = preencherDocxTemplate(templateBuffer, variaveisDocx)
         const nomeArquivo = `proposta_avulsa_${Date.now()}.docx`
 
-        const { error: uploadError } = await supabase.storage.from('assets').upload(nomeArquivo, docxBlob)
-        if (uploadError) throw new Error('Erro ao salvar o Word gerado: ' + uploadError.message)
-
-        const { data: publicUrlData } = supabase.storage.from('assets').getPublicUrl(nomeArquivo)
-        arquivoDocxUrl = publicUrlData?.publicUrl || null
+        arquivoDocxUrl = await uploadArquivoParaAssets(docxBlob, nomeArquivo, true)
       }
 
       const { data, error } = await supabase.from('propostas').insert({

@@ -23,7 +23,7 @@ export function ConfiguracoesClient({
   parametrosNode: ReactNode,
   documentacaoNode?: ReactNode
 }) {
-  const { settings, updateSettings } = useSettings()
+  const { settings, updateSettings, isLoading } = useSettings()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -45,6 +45,14 @@ export function ConfiguracoesClient({
   const [cor, setCor] = useState(settings.cor_primaria)
   const [isSaving, setIsSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
+
+  useEffect(() => {
+    if (!isLoading) {
+      setNome(settings.nome_empresa)
+      setLogo(settings.logo_url || "")
+      setCor(settings.cor_primaria)
+    }
+  }, [isLoading, settings])
 
   // Lê a aba indicada na URL (ex: /admin/configuracoes?tab=pacote)
   useEffect(() => {

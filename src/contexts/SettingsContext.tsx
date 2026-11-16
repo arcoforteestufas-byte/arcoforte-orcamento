@@ -1,7 +1,8 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
+import { carregarConfiguracoesServidor, salvarConfiguracoesServidor } from '@/app/actions/configuracoes'
 
 type Settings = {
   nome_empresa: string
@@ -92,40 +93,51 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(defaultSettings)
+  const settingsRef = useRef<Settings>(defaultSettings)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function loadSettings() {
       try {
-        const supabase = createClient()
-        const { data, error } = await supabase
-          .from('configuracoes')
-          .select('*')
-          .limit(1)
-          .single()
+        let data: any = null
 
-        if (!error && data) {
-          const loadedSettings = {
+        const resSrv = await carregarConfiguracoesServidor()
+        if (resSrv.sucesso && resSrv.dados) {
+          data = resSrv.dados
+        } else {
+          const supabase = createClient()
+          const { data: clientData, error } = await supabase
+            .from('configuracoes')
+            .select('*')
+            .limit(1)
+            .maybeSingle()
+          if (!error && clientData) {
+            data = clientData
+          }
+        }
+
+        if (data) {
+          const loadedSettings: Settings = {
             nome_empresa: data.nome_empresa || defaultSettings.nome_empresa,
             cor_primaria: data.cor_primaria || defaultSettings.cor_primaria,
-            logo_url: data.logo_url,
+            logo_url: data.logo_url ?? null,
             estilo_pdf: data.estilo_pdf || defaultSettings.estilo_pdf,
             proposta_topicos: data.proposta_topicos || defaultSettings.proposta_topicos,
             instagram: data.instagram || defaultSettings.instagram,
             email: data.email || defaultSettings.email,
             endereco: data.endereco || defaultSettings.endereco,
-            capa_pdf_url: data.capa_pdf_url,
-            fundo_pdf_url: data.fundo_pdf_url,
+            capa_pdf_url: data.capa_pdf_url ?? null,
+            fundo_pdf_url: data.fundo_pdf_url ?? null,
             frase_final: data.frase_final || defaultSettings.frase_final,
-            modelo_word_url: data.modelo_word_url
+            modelo_word_url: data.modelo_word_url ?? null
           }
+          settingsRef.current = loadedSettings
           setSettings(loadedSettings)
           
           if (loadedSettings.cor_primaria) {
             document.documentElement.style.setProperty('--theme-primary', loadedSettings.cor_primaria)
           }
         } else {
-          // If error or no data, inject default color to prevent black screen
           document.documentElement.style.setProperty('--theme-primary', defaultSettings.cor_primaria)
         }
       } catch (err) {
@@ -140,40 +152,44 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const updateSettings = async (newSettings: Partial<Settings>) => {
-    try {
-      const supabase = createClient()
-      const updated = { ...settings, ...newSettings }
-      
-      // Atualizar estado local para feedback instantâneo
-      setSettings(updated)
-      
-      // Atualizar CSS instantaneamente
-      if (newSettings.cor_primaria) {
-        document.documentElement.style.setProperty('--theme-primary', newSettings.cor_primaria)
-      }
+    const updated = { ...settingsRef.current, ...newSettings }
+    settingsRef.current = updated
+    setSettings(updated)
 
-      // Salvar no banco
-      await supabase
+    if (newSettings.cor_primaria) {
+      document.documentElement.style.setProperty('--theme-primary', newSettings.cor_primaria)
+    }
+
+    const payload = {
+      nome_empresa: updated.nome_empresa,
+      cor_primaria: updated.cor_primaria,
+      logo_url: updated.logo_url,
+      estilo_pdf: updated.estilo_pdf,
+      proposta_topicos: updated.proposta_topicos,
+      instagram: updated.instagram,
+      email: updated.email,
+      endereco: updated.endereco,
+      capa_pdf_url: updated.capa_pdf_url,
+      fundo_pdf_url: updated.fundo_pdf_url,
+      frase_final: updated.frase_final,
+      modelo_word_url: updated.modelo_word_url,
+    }
+
+    const resSrv = await salvarConfiguracoesServidor(payload)
+    if (!resSrv.sucesso) {
+      // Fallback pelo cliente caso necessário
+      const supabase = createClient()
+      const { error } = await supabase
         .from('configuracoes')
-        .update({
-          nome_empresa: updated.nome_empresa,
-          cor_primaria: updated.cor_primaria,
-          logo_url: updated.logo_url,
-          estilo_pdf: updated.estilo_pdf,
-          proposta_topicos: updated.proposta_topicos,
-          instagram: updated.instagram,
-          email: updated.email,
-          endereco: updated.endereco,
-          capa_pdf_url: updated.capa_pdf_url,
-          fundo_pdf_url: updated.fundo_pdf_url,
-          frase_final: updated.frase_final,
-          modelo_word_url: updated.modelo_word_url,
+        .upsert({
+          id: '00000000-0000-0000-0000-000000000000',
+          ...payload,
           updated_at: new Date().toISOString()
         })
-        .eq('id', '00000000-0000-0000-0000-000000000000')
-
-    } catch (err) {
-      console.error('Erro ao salvar configurações:', err)
+      if (error) {
+        console.error('Erro ao salvar configurações:', resSrv.erro || error.message)
+        throw new Error(resSrv.erro || error.message)
+      }
     }
   }
 

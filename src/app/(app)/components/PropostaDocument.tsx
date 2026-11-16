@@ -201,13 +201,28 @@ const Watermark = () => (
 
 
 
+function ehImagemValidaParaReactPdf(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const limpo = url.trim().toLowerCase();
+  if (limpo.startsWith('data:application/pdf')) return false;
+  if (limpo.split('?')[0].endsWith('.pdf')) return false;
+  return true;
+}
+
 export function PropostaDocument({ dados }: { dados: any }) {
+  const capaSrc = ehImagemValidaParaReactPdf(dados.configuracoes?.capa_pdf_url)
+    ? dados.configuracoes.capa_pdf_url
+    : "/assets/capa-estufa.jpg";
+  const fundoSrc = ehImagemValidaParaReactPdf(dados.configuracoes?.fundo_pdf_url)
+    ? dados.configuracoes.fundo_pdf_url
+    : null;
+
   return (
     <Document>
       {/* PÁGINA 1: CAPA */}
       <Page size="A4" style={styles.pageCapa}>
         <View style={{ width: '100%', height: '100%', position: 'relative' }}>
-          <Image style={styles.bgImage} src={dados.configuracoes?.capa_pdf_url || "/assets/capa-estufa.jpg"} />
+          <Image style={styles.bgImage} src={capaSrc} />
           
           <View style={styles.svgLayer}>
             <Svg viewBox="0 0 595 842" style={{ width: '100%', height: '100%' }}>
@@ -239,8 +254,8 @@ export function PropostaDocument({ dados }: { dados: any }) {
       {/* CONTEÚDO DA PROPOSTA (Fluxo contínuo) */}
       <Page size="A4" style={styles.page}>
         <Watermark />
-        {dados.configuracoes?.fundo_pdf_url && (
-          <Image style={styles.watermarkBg} src={dados.configuracoes.fundo_pdf_url} fixed />
+        {fundoSrc && (
+          <Image style={styles.watermarkBg} src={fundoSrc} fixed />
         )}
         <Footer />
         
