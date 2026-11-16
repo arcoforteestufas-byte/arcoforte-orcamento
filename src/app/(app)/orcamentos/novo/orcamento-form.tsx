@@ -469,12 +469,18 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
     }
   }, [paramsForm['tipo_poste']])
 
-  // Voltar tipo_poste para 100X50 GALVANIZADO se estiver 75X40 GALVANIZADO e o pé-direito for 5 m (único sem poste 75x40)
+  // Pé-direito 5 m não tem poste 75x40 (volta para 100x50); pé-direito 2 m só tem poste 75x40 (força 75x40)
   useEffect(() => {
-    if (paramsForm['tipo_poste'] === '75X40 GALVANIZADO' && Number(paramsForm['pe_direito']) === 5) {
+    const pd = Number(paramsForm['pe_direito'])
+    if (paramsForm['tipo_poste'] === '75X40 GALVANIZADO' && pd === 5) {
       setParamsForm(prev => ({
         ...prev,
         tipo_poste: '100X50 GALVANIZADO'
+      }))
+    } else if (pd === 2 && paramsForm['tipo_poste'] !== '75X40 GALVANIZADO') {
+      setParamsForm(prev => ({
+        ...prev,
+        tipo_poste: '75X40 GALVANIZADO'
       }))
     }
   }, [paramsForm['pe_direito'], paramsForm['tipo_poste']])
@@ -1207,12 +1213,12 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         className={`bg-white text-lg py-6 ${obterErroVisivel('pe_direito') ? 'border-red-500' : 'border-slate-300'}`}
                       >
                         <SelectValue placeholder="Selecione...">
-                          {paramsForm['pe_direito'] ? `${paramsForm['pe_direito']} m` : undefined}
+                          {paramsForm['pe_direito'] ? `${String(paramsForm['pe_direito']).replace('.', ',')} m` : undefined}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
-                          <SelectItem key={op} value={op}>{op} m</SelectItem>
+                          <SelectItem key={op} value={op}>{String(op).replace('.', ',')} m</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1303,7 +1309,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
-                          <SelectItem key={op} value={op}>{op} m</SelectItem>
+                          <SelectItem key={op} value={op}>{String(op).replace('.', ',')} m</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1341,7 +1347,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       </SelectTrigger>
                       <SelectContent>
                         {opcoes.map(op => (
-                          <SelectItem key={op} value={op}>{op} m</SelectItem>
+                          <SelectItem key={op} value={op}>{String(op).replace('.', ',')} m</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1420,6 +1426,9 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
               if (param.nome_tecnico === 'postes_topo_duplos' || param.nome_tecnico === 'postes_divisa_duplos' || param.nome_tecnico === 'tipo_fixacao_inferior') return null;
 
               if (param.nome_tecnico === 'postes_frontais_duplos') {
+                // Pé-direito 2 e 2,5 m não têm postes duplos
+                const pdAtual = Number(paramsForm['pe_direito'])
+                if (pdAtual > 0 && pdAtual < 3) return null
                 const p2 = parametrosDef.find(p => p.nome_tecnico === 'postes_topo_duplos');
                 const p3 = parametrosDef.find(p => p.nome_tecnico === 'postes_divisa_duplos');
                 
@@ -2138,6 +2147,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
 
               if (param.nome_tecnico === 'tipo_poste') {
                 const permite75x40 = Number(paramsForm['pe_direito']) !== 5
+                const permite100x50 = Number(paramsForm['pe_direito']) !== 2
                 return (
                   <div key="tipo_poste" className="grid gap-2">
                     <div className="flex items-center justify-between">
@@ -2160,8 +2170,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="100X50 GALVANIZADO">
-                          100x50 Galvanizado (Padrão Homologado ArcoForte)
+                        <SelectItem
+                          value="100X50 GALVANIZADO"
+                          disabled={!permite100x50}
+                          className={!permite100x50 ? "opacity-50 text-slate-400" : undefined}
+                        >
+                          {permite100x50
+                            ? "100x50 Galvanizado (Padrão Homologado ArcoForte)"
+                            : "100x50 Galvanizado (não existe para pé-direito 2 m)"}
                         </SelectItem>
                         <SelectItem
                           value="75X40 GALVANIZADO"
