@@ -104,11 +104,11 @@ export function Mapa({
     const zoom = mapaRef.current?.getZoom() ?? 4
     const comRuas = zoom >= ZOOM_RUAS
     return {
-      color: sel ? "#f59e0b" : esc ? "#334155" : "#ffffff",
+      color: sel ? "#f59e0b" : esc ? "#94a3b8" : "#ffffff",
       weight: sel ? 2.5 : 1.2,
       fillColor: cor || (esc ? "#1e293b" : "#e2e8f0"),
-      // com zoom no tema escuro, um véu azul-marinho deixa as ruas na mesma cor do mapa do país
-      fillOpacity: comRuas ? (cor ? 0.18 : esc ? 0.5 : 0) : (cor ? (esc ? 0.75 : 0.9) : 1),
+      // tema escuro: o mapa de terreno aparece em qualquer zoom, os estados ficam só no contorno
+      fillOpacity: esc ? (cor ? (comRuas ? 0.18 : 0.45) : 0) : comRuas ? (cor ? 0.18 : 0) : (cor ? 0.9 : 1),
       opacity: comRuas ? 0.9 : 1,
     }
   }
@@ -117,11 +117,14 @@ export function Mapa({
     const mapa = mapaRef.current
     if (!mapa) return
     const z = mapa.getZoom()
+    // no tema escuro o mapa de terreno fica sempre ligado (também com o Brasil inteiro)
+    const sempreRuas = props.current.tema === "escuro"
+    if (sempreRuas && ruasRef.current && !mapa.hasLayer(ruasRef.current)) ruasRef.current.addTo(mapa)
     if (z >= ZOOM_RUAS) {
       if (ruasRef.current && !mapa.hasLayer(ruasRef.current)) ruasRef.current.addTo(mapa)
       if (siglasRef.current && mapa.hasLayer(siglasRef.current)) siglasRef.current.remove()
     } else {
-      if (ruasRef.current && mapa.hasLayer(ruasRef.current)) ruasRef.current.remove()
+      if (!sempreRuas && ruasRef.current && mapa.hasLayer(ruasRef.current)) ruasRef.current.remove()
       if (siglasRef.current && !mapa.hasLayer(siglasRef.current)) siglasRef.current.addTo(mapa)
     }
     ufsRef.current?.setStyle(f => estiloUf((f as FeatureUf).properties.uf))
@@ -275,7 +278,7 @@ export function Mapa({
       // tema escuro: escurece as ruas com filtro (o mapa do OpenStreetMap só existe claro)
       if (props.current.tema === "escuro") {
         const painelRuas = mapa.getPane("tilePane")
-        if (painelRuas) painelRuas.style.filter = "invert(1) grayscale(1) brightness(0.8) contrast(1.15)"
+        if (painelRuas) painelRuas.style.filter = "invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6)"
       }
 
       // estados do Brasil
