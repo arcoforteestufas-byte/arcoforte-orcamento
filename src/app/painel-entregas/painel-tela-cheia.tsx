@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
-  ChevronLeft, ChevronRight, Expand, ExternalLink, Locate, MapPin, Minimize, Package, Pause, PanelLeftClose,
+  ChevronLeft, ChevronRight, Earth, Expand, ExternalLink, Locate, MapPin, Minimize, Package, Pause, PanelLeftClose,
   PanelLeftOpen, PanelRightClose, PanelRightOpen, Play, Radio, Route, Truck, Tv, UserRound, X,
 } from "lucide-react"
 import { Mapa, escaparHtml, type CaminhaoMapa, type LinhaMapa, type PontoMapa } from "@/app/(app)/entregas/mapa"
@@ -61,6 +61,7 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
   const [esqAberto, setEsqAberto] = useState(true)
   const [dirAberto, setDirAberto] = useState(true)
   const [telaCheia, setTelaCheia] = useState(false)
+  const [soBrasil, setSoBrasil] = useState(true) // padrão: esconde os outros países
   const [agora, setAgora] = useState<Date | null>(null)
   const [foco, setFoco] = useState<{ limites: [number, number][]; chave: number } | null>(null)
 
@@ -158,6 +159,7 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
       else if (ev.key === "Escape") { focar(null); setUf(null) }
       else if (ev.key.toLowerCase() === "f") alternarTelaCheia()
       else if (ev.key.toLowerCase() === "t") setModoTV(m => !m)
+      else if (ev.key.toLowerCase() === "b") setSoBrasil(b => !b)
     }
     window.addEventListener("keydown", tecla)
     return () => window.removeEventListener("keydown", tecla)
@@ -198,7 +200,7 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
   return (
     <div className="fixed inset-0 overflow-hidden bg-slate-950 text-slate-100">
       {/* MAPA */}
-      <Mapa tema="escuro" altura="100vh" className="absolute inset-0" ajustarInicial={true} ajustarAoMudar={false}
+      <Mapa tema="escuro" altura="100vh" className="absolute inset-0" ajustarInicial={true} ajustarAoMudar={false} soBrasil={soBrasil}
         linhas={linhas} pontos={pontos} caminhoes={caminhoes} origem={origem} foco={foco}
         coresUf={Object.fromEntries(Object.entries(porUf).map(([u, n]) => [u, corUf(n)!]))}
         dicaUf={Object.fromEntries(Object.entries(porUf).map(([u, n]) => [u, `${n} entrega(s)`]))}
@@ -230,6 +232,7 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
 
         <div className={`pointer-events-auto flex gap-1 rounded-2xl p-1.5 ${vidro}`}>
           <BotaoIcone ativo={modoTV} titulo="Modo TV: passa por cada viagem (T)" onClick={() => setModoTV(m => !m)}><Tv className="h-4 w-4" /></BotaoIcone>
+          <BotaoIcone ativo={!soBrasil} titulo={soBrasil ? "Mostrar os outros países (B)" : "Mostrar só o Brasil (B)"} onClick={() => setSoBrasil(b => !b)}><Earth className="h-4 w-4" /></BotaoIcone>
           <BotaoIcone titulo="Ver o Brasil todo (Esc)" onClick={() => { focar(null); setUf(null) }}><Locate className="h-4 w-4" /></BotaoIcone>
           <BotaoIcone titulo="Tela cheia (F)" onClick={alternarTelaCheia}>{telaCheia ? <Minimize className="h-4 w-4" /> : <Expand className="h-4 w-4" />}</BotaoIcone>
           <Link href="/entregas" title="Fechar painel" className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-300 hover:bg-white/10"><X className="h-4 w-4" /></Link>

@@ -43,6 +43,18 @@ const ZOOM_RUAS = 7 // a partir deste zoom aparecem ruas/estradas
 type FeatureUf = { type: "Feature"; properties: { uf: string; nome: string }; geometry: { type: string; coordinates: unknown } }
 const UFS = (brasilUfs as unknown as { features: FeatureUf[] }).features
 
+/** Máscara "só Brasil": um retângulo do mundo com o contorno de cada estado recortado */
+function anelMascara(): [number, number][][] {
+  const mundo: [number, number][] = [[-85, -180], [-85, 180], [85, 180], [85, -180]]
+  const furos: [number, number][][] = []
+  for (const f of UFS) {
+    const g = f.geometry as { type: string; coordinates: number[][][] | number[][][][] }
+    const poligonos = g.type === "Polygon" ? [g.coordinates as number[][][]] : (g.coordinates as number[][][][])
+    for (const p of poligonos) furos.push(p[0].map(([lng, lat]) => [lat, lng] as [number, number]))
+  }
+  return [mundo, ...furos]
+}
+
 /**
  * Mapa do Brasil (Leaflet). Mostra os estados; ao aproximar, mostra ruas (CARTO/OpenStreetMap).
  * - pontos: entregas · caminhoes: posição ao vivo · linhas: rotas
@@ -54,8 +66,10 @@ const UFS = (brasilUfs as unknown as { features: FeatureUf[] }).features
 export function Mapa({
   pontos = [], caminhoes = [], linhas = [], altura = 480, pontoEditavel, onMover, ajustarAoMudar = true, centralizar = 0,
   coresUf, dicaUf, onUf, ufSelecionada, origem, className = "",
-  tema = "claro", onLinha, onLinhaHover, foco, ajustarInicial = true,
+  tema = "claro", onLinha, onLinhaHover, foco, ajustarInicial = true, soBrasil = true,
 }: {
+  /** true (padrão) = esconde os outros países e o oceano, mostra só o Brasil */
+  soBrasil?: boolean
   tema?: TemaMapa
   /** clique / mouse sobre uma rota (usa LinhaMapa.id) */
   onLinha?: (id: string) => void
@@ -88,8 +102,9 @@ export function Mapa({
   const siglasRef = useRef<Leaflet.LayerGroup | null>(null)
   const ruasRef = useRef<Leaflet.TileLayer | null>(null)
   const editRef = useRef<Leaflet.Marker | null>(null)
-  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover })
-  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover }
+  const mascaraRef = useRef<Leaflet.Polygon | null>(null)
+  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, soBrasil })
+  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, soBrasil }
   const ajustouRef = useRef(!ajustarInicial)
   const chaveAjusteRef = useRef("")
   const centralizarRef = useRef(0)
@@ -281,6 +296,14 @@ export function Mapa({
         if (painelRuas) painelRuas.style.filter = "invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6)"
       }
 
+      // máscara "só Brasil": fica acima do mapa de ruas e abaixo dos estados/rotas
+      mapa.createPane("mascara").style.zIndex = "350"
+      mascaraRef.current = L.polygon(anelMascara(), {
+        pane: "mascara", interactive: false, stroke: false, fillOpacity: 1,
+        fillColor: props.current.tema === "escuro" ? "#0b1222" : "#eef2f7",
+      })
+      if (props.current.soBrasil) mascaraRef.current.addTo(mapa)
+
       // estados do Brasil
       ufsRef.current = L.geoJSON(brasilUfs as unknown as GeoJSON.FeatureCollection, {
         style: f => estiloUf((f as unknown as FeatureUf).properties.uf),
@@ -338,12 +361,21 @@ export function Mapa({
       siglasRef.current = null
       ruasRef.current = null
       editRef.current = null
+      mascaraRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // redesenha quando os dados mudam
   useEffect(() => { desenhar() })
+
+  // liga/desliga a máscara "só Brasil"
+  useEffect(() => {
+    const mapa = mapaRef.current, m = mascaraRef.current
+    if (!mapa || !m) return
+    if (soBrasil && !mapa.hasLayer(m)) m.addTo(mapa)
+    if (!soBrasil && mapa.hasLayer(m)) m.remove()
+  })
 
   return (
     <div className={`relative z-0 w-full overflow-hidden ${escuro ? "" : "rounded-2xl border shadow-sm"} ${className}`}
