@@ -626,6 +626,8 @@ export async function salvarMotorista(m: Partial<EntMotorista> & { nome: string 
   return salvarCadastro(supabase, "ent_motoristas", m.id, {
     nome: texto(m.nome), telefone: texto(m.telefone), cnh: texto(m.cnh), cnh_validade: m.cnh_validade || null,
     transportadora_id: m.transportadora_id || null, ativo: m.ativo ?? true, observacoes: texto(m.observacoes),
+    // só grava a foto quando o formulário a trouxe (antes do SQL da foto a coluna não existe)
+    ...(m.foto_url !== undefined ? { foto_url: texto(m.foto_url) } : {}),
   })
 }
 

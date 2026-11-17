@@ -18,6 +18,7 @@ import {
 import { formatarData, inputClasse } from "../crm/crm-utils"
 import { Mapa } from "./mapa"
 import { CidadeSelect } from "./cidade-select"
+import { FotoPerfil } from "@/components/foto-perfil"
 
 const laranja = "bg-[#d97021] hover:bg-[#c3631b]"
 
@@ -494,6 +495,7 @@ export function MotoristaDialog({ item, transportadoras, onFechar, onSalvo }: {
       <DialogContent className="sm:max-w-md">
         <DialogHeader><DialogTitle>{m.id ? "Editar motorista" : "Novo motorista"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          <FotoPerfil nome={m.nome || ""} foto={m.foto_url} tipo="motorista" onChange={url => set("foto_url", url)} />
           <Campo rotulo="Nome *"><input className={inputClasse} value={m.nome || ""} onChange={x => set("nome", x.target.value)} /></Campo>
           <Campo rotulo="Telefone / WhatsApp"><input className={inputClasse} value={m.telefone || ""} onChange={x => set("telefone", x.target.value)} /></Campo>
           <div className="grid grid-cols-2 gap-2">

@@ -107,7 +107,8 @@ export function Mapa({
       color: sel ? "#f59e0b" : esc ? "#334155" : "#ffffff",
       weight: sel ? 2.5 : 1.2,
       fillColor: cor || (esc ? "#1e293b" : "#e2e8f0"),
-      fillOpacity: comRuas ? (cor ? 0.18 : 0) : (cor ? (esc ? 0.75 : 0.9) : 1),
+      // com zoom no tema escuro, um véu azul-marinho deixa as ruas na mesma cor do mapa do país
+      fillOpacity: comRuas ? (cor ? 0.18 : esc ? 0.5 : 0) : (cor ? (esc ? 0.75 : 0.9) : 1),
       opacity: comRuas ? 0.9 : 1,
     }
   }
@@ -274,7 +275,7 @@ export function Mapa({
       // tema escuro: escurece as ruas com filtro (o mapa do OpenStreetMap só existe claro)
       if (props.current.tema === "escuro") {
         const painelRuas = mapa.getPane("tilePane")
-        if (painelRuas) painelRuas.style.filter = "invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6)"
+        if (painelRuas) painelRuas.style.filter = "invert(1) grayscale(1) brightness(0.8) contrast(1.15)"
       }
 
       // estados do Brasil

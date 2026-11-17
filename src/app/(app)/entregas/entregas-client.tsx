@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { formatarData, inputClasse } from "../crm/crm-utils"
 import { Mapa, escaparHtml, type CaminhaoMapa, type LinhaMapa, type PontoMapa } from "./mapa"
 import { CidadeSelect } from "./cidade-select"
+import { Avatar } from "@/components/foto-perfil"
 import {
   EntregaDialog, MotoristaDialog, TransportadoraDialog, VeiculoDialog, ViagemDialog, type EntregaInicial,
 } from "./entregas-dialogs"
@@ -744,6 +745,7 @@ function AbaCadastros({ painel }: { painel: EntPainel }) {
             const vencida = m.cnh_validade && m.cnh_validade < hoje()
             return (
               <Linha key={m.id} ativo={m.ativo} principal={m.nome}
+                avatar={<Avatar nome={m.nome} foto={m.foto_url} className="h-8 w-8 text-[10px]" />}
                 detalhe={[nomeTr(m.transportadora_id) || "Próprio", m.telefone, m.cnh_validade ? `CNH até ${formatarData(m.cnh_validade)}${vencida ? " (VENCIDA)" : ""}` : ""].filter(Boolean).join(" · ")}
                 onEditar={() => setMot(m)} onExcluir={() => excluir("ent_motoristas", m.id, m.nome)} />
             )
@@ -778,10 +780,11 @@ function Lista({ titulo, icone, onNovo, children }: { titulo: string; icone: Rea
   )
 }
 
-function Linha({ ativo, principal, detalhe, onEditar, onExcluir, cor }: { ativo: boolean; principal: string; detalhe: string; onEditar: () => void; onExcluir: () => void; cor?: string }) {
+function Linha({ ativo, principal, detalhe, onEditar, onExcluir, cor, avatar }: { ativo: boolean; principal: string; detalhe: string; onEditar: () => void; onExcluir: () => void; cor?: string; avatar?: ReactNode }) {
   return (
     <div className={`flex items-center gap-3 px-4 py-2.5 text-sm ${ativo ? "" : "opacity-50"}`}>
-      {cor && <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: cor }} />}
+      {avatar}
+      {cor &&<span className="h-3 w-3 shrink-0 rounded-full" style={{ background: cor }} />}
       <div className="min-w-0 flex-1"><div className="font-medium truncate">{principal}{ativo ? "" : " (inativo)"}</div><div className="text-xs text-muted-foreground truncate">{detalhe}</div></div>
       <button className="text-muted-foreground hover:text-foreground" onClick={onEditar}><Pencil className="h-3.5 w-3.5" /></button>
       <button className="text-muted-foreground hover:text-red-600" onClick={onExcluir}><Trash2 className="h-3.5 w-3.5" /></button>

@@ -46,6 +46,7 @@ export interface EntMotorista {
   transportadora_id: string | null
   ativo: boolean
   observacoes: string | null
+  foto_url: string | null
 }
 
 export interface EntViagem {

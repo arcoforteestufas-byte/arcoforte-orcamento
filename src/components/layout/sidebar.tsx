@@ -79,9 +79,14 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
 
       <div className="mt-auto p-4 border-t border-slate-100 bg-white">
         <div className="flex items-center gap-3 mb-4 px-2 py-2 rounded-xl bg-slate-50 border border-slate-100">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-[#ff8c42] flex items-center justify-center text-white shadow-sm shrink-0">
-            <span className="font-bold text-xs">{nome.substring(0, 2).toUpperCase()}</span>
-          </div>
+          {user?.user_metadata?.foto_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.user_metadata.foto_url} alt={nome} className="h-10 w-10 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-white" />
+          ) : (
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-[#ff8c42] flex items-center justify-center text-white shadow-sm shrink-0">
+              <span className="font-bold text-xs">{nome.substring(0, 2).toUpperCase()}</span>
+            </div>
+          )}
           <div className="flex flex-col overflow-hidden">
             <span className="text-sm font-bold text-slate-800 leading-tight truncate" title={nome}>{nome}</span>
             <span className="text-[10px] text-primary font-bold truncate" title={cargo.toUpperCase()}>{cargo.toUpperCase()}</span>

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, FotoPerfil } from "@/components/foto-perfil"
 
 type User = {
   id: string
@@ -17,6 +18,7 @@ type User = {
     nome?: string
     cargo?: string
     telefone?: string
+    foto_url?: string | null
   }
 }
 
@@ -27,7 +29,7 @@ export function UsersManager() {
   const [isSaving, setIsSaving] = useState(false)
   
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState({ email: '', password: '', nome: '', cargo: 'Visualizador', telefone: '' })
+  const [form, setForm] = useState({ email: '', password: '', nome: '', cargo: 'Visualizador', telefone: '', foto_url: null as string | null })
 
   const fetchUsers = async () => {
     setIsLoading(true)
@@ -50,7 +52,7 @@ export function UsersManager() {
 
   const handleOpenNew = () => {
     setEditingId(null)
-    setForm({ email: '', password: '', nome: '', cargo: 'Visualizador', telefone: '' })
+    setForm({ email: '', password: '', nome: '', cargo: 'Visualizador', telefone: '', foto_url: null })
     setIsOpen(true)
   }
 
@@ -61,7 +63,8 @@ export function UsersManager() {
       password: '', // blank on edit
       nome: user.user_metadata?.nome || '', 
       cargo: user.user_metadata?.cargo || 'Visualizador',
-      telefone: user.user_metadata?.telefone || ''
+      telefone: user.user_metadata?.telefone || '',
+      foto_url: user.user_metadata?.foto_url || null
     })
     setIsOpen(true)
   }
@@ -153,8 +156,13 @@ export function UsersManager() {
                 {users.map(u => (
                   <tr key={u.id} className="hover:bg-slate-50/50">
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-slate-900">{u.user_metadata?.nome || 'Sem nome'}</div>
-                      <div className="text-xs text-slate-500">{u.email}</div>
+                      <div className="flex items-center gap-3">
+                        <Avatar nome={u.user_metadata?.nome || u.email} foto={u.user_metadata?.foto_url} className="h-9 w-9" />
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-900">{u.user_metadata?.nome || 'Sem nome'}</div>
+                          <div className="text-xs text-slate-500">{u.email}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant="outline" className={
@@ -197,6 +205,7 @@ export function UsersManager() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <FotoPerfil nome={form.nome || form.email} foto={form.foto_url} tipo="usuario" onChange={url => setForm(f => ({ ...f, foto_url: url }))} />
             <div className="grid gap-2">
               <Label htmlFor="nome">Nome Completo</Label>
               <Input id="nome" value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="João Silva" />

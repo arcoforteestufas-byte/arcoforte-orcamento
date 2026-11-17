@@ -31,7 +31,7 @@ export async function GET() {
 // POST: Create a new user
 export async function POST(req: Request) {
   try {
-    const { email, password, nome, cargo, telefone } = await req.json()
+    const { email, password, nome, cargo, telefone, foto_url } = await req.json()
     
     if (!email || !password) {
       return NextResponse.json({ error: 'E-mail e senha são obrigatórios' }, { status: 400 })
@@ -45,7 +45,8 @@ export async function POST(req: Request) {
       user_metadata: {
         nome: nome || email.split('@')[0],
         cargo: cargo || 'Visualizador',
-        telefone: telefone || ''
+        telefone: telefone || '',
+        foto_url: foto_url || null
       }
     })
     
@@ -60,14 +61,14 @@ export async function POST(req: Request) {
 // PUT: Update a user's role or info
 export async function PUT(req: Request) {
   try {
-    const { id, nome, cargo, telefone, password } = await req.json()
-    
+    const { id, nome, cargo, telefone, password, foto_url } = await req.json()
+
     if (!id) return NextResponse.json({ error: 'ID do usuário é obrigatório' }, { status: 400 })
 
     const updates: any = {}
-    
-    if (nome || cargo || telefone !== undefined) {
-      updates.user_metadata = { nome, cargo, telefone }
+
+    if (nome || cargo || telefone !== undefined || foto_url !== undefined) {
+      updates.user_metadata = { nome, cargo, telefone, ...(foto_url !== undefined ? { foto_url: foto_url || null } : {}) }
     }
     
     if (password) {
