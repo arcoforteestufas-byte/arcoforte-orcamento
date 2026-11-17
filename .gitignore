@@ -51,3 +51,5 @@ next-env.d.ts
 !catalog_data.json
 .vercel
 .env*
+# Estufa 3D: linhas geradas para o site (npm run estufa3d)
+/scripts/estufa3d-site/

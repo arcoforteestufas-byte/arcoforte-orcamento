@@ -1,0 +1,1 @@
+(function(){function s(){try{var e=document.getElementById("afe");e&&e.__fsx&&e.__fsx(!0)}catch(x){}}window.addEventListener("load",function(){setTimeout(s,300)});window.addEventListener("hashchange",function(){location.reload()})})();
