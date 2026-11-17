@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -10,6 +11,7 @@ import { importarProdutosXLSX } from "@/app/actions/importar-produtos"
 export function XlsxUploader() {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -22,6 +24,7 @@ export function XlsxUploader() {
       if (result.success) {
         alert(result.message)
         setIsOpen(false)
+        router.refresh()
       } else {
         alert("Erro: " + result.error)
       }
@@ -40,15 +43,20 @@ export function XlsxUploader() {
         }
       >
         <FileSpreadsheet className="h-4 w-4" />
-        Sincronizar com Sensio (XLSX)
+        Importar planilha (preços / pesos)
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Importar Tabela de Preços (Sensio)</DialogTitle>
+          <DialogTitle>Importar produtos, preços e pesos</DialogTitle>
           <DialogDescription>
-            Faça upload do arquivo .xlsx exportado diretamente do seu sistema ERP (Sensio). O sistema criará novos produtos e atualizará os preços dos existentes automaticamente.
+            Envie o arquivo .xlsx exportado do Sensio ou do sistema de nota fiscal.
           </DialogDescription>
         </DialogHeader>
+        <div className="grid gap-2 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+          <p><b className="text-foreground">Tabela de preços (Sensio):</b> cria produtos novos e atualiza os preços. Se tiver coluna de peso, grava o peso junto.</p>
+          <p><b className="text-foreground">Planilha só de pesos:</b> basta ter a coluna <b>Código</b> e <b>Peso Bruto</b> (e, se quiser, <b>Peso Líquido</b>), em kg por unidade. Atualiza só o peso dos produtos que já existem — preço e descrição não mudam.</p>
+          <p>Célula de peso vazia não apaga o peso já cadastrado. O peso é usado para calcular o peso total do orçamento e o frete.</p>
+        </div>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           <Input type="file" name="file" accept=".xlsx" required className="cursor-pointer" />
           <DialogFooter>

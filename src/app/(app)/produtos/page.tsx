@@ -28,6 +28,22 @@ export default async function ProdutosPage() {
           <CardDescription>Lista completa de todos os itens disponíveis para cálculo e seus respectivos preços.</CardDescription>
         </CardHeader>
         <CardContent>
+          {(() => {
+            const total = produtos?.length || 0
+            const comPeso = (produtos || []).filter(p => Number(p.peso_bruto_kg) > 0).length
+            if (!total || comPeso === total) return null
+            return (
+              <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div className="min-w-[160px] flex-1">
+                  <b>{comPeso} de {total}</b> produtos com peso cadastrado. Sem peso, o orçamento não calcula o peso total nem o frete por kg.
+                  <span className="block text-xs text-amber-800/80">Importe uma planilha com Código e Peso Bruto, ou digite o peso direto na tabela abaixo.</span>
+                </div>
+                <div className="h-2 w-40 overflow-hidden rounded-full bg-amber-200">
+                  <div className="h-full bg-amber-500" style={{ width: `${Math.round((comPeso / total) * 100)}%` }} />
+                </div>
+              </div>
+            )
+          })()}
           <ProductsTable produtos={produtos || []} />
         </CardContent>
       </Card>

@@ -1025,6 +1025,11 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
   const totalFilmes = resultado.filter(i => isFilme(i.grupo_nome)).reduce((acc, item) => acc + item.valor_total, 0)
   const totalTelas = resultado.filter(i => isTela(i.grupo_nome)).reduce((acc, item) => acc + item.valor_total, 0)
 
+  // Peso total para o frete: quantidade × peso bruto do produto (cadastro em Produtos)
+  const pesoPorCodigo = new Map(produtos.map(p => [String(p.codigo), Number(p.peso_bruto_kg) || 0]))
+  const pesoTotalKg = resultado.reduce((acc, item) => acc + (Number(item.quantidade_final) || 0) * (pesoPorCodigo.get(String(item.produto_codigo)) || 0), 0)
+  const itensSemPeso = new Set(resultado.filter(i => !pesoPorCodigo.get(String(i.produto_codigo))).map(i => String(i.produto_codigo))).size
+
   return (
     <div className="grid gap-6 md:grid-cols-[2fr_1fr] pb-36 md:pb-0">
       <div className="flex flex-col gap-6">
@@ -2785,6 +2790,21 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                 <span className="text-zinc-400">Telas</span>
                 <span className="text-zinc-200">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalTelas)}</span>
               </div>
+              {resultado.length > 0 && (
+                <div className="border-t border-zinc-700 pt-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Peso total (frete)</span>
+                    <span className="font-semibold text-zinc-100">
+                      {pesoTotalKg > 0 ? `${pesoTotalKg.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg` : '—'}
+                    </span>
+                  </div>
+                  {itensSemPeso > 0 && (
+                    <p className="mt-1 text-[11px] leading-snug text-amber-400/90">
+                      {itensSemPeso} produto(s) sem peso cadastrado{pesoTotalKg > 0 ? ' — o peso está incompleto' : ''}. Cadastre em Produtos.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
           <CardFooter className="pt-6 hidden md:flex">
