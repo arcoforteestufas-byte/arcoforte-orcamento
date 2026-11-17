@@ -96,7 +96,7 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
         </div>
         <div className="flex flex-wrap items-center gap-2">
         <Link
-          href={`/croquis/estufa-3d?orc=${orcamento.id}`}
+          href={`/croquis?orc=${orcamento.id}`}
           className={buttonVariants({ variant: "outline", className: "gap-2" })}
         >
           <Box className="h-4 w-4" />

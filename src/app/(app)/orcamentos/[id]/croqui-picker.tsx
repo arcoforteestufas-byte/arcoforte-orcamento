@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Image as ImageIcon, Search, X, Loader2 } from "lucide-react"
+import { Box, Image as ImageIcon, Search, X, Loader2 } from "lucide-react"
 
 export function CroquiPicker({ orcamentoId, parametrosUtilizados }: { orcamentoId: string, parametrosUtilizados: any }) {
   const router = useRouter()
@@ -77,6 +77,14 @@ export function CroquiPicker({ orcamentoId, parametrosUtilizados }: { orcamentoI
           Selecionar Croqui da Biblioteca
         </Button>
       )}
+      <Button
+        variant="outline"
+        className="w-full justify-start gap-2 border-[#d97021] text-[#d97021] hover:bg-orange-50"
+        onClick={() => router.push(`/croquis?orc=${orcamentoId}`)}
+      >
+        <Box className="h-4 w-4" />
+        {croquiUrlAtual ? "Gerar novo croqui no 3D" : "Gerar croqui no 3D"}
+      </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-4xl md:max-w-5xl lg:max-w-6xl w-[95vw] h-[85vh] flex flex-col">
