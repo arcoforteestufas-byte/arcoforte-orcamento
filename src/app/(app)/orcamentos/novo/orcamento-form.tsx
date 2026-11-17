@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Calculator, Save, Plus, Download, ArrowLeftRight, User, Ruler, Settings2, ListChecks, Image as ImageIcon, Search, Check, ChevronDown, X, Info, AlertTriangle } from "lucide-react"
-import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo, montarTextoExplicacao } from "@/utils/engine"
+import { calcularOrcamento, ItemOrcamento, ParametrosEstufa, Produto, RegraCalculo, montarTextoExplicacao, prepararParametros, arcosDosModulos } from "@/utils/engine"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { useRouter, useSearchParams } from "next/navigation"
 import { registrarOrcamentoNoLead } from "@/app/actions/crm"
@@ -267,15 +267,36 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
     if (!soArcoSimples) return
     setParamsForm(prev => {
       const arcoErrado = !!prev['tipo_arco'] && prev['tipo_arco'] !== 'SIMPLES'
-      if (!arcoErrado && !prev['arco_divisa']) return prev
+      if (!arcoErrado && !prev['arco_divisa'] && !prev['arco_por_modulo']) return prev
       return {
         ...prev,
         ...(arcoErrado ? { tipo_arco: 'SIMPLES' } : {}),
         arco_divisa: false,
-        n_divisas_por_modulo: ''
+        n_divisas_por_modulo: '',
+        arco_por_modulo: false
       }
     })
-  }, [soArcoSimples, paramsForm['tipo_arco'], paramsForm['arco_divisa']])
+  }, [soArcoSimples, paramsForm['tipo_arco'], paramsForm['arco_divisa'], paramsForm['arco_por_modulo']])
+
+  // Opção avançada: tipo de arco diferente em cada módulo (só com 2 módulos ou mais e módulos de 7 m ou mais)
+  const nModulosForm = Math.max(0, Math.floor(Number(paramsForm['n_modulos']) || 0))
+  const podeArcoPorModulo = !soArcoSimples && nModulosForm >= 2
+  const arcoPorModulo = podeArcoPorModulo && paramsForm['arco_por_modulo'] === true
+  const arcosModulosForm = arcosDosModulos(paramsForm as ParametrosEstufa)
+  const alternarArcoPorModulo = (ligar: boolean) => {
+    setParamsForm(prev => ({
+      ...prev,
+      arco_por_modulo: ligar,
+      arcos_modulos: ligar ? arcosDosModulos({ ...prev, arco_por_modulo: false } as ParametrosEstufa).join(',') : ''
+    }))
+  }
+  const mudarArcoDoModulo = (indice: number, tipo: string) => {
+    setParamsForm(prev => {
+      const lista = arcosDosModulos(prev as ParametrosEstufa)
+      lista[indice] = tipo
+      return { ...prev, arcos_modulos: lista.join(',') }
+    })
+  }
   
   const [comprimento, setComprimento] = useState<number | ''>(() => {
     const p = orcamentoInicial?.parametros_utilizados
@@ -793,12 +814,8 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
       })
       return
     }
-    const nDivisasPorModulo = Number(paramsForm['n_divisas_por_modulo']) || 0
-    const nModulosCalc = Number(paramsForm['n_modulos']) || 0
-    const paramsCalculo = {
-      ...paramsForm,
-      n_divisas: nDivisasPorModulo * nModulosCalc // total de arcos de divisa = por modulo x numero de modulos
-    }
+    // n_divisas, módulos por tipo de arco e divisas por tipo de arco (ver prepararParametros no motor)
+    const paramsCalculo = prepararParametros(paramsForm as ParametrosEstufa)
     const itens = calcularOrcamento(paramsCalculo, regras, produtos)
     setResultado(itens)
   }
@@ -810,9 +827,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
       setItemExplicado(item)
       return
     }
-    const nDivisasPorModulo = Number(paramsForm['n_divisas_por_modulo']) || 0
-    const nModulosCalc = Number(paramsForm['n_modulos']) || 0
-    const itens = calcularOrcamento({ ...paramsForm, n_divisas: nDivisasPorModulo * nModulosCalc }, regras, produtos)
+    const itens = calcularOrcamento(prepararParametros(paramsForm as ParametrosEstufa), regras, produtos)
     const codigoOriginal = item.manualOriginalProduto || item.produto_codigo
     const igual = itens.find(i => i.produto_codigo === codigoOriginal && i.grupo_nome === item.grupo_nome)
       || itens.find(i => i.produto_codigo === codigoOriginal)
@@ -2287,6 +2302,44 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                     </Select>
                     {limitarArco && (
                       <p className="text-xs text-slate-500">Módulo de {larguraModuloAtual} m só tem arco simples.</p>
+                    )}
+                    {param.nome_tecnico === 'tipo_arco' && podeArcoPorModulo && (
+                      <div className="mt-1 rounded-md border border-dashed border-slate-300 bg-slate-50/60 p-3 grid gap-2">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="arco_por_modulo"
+                            checked={arcoPorModulo}
+                            onCheckedChange={(c) => alternarArcoPorModulo(!!c)}
+                          />
+                          <Label htmlFor="arco_por_modulo" className="text-xs font-medium text-slate-600 cursor-pointer">
+                            Avançado: escolher o arco de cada módulo
+                          </Label>
+                        </div>
+                        {arcoPorModulo && (
+                          <>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {arcosModulosForm.map((arco, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                  <span className="text-xs text-slate-600 w-20 shrink-0">Módulo {i + 1}</span>
+                                  <Select value={arco} onValueChange={(val) => { if (val) mudarArcoDoModulo(i, val) }}>
+                                    <SelectTrigger aria-label={`Arco do módulo ${i + 1}`} className="h-8 w-full bg-white text-xs">
+                                      <SelectValue placeholder="Selecione..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {opcoesTodas.map(op => (
+                                        <SelectItem key={op} value={op}>{op}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ))}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground leading-tight">
+                              Cada módulo é calculado com o arco escolhido aqui. Módulos novos começam com o tipo de arco acima.
+                            </p>
+                          </>
+                        )}
+                      </div>
                     )}
                     {renderErroCampo(param.nome_tecnico)}
                   </div>

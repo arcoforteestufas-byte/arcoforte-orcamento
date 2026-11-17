@@ -9,7 +9,7 @@
  * Este arquivo não fala com o banco: só define o formato e faz as conferências.
  * Quem lê/grava no banco é src/app/actions/pacote-regras.ts.
  */
-import { calcularOrcamento, criarParser, type ParametrosEstufa, type Produto, type RegraCalculo } from "@/utils/engine"
+import { calcularOrcamento, criarParser, prepararParametros, type ParametrosEstufa, type Produto, type RegraCalculo } from "@/utils/engine"
 
 export const FORMATO_PACOTE = "arcoforte-pacote-regras"
 
@@ -95,6 +95,14 @@ export const PARAMETROS_OBRIGATORIOS = ["n_modulos", "largura_modulo", "n_vaos",
 export const VARIAVEIS_FORMULARIO: { nome: string; descricao: string; requer?: string; valores?: string[] }[] = [
   { nome: "comprimento_estufa", descricao: "Calculada: vao * (n_vaos - 1) + último vão" },
   { nome: "n_divisas", descricao: "Calculada ao clicar Calcular: n_divisas_por_modulo * n_modulos (0 se vazio)" },
+  { nome: "n_mod_simples", descricao: "Calculada: quantos módulos têm arco SIMPLES (todos, ou conforme a opção avançada de arco por módulo)" },
+  { nome: "n_mod_duplo", descricao: "Calculada: quantos módulos têm arco DUPLO" },
+  { nome: "n_mod_lanternim", descricao: "Calculada: quantos módulos têm arco LANTERNIM" },
+  { nome: "n_div_simples", descricao: "Calculada: n_divisas_por_modulo * n_mod_simples" },
+  { nome: "n_div_duplo", descricao: "Calculada: n_divisas_por_modulo * n_mod_duplo" },
+  { nome: "n_div_lanternim", descricao: "Calculada: n_divisas_por_modulo * n_mod_lanternim" },
+  { nome: "arco_por_modulo", descricao: "Opção avançada 'Escolher o arco de cada módulo'", requer: "tipo_arco" },
+  { nome: "arcos_modulos", descricao: "Arco de cada módulo, separado por vírgula (ex.: DUPLO,LANTERNIM,DUPLO)", requer: "tipo_arco" },
   { nome: "n_divisas_por_modulo", descricao: "Campo 'Quantos arcos de divisa por módulo?'", requer: "arco_divisa" },
   { nome: "portas_abrir", descricao: "Soma das portas do tipo 'Porta de Abrir'" },
   { nome: "portas_correr", descricao: "Soma das portas de correr (pequena + grande)" },
@@ -188,9 +196,7 @@ export function lerPacote(texto: string): { pacote?: Pacote; problemas: Problema
 
 /** Monta os parâmetros exatamente como o formulário faz em handleCalcular. */
 export function parametrosComoFormulario(p: ParametrosEstufa): ParametrosEstufa {
-  const nDivisasPorModulo = Number(p["n_divisas_por_modulo"]) || 0
-  const nModulos = Number(p["n_modulos"]) || 0
-  return { ...p, n_divisas: nDivisasPorModulo * nModulos }
+  return prepararParametros(p)
 }
 
 /** Converte as regras ATIVAS do pacote para o formato do motor (para rodar os exemplos). */

@@ -139,6 +139,47 @@ export function criarParser(): Parser {
   return parser
 }
 
+/** Tipos de arco que o formulário oferece. */
+export const TIPOS_ARCO = ['SIMPLES', 'DUPLO', 'LANTERNIM'] as const
+
+/**
+ * Tipo de arco de cada módulo, na ordem. Normalmente todos usam o "Tipo de Arco" escolhido.
+ * Na opção avançada (arco_por_modulo ligado, 2 módulos ou mais) cada módulo tem o seu,
+ * guardado em arcos_modulos como texto separado por vírgula (ex.: 'DUPLO,LANTERNIM,DUPLO').
+ * Posição vazia ou inválida usa o tipo de arco padrão.
+ */
+export function arcosDosModulos(p: ParametrosEstufa): string[] {
+  const n = Math.max(0, Math.floor(Number(p['n_modulos']) || 0))
+  const padrao = String(p['tipo_arco'] || '')
+  const ligado = p['arco_por_modulo'] === true || p['arco_por_modulo'] === 'true'
+  const lista = ligado && n >= 2 ? String(p['arcos_modulos'] || '').split(',').map(s => s.trim()) : []
+  return Array.from({ length: n }, (_, i) => (TIPOS_ARCO as readonly string[]).includes(lista[i]) ? lista[i] : padrao)
+}
+
+/**
+ * Monta as variáveis calculadas que o motor usa além dos campos do formulário:
+ * n_divisas (total de arcos de divisa), quantos módulos têm cada tipo de arco
+ * (n_mod_simples, n_mod_duplo, n_mod_lanternim) e quantos arcos de divisa caem em
+ * cada tipo (n_div_simples, n_div_duplo, n_div_lanternim). Usar SEMPRE antes de calcularOrcamento.
+ */
+export function prepararParametros(p: ParametrosEstufa): ParametrosEstufa {
+  const nModulos = Number(p['n_modulos']) || 0
+  const nDivisasPorModulo = Number(p['n_divisas_por_modulo']) || 0
+  const arcos = arcosDosModulos(p)
+  const conta = (t: string) => arcos.filter(a => a === t).length
+  const ns = conta('SIMPLES'), nd = conta('DUPLO'), nl = conta('LANTERNIM')
+  return {
+    ...p,
+    n_divisas: nDivisasPorModulo * nModulos,
+    n_mod_simples: ns,
+    n_mod_duplo: nd,
+    n_mod_lanternim: nl,
+    n_div_simples: nDivisasPorModulo * ns,
+    n_div_duplo: nDivisasPorModulo * nd,
+    n_div_lanternim: nDivisasPorModulo * nl,
+  }
+}
+
 /**
  * Motor Matemático Principal
  */
