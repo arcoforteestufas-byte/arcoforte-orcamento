@@ -181,6 +181,8 @@ export interface CrmQuadro {
   restrito: boolean
   /** admin liberou este usuário para ver os leads de todos */
   liberadoVerTodos: boolean
+  /** cargo Logística: vê só leads ganhos, sem editar */
+  ehLogistica: boolean
   erro?: string
 }
 

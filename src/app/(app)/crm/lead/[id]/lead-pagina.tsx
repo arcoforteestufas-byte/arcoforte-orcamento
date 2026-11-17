@@ -185,7 +185,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
         <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${funil?.cor || "#d97021"}, ${etapa?.cor || "#d97021"})` }} />
         <div className="p-5 flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div className="flex items-start gap-3 min-w-0">
-            <Link href={`/crm?funil=${lead.funil_id}`} className={buttonVariants({ variant: "outline", size: "icon", className: "shrink-0 mt-1" })} title="Voltar ao funil">
+            <Link href={quadro.ehLogistica ? "/entregas?aba=vendas" : `/crm?funil=${lead.funil_id}`} className={buttonVariants({ variant: "outline", size: "icon", className: "shrink-0 mt-1" })} title={quadro.ehLogistica ? "Voltar às entregas" : "Voltar ao funil"}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
             <div className="min-w-0">
@@ -363,7 +363,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
                   <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Calcular frete</div>
                   <CalculadoraFrete
                     uf={lead.uf} cidade={lead.cidade} leadId={lead.id}
-                    orcamentos={orcamentos.filter(o => o.status !== "Perdido").map(o => ({
+                    orcamentos={!podeEditar ? [] : orcamentos.filter(o => o.status !== "Perdido").map(o => ({
                       id: o.id, frete: o.frete,
                       rotulo: `${o.numero_pedido || "#" + o.id.slice(0, 8).toUpperCase()} · ${brlCentavos.format(o.valor_total)}${o.frete ? ` · frete ${brlCentavos.format(o.frete)}` : " · sem frete"}`,
                     }))}
@@ -492,7 +492,9 @@ function OrcamentoFluxo({ o, fechado, podeEditar, onDesligar, onFechado }: {
     propostaOk
       ? { nome: "Proposta", ok: true, texto: `${o.proposta!.status} · ${formatarData(o.proposta!.criado_em)}`, href: `/propostas/${o.proposta!.id}`, acao: "Ver proposta" }
       : detalhesOk
-        ? { nome: "Proposta", ok: false, texto: "Pronta para gerar", href: `/orcamentos/${o.id}/proposta`, acao: "Gerar proposta", principal: true }
+        ? (podeEditar
+          ? { nome: "Proposta", ok: false, texto: "Pronta para gerar", href: `/orcamentos/${o.id}/proposta`, acao: "Gerar proposta", principal: true }
+          : { nome: "Proposta", ok: false, texto: "Ainda não gerada" })
         : { nome: "Proposta", ok: false, texto: "Bloqueada", acao: "Gerar proposta", bloqueado: `Preencha antes os detalhes comerciais (faltam ${faltam.length}).` },
     { nome: "Contrato", ok: false, texto: "Em breve", emBreve: true },
   ]

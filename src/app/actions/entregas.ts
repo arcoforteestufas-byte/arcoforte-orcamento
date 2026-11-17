@@ -6,7 +6,7 @@ import { acharCidade, cidadePorIbge, cidadesDaUf, rotaPorEstrada } from "@/lib/g
 import {
   CONFIG_ENT_PADRAO,
   type CalculoFrete, type CidadeOpcao, type EntConfig, type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora,
-  type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem, type VeiculoFrete,
+  type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem, type VeiculoFrete, type VendaFechada,
 } from "@/lib/entregas-types"
 
 type Resultado<T = undefined> = { ok: true; dados?: T } | { ok: false; erro: string }
@@ -776,6 +776,40 @@ export async function aplicarFreteNoOrcamento(orcamentoId: string, valor: number
   }
   revalidatePath(`/orcamentos/${orcamentoId}`)
   return { ok: true }
+}
+
+/**
+ * Vendas fechadas (leads ganhos) com a situação da entrega.
+ * Cada um vê o que o CRM permite: admin e logística veem todas; vendedor, as dele.
+ */
+export async function vendasFechadas(): Promise<VendaFechada[]> {
+  const { supabase, user } = await sessao()
+  if (!user) return []
+  const { data: leads, error } = await supabase.from("crm_leads")
+    .select("id, titulo, cidade, uf, valor_fechado, valor_estimado, ganho_em, vendedor_id, clientes(nome)")
+    .eq("status", "ganho").order("ganho_em", { ascending: false, nullsFirst: false }).limit(300)
+  if (error || !leads?.length) return []
+
+  const ids = leads.map(l => l.id)
+  const vendIds = Array.from(new Set(leads.map(l => l.vendedor_id).filter(Boolean)))
+  const [entR, usuR] = await Promise.all([
+    supabase.from("ent_entregas").select("id, lead_id, status, viagem_id, chegada_prevista").in("lead_id", ids),
+    vendIds.length ? supabase.from("usuarios").select("id, nome").in("id", vendIds) : Promise.resolve({ data: [] as { id: string; nome: string }[] }),
+  ])
+  const nomes = new Map((usuR.data || []).map(u => [u.id, u.nome]))
+  type LinhaLead = {
+    id: string; titulo: string; cidade: string | null; uf: string | null; valor_fechado: number | null; valor_estimado: number | null
+    ganho_em: string | null; vendedor_id: string | null; clientes: { nome: string } | { nome: string }[] | null
+  }
+  return (leads as unknown as LinhaLead[]).map(l => ({
+    id: l.id, titulo: l.titulo,
+    cliente: (Array.isArray(l.clientes) ? l.clientes[0]?.nome : l.clientes?.nome) ?? null,
+    cidade: l.cidade, uf: l.uf,
+    valor: l.valor_fechado != null ? Number(l.valor_fechado) : l.valor_estimado != null ? Number(l.valor_estimado) : null,
+    ganho_em: l.ganho_em, vendedor: (l.vendedor_id && nomes.get(l.vendedor_id)) || null,
+    entregas: (entR.data || []).filter(e => e.lead_id === l.id)
+      .map(e => ({ id: e.id, status: e.status, viagem_id: e.viagem_id, chegada_prevista: e.chegada_prevista })),
+  }))
 }
 
 /** Entregas ligadas a um lead, com viagem, caminhão e motorista */

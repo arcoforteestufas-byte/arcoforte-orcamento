@@ -36,8 +36,9 @@ export async function middleware(request: NextRequest) {
 
   const cargoUsuario = user?.user_metadata?.cargo || 'Visualizador'
   const ehVendedor = cargoUsuario === 'Vendedor'
-  // vendedor trabalha pelo CRM; os demais começam em orçamentos
-  const inicio = ehVendedor ? '/crm' : '/orcamentos'
+  const ehLogistica = cargoUsuario === 'Logística'
+  // vendedor trabalha pelo CRM, logística pelas Entregas; os demais começam em orçamentos
+  const inicio = ehVendedor ? '/crm' : ehLogistica ? '/entregas?aba=vendas' : '/orcamentos'
 
   if (user && isLoginPage) {
     return NextResponse.redirect(new URL(inicio, request.url))
@@ -50,6 +51,19 @@ export async function middleware(request: NextRequest) {
     const semLead = p === '/orcamentos/novo' && !request.nextUrl.searchParams.get('lead')
     if (p === '/orcamentos' || p === '/propostas' || semLead) {
       return NextResponse.redirect(new URL('/crm', request.url))
+    }
+  }
+
+  // Logística: sem funil, orçamentos e propostas. Só abre (para ler) os leads ganhos
+  // e os orçamentos/propostas deles, a partir de Entregas.
+  if (user && ehLogistica) {
+    const p = request.nextUrl.pathname
+    const bloqueada =
+      p === '/crm' || (p.startsWith('/crm/') && !p.startsWith('/crm/lead/')) ||
+      p === '/orcamentos' || p.startsWith('/orcamentos/novo') || /^\/orcamentos\/[^/]+\/(editar|proposta)/.test(p) ||
+      p === '/propostas' || p.startsWith('/propostas/nova')
+    if (bloqueada) {
+      return NextResponse.redirect(new URL('/entregas?aba=vendas', request.url))
     }
   }
 

@@ -52,7 +52,7 @@ function enderecoDoCliente(orcamento: any) {
   return [orcamento.clientes?.endereco, orcamento.clientes?.cidade_uf].filter(Boolean).join(', ')
 }
 
-export function OrcamentoComercial({ orcamento }: { orcamento: any }) {
+export function OrcamentoComercial({ orcamento, somenteLeitura = false }: { orcamento: any; somenteLeitura?: boolean }) {
   const router = useRouter()
   const clienteEndereco = enderecoDoCliente(orcamento)
 
@@ -187,7 +187,7 @@ export function OrcamentoComercial({ orcamento }: { orcamento: any }) {
   const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <fieldset disabled={somenteLeitura} className="grid gap-6 md:grid-cols-2 min-w-0">
       <Card>
         <CardHeader>
           <CardTitle>Detalhes Comerciais & Logística</CardTitle>
@@ -370,6 +370,7 @@ export function OrcamentoComercial({ orcamento }: { orcamento: any }) {
             </div>
           </div>
 
+          {!somenteLeitura && (
           <Button
             className="w-full mt-4"
             onClick={handleSave}
@@ -378,8 +379,9 @@ export function OrcamentoComercial({ orcamento }: { orcamento: any }) {
             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Salvar Fechamento
           </Button>
+          )}
         </CardContent>
       </Card>
-    </div>
+    </fieldset>
   )
 }

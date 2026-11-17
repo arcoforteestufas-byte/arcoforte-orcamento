@@ -13,6 +13,9 @@ import { CompletarClienteDialog } from "./completar-cliente-dialog"
 export default async function OrcamentoViewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient()
+  // Logística só consulta (abre o orçamento a partir de um lead ganho em Entregas)
+  const { data: { user } } = await supabase.auth.getUser()
+  const somenteLeitura = user?.user_metadata?.cargo === 'Logística'
 
   // 1. Fetch Orçamento
   const { data: orcamento, error: orcError } = await supabase
@@ -86,11 +89,14 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
             <p className="text-muted-foreground">
               ID: #{orcamento.id.split('-')[0].toUpperCase()}
               {orcamento.lead_id && (
-                <Link href={`/crm/lead/${orcamento.lead_id}`} className="ml-3 text-[#d97021] hover:underline">← Voltar ao lead no CRM</Link>
+                <Link href={`/crm/lead/${orcamento.lead_id}`} className="ml-3 text-[#d97021] hover:underline">← Voltar ao lead</Link>
               )}
             </p>
           </div>
         </div>
+        {somenteLeitura ? (
+          <Badge variant="outline" className="w-fit bg-slate-50 text-slate-600">Somente leitura</Badge>
+        ) : (
         <Link
           href={`/orcamentos/${orcamento.id}/editar`}
           className={buttonVariants({ variant: "default", className: "gap-2 bg-[#d97021] hover:bg-[#c3631b]" })}
@@ -98,6 +104,7 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
           <Pencil className="h-4 w-4" />
           Editar Orçamento
         </Link>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -114,7 +121,7 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
               <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 uppercase tracking-wider">
                 {orcamento.status}
               </Badge>
-              <CompletarClienteDialog clienteId={orcamento.cliente_id} cliente={orcamento.clientes} />
+              {!somenteLeitura && <CompletarClienteDialog clienteId={orcamento.cliente_id} cliente={orcamento.clientes} />}
             </div>
           </CardHeader>
           <CardContent className="text-sm text-slate-500 mt-4">
@@ -136,7 +143,7 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
         </Card>
       </div>
 
-      <OrcamentoComercial orcamento={orcamento} />
+      <OrcamentoComercial orcamento={orcamento} somenteLeitura={somenteLeitura} />
 
       <details className="group flex flex-col overflow-hidden rounded-xl bg-card text-sm text-card-foreground ring-1 ring-foreground/10">
         <summary className="cursor-pointer select-none list-none flex items-center justify-between px-4 py-4 font-medium text-base [&::-webkit-details-marker]:hidden">

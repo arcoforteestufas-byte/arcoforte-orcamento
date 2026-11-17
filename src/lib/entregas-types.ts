@@ -150,6 +150,19 @@ export interface EntregaDoLead extends EntEntrega {
   motorista: string | null
 }
 
+/** Lead ganho (venda fechada) para a logística programar a entrega */
+export interface VendaFechada {
+  id: string
+  titulo: string
+  cliente: string | null
+  cidade: string | null
+  uf: string | null
+  valor: number | null
+  ganho_em: string | null
+  vendedor: string | null
+  entregas: { id: string; status: StatusEntrega; viagem_id: string | null; chegada_prevista: string | null }[]
+}
+
 export type CidadeOpcao = { ibge: number; nome: string; uf: string; lat: number; lng: number }
 
 export interface EntCadastros {

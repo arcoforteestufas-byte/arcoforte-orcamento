@@ -1,4 +1,4 @@
-import { dadosEntregaDoLead, obterPainel } from "@/app/actions/entregas"
+import { dadosEntregaDoLead, obterPainel, vendasFechadas } from "@/app/actions/entregas"
 import { EntregasClient } from "./entregas-client"
 
 export const dynamic = "force-dynamic"
@@ -10,7 +10,7 @@ export default async function EntregasPage({
   searchParams: Promise<{ lead?: string; aba?: string }>
 }) {
   const { lead, aba } = await searchParams
-  const painel = await obterPainel()
+  const [painel, vendas] = await Promise.all([obterPainel(), vendasFechadas().catch(() => [])])
 
   // Vindo do CRM: abre "nova entrega" já preenchida com os dados do lead ganho
   let novaDoLead = null
@@ -19,5 +19,5 @@ export default async function EntregasPage({
     novaDoLead = r.ok ? r.dados! : null
   }
 
-  return <EntregasClient painel={painel} novaDoLead={novaDoLead} abaInicial={aba || null} />
+  return <EntregasClient painel={painel} vendas={vendas} novaDoLead={novaDoLead} abaInicial={aba || null} />
 }

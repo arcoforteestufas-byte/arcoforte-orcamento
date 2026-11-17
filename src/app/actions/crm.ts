@@ -120,10 +120,11 @@ export async function obterQuadro(funilId?: string, opcoes?: { semLeads?: boolea
   const { supabase, user } = await sessao()
   const vazio: CrmQuadro = {
     funis: [], funilAtual: null, etapas: [], leads: [], usuarios: [], origens: [], motivos: [], campos: [],
-    contagemFunis: {}, config: CONFIG_PADRAO, isAdmin: false, userId: "", restrito: false, liberadoVerTodos: false,
+    contagemFunis: {}, config: CONFIG_PADRAO, isAdmin: false, userId: "", restrito: false, liberadoVerTodos: false, ehLogistica: false,
   }
   if (!user) return { ...vazio, erro: "Não autenticado" }
   const isAdmin = ehAdmin(user)
+  const ehLogistica = user.user_metadata?.cargo === "Logística"
 
   const [funisR, acessosR, configR, usuariosR, origensR, motivosR, camposR, contagemR, permR] = await Promise.all([
     supabase.from("crm_funis").select("*").eq("ativo", true).order("ordem"),
@@ -144,7 +145,7 @@ export async function obterQuadro(funilId?: string, opcoes?: { semLeads?: boolea
   if (funisR.error || acessosR.error) {
     const msg = (funisR.error || acessosR.error)!.message
     return {
-      ...vazio, userId: user.id, isAdmin, restrito, liberadoVerTodos,
+      ...vazio, userId: user.id, isAdmin, restrito, liberadoVerTodos, ehLogistica,
       erro: /crm_funis|crm_funil_usuarios|membros_veem_todos|column/.test(msg) ? MSG_SEM_TABELAS : msg,
     }
   }
@@ -153,7 +154,8 @@ export async function obterQuadro(funilId?: string, opcoes?: { semLeads?: boolea
   // Só os funis em que o usuário trabalha (lista vazia = todos)
   const funis = (funisR.data || [])
     .map(f => normalizarFunil(f, acessos))
-    .filter(f => isAdmin || !f.usuarios!.length || f.usuarios!.includes(user.id))
+    // logística abre leads ganhos de qualquer funil (só leitura), então enxerga todos os funis
+    .filter(f => isAdmin || ehLogistica || !f.usuarios!.length || f.usuarios!.includes(user.id))
   const funilAtual = funis.find(f => f.id === funilId) || funis[0] || null
 
   const contagemFunis: Record<string, number> = {}
@@ -214,6 +216,7 @@ export async function obterQuadro(funilId?: string, opcoes?: { semLeads?: boolea
     userId: user.id,
     restrito,
     liberadoVerTodos,
+    ehLogistica,
   }
 }
 

@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
   Building2, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Maximize2, Package, Pencil, Plus,
-  Radio, RefreshCw, Route, Star, Trash2, Truck, UserRound, XCircle,
+  Radio, RefreshCw, Route, Search, Star, Trash2, Trophy, Truck, UserRound, XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { cancelarEntrega, excluirCadastro, programarEntrega, salvarOrigem, salvarTabelaFrete } from "@/app/actions/entregas"
+import { cancelarEntrega, dadosEntregaDoLead, excluirCadastro, programarEntrega, salvarOrigem, salvarTabelaFrete } from "@/app/actions/entregas"
 import {
   NOMES_UF, STATUS_ENTREGA, STATUS_VIAGEM, formatarKm, posicaoRecente,
-  type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora, type EntVeiculo, type EntViagem,
+  type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora, type EntVeiculo, type EntViagem, type VendaFechada,
 } from "@/lib/entregas-types"
 import { cn } from "@/lib/utils"
 import { formatarData, inputClasse } from "../crm/crm-utils"
@@ -23,7 +23,7 @@ import {
   EntregaDialog, MotoristaDialog, TransportadoraDialog, VeiculoDialog, ViagemDialog, type EntregaInicial,
 } from "./entregas-dialogs"
 
-type Aba = "rotas" | "mapa" | "agenda" | "programar" | "cadastros"
+type Aba = "vendas" | "rotas" | "mapa" | "agenda" | "programar" | "cadastros"
 
 const hoje = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date())
 function somarDias(iso: string, dias: number) {
@@ -77,13 +77,14 @@ function diaMes(iso: string) {
   return { dia: d, mes: meses[Number(m) - 1] }
 }
 
-export function EntregasClient({ painel, novaDoLead, abaInicial }: {
+export function EntregasClient({ painel, vendas = [], novaDoLead, abaInicial }: {
   painel: EntPainel
+  vendas?: VendaFechada[]
   novaDoLead: EntregaInicial | null
   abaInicial: string | null
 }) {
   const router = useRouter()
-  const abas: Aba[] = ["rotas", "mapa", "agenda", "programar", "cadastros"]
+  const abas: Aba[] = ["vendas", "rotas", "mapa", "agenda", "programar", "cadastros"]
   const [aba, setAba] = useState<Aba>(abas.find(a => a === abaInicial) || (painel.podeGerenciar ? "mapa" : "rotas"))
   const [entregaEdit, setEntregaEdit] = useState<EntregaInicial | null>(novaDoLead)
   const [viagemEdit, setViagemEdit] = useState<Partial<EntViagem> | null>(null)
@@ -128,7 +129,15 @@ export function EntregasClient({ painel, novaDoLead, abaInicial }: {
     { r: "Entregues no mês", v: entreguesMes.length, i: CheckCircle2, c: "from-emerald-500 to-emerald-600" },
   ]
 
+  const vendasSemEntrega = vendas.filter(v => !v.entregas.some(e => e.status !== "cancelada")).length
+  const programarDoLead = async (leadId: string) => {
+    const r = await dadosEntregaDoLead(leadId)
+    if (!r.ok) return toast.error(r.erro)
+    setEntregaEdit(r.dados!)
+  }
+
   const listaAbas: [Aba, string, typeof MapPin][] = [
+    ["vendas", "Vendas fechadas" + (vendasSemEntrega ? " (" + vendasSemEntrega + ")" : ""), Trophy],
     ["rotas", "Rotas e fretes", Route],
     ["mapa", "Mapa de entregas", MapPinned],
     ["agenda", "Agenda de viagens", CalendarDays],
@@ -185,6 +194,7 @@ export function EntregasClient({ painel, novaDoLead, abaInicial }: {
         ))}
       </div>
 
+      {aba === "vendas" && <AbaVendas vendas={vendas} painel={painel} onProgramar={programarDoLead} />}
       {aba === "rotas" && <AbaRotas painel={painel} dataDaEntrega={dataDaEntrega} onSolicitar={setEntregaEdit} />}
       {aba === "mapa" && <AbaMapa painel={painel} dataDaEntrega={dataDaEntrega} onEditar={setEntregaEdit} />}
       {aba === "agenda" && <AbaAgenda painel={painel} />}
@@ -763,6 +773,102 @@ function AbaCadastros({ painel }: { painel: EntPainel }) {
       <VeiculoDialog item={veic} transportadoras={painel.transportadoras} onFechar={() => setVeic(null)} onSalvo={() => { setVeic(null); atualizar() }} />
       <MotoristaDialog item={mot} transportadoras={painel.transportadoras} onFechar={() => setMot(null)} onSalvo={() => { setMot(null); atualizar() }} />
       <TransportadoraDialog item={trans} onFechar={() => setTrans(null)} onSalvo={() => { setTrans(null); atualizar() }} />
+    </div>
+  )
+}
+
+/** Leads ganhos: o que foi vendido e se a entrega já foi programada */
+function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; painel: EntPainel; onProgramar: (leadId: string) => void }) {
+  const [filtro, setFiltro] = useState<"sem" | "com" | "todas">("sem")
+  const [busca, setBusca] = useState("")
+  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+  const ativas = (v: VendaFechada) => v.entregas.filter(e => e.status !== "cancelada")
+  const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+  const lista = vendas.filter(v => {
+    const tem = ativas(v).length > 0
+    if (filtro === "sem" && tem) return false
+    if (filtro === "com" && !tem) return false
+    if (!busca.trim()) return true
+    return norm([v.titulo, v.cliente, v.cidade, v.uf, v.vendedor].filter(Boolean).join(" ")).includes(norm(busca))
+  })
+  const qtd = {
+    sem: vendas.filter(v => !ativas(v).length).length,
+    com: vendas.filter(v => ativas(v).length).length,
+    todas: vendas.length,
+  }
+  const viagem = (id: string | null) => painel.viagens.find(x => x.id === id)
+
+  return (
+    <div className="rounded-2xl border bg-background shadow-sm">
+      <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="flex items-center gap-2 font-semibold"><Trophy className="h-4 w-4 text-[#d97021]" /> Vendas fechadas</h3>
+          <p className="text-xs text-muted-foreground">Leads ganhos no CRM. Abra o lead para ver tudo (cliente, orçamentos, itens e histórico) e programe a entrega.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg border p-0.5 text-xs">
+            {([["sem", "Sem entrega"], ["com", "Com entrega"], ["todas", "Todas"]] as const).map(([v, r]) => (
+              <button key={v} onClick={() => setFiltro(v)}
+                className={cn("rounded-md px-2.5 py-1 font-medium", filtro === v ? "bg-[#d97021] text-white" : "text-muted-foreground hover:bg-muted")}>
+                {r} ({qtd[v]})
+              </button>
+            ))}
+          </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <input className={cn(inputClasse, "w-52 pl-8")} placeholder="Buscar cliente, cidade..." value={busca} onChange={e => setBusca(e.target.value)} />
+          </div>
+        </div>
+      </div>
+      {!lista.length ? (
+        <div className="p-10 text-center text-sm text-muted-foreground">
+          {vendas.length ? "Nenhuma venda neste filtro." : "Nenhuma venda fechada ainda. Quando um lead for marcado como Ganho no CRM, ele aparece aqui."}
+        </div>
+      ) : (
+        <div className="divide-y">
+          {lista.map(v => {
+            const ents = ativas(v)
+            return (
+              <div key={v.id} className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link href={`/crm/lead/${v.id}`} className="font-semibold hover:text-[#d97021] hover:underline">{v.titulo}</Link>
+                    {v.valor ? <span className="text-sm font-medium text-emerald-700">{brl.format(v.valor)}</span> : null}
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    {v.cliente && <span className="inline-flex items-center gap-1"><UserRound className="h-3 w-3" />{v.cliente}</span>}
+                    {(v.cidade || v.uf) && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{[v.cidade, v.uf].filter(Boolean).join(" - ")}</span>}
+                    {v.ganho_em && <span>fechado em {formatarData(v.ganho_em.slice(0, 10))}</span>}
+                    {v.vendedor && <span>vendedor: {v.vendedor}</span>}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {ents.length ? ents.map(e => {
+                    const data = e.chegada_prevista || viagem(e.viagem_id)?.saida_prevista
+                    return (
+                      <span key={e.id} className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset", STATUS_ENTREGA[e.status].classe)}>
+                        {STATUS_ENTREGA[e.status].rotulo}{data ? ` · ${formatarData(data)}` : ""}
+                      </span>
+                    )
+                  }) : (
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200">Sem entrega</span>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Link href={`/crm/lead/${v.id}`} className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-medium hover:bg-muted">
+                    Abrir lead <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                  {!ents.length && (
+                    <Button size="sm" className="h-8 gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => onProgramar(v.id)}>
+                      <Truck className="h-3.5 w-3.5" /> {painel.podeGerenciar ? "Programar entrega" : "Solicitar entrega"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
