@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import Link from "next/link"
-import { ArrowLeft, ChevronDown, Pencil } from "lucide-react"
+import { ArrowLeft, Box, ChevronDown, Pencil } from "lucide-react"
 import { PdfButtons } from "./pdf-buttons"
 import { ItemOrcamento } from "@/utils/engine"
 import { OrcamentoComercial } from "./orcamento-comercial-client"
@@ -94,6 +94,14 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
             </p>
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <Link
+          href={`/croquis/estufa-3d?orc=${orcamento.id}`}
+          className={buttonVariants({ variant: "outline", className: "gap-2" })}
+        >
+          <Box className="h-4 w-4" />
+          Ver em 3D
+        </Link>
         {somenteLeitura ? (
           <Badge variant="outline" className="w-fit bg-slate-50 text-slate-600">Somente leitura</Badge>
         ) : (
@@ -105,6 +113,7 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
           Editar Orçamento
         </Link>
         )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">

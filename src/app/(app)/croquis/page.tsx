@@ -1,6 +1,9 @@
 import { createClient } from "@/utils/supabase/server"
 import { UploadModal } from "./upload-modal"
 import { CroquisGallery } from "./gallery"
+import Link from "next/link"
+import { Box } from "lucide-react"
+import { buttonVariants } from "@/components/ui/button"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -27,7 +30,16 @@ export default async function CroquisPage() {
             Consulte desenhos técnicos e modelos de estufas.
           </p>
         </div>
-        {isAdministrador && <UploadModal />}
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/croquis/estufa-3d"
+            className={buttonVariants({ variant: "default", className: "gap-2 bg-[#d97021] hover:bg-[#c3631b]" })}
+          >
+            <Box className="h-4 w-4" />
+            Estufa 3D
+          </Link>
+          {isAdministrador && <UploadModal />}
+        </div>
       </div>
 
       <CroquisGallery croquis={croquis || []} isAdministrador={isAdministrador} />

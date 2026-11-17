@@ -1,0 +1,21 @@
+import { createClient } from "@/utils/supabase/server"
+import { ESTUFA3D_HTML } from "@/lib/estufa3d/engine-html"
+
+export const dynamic = "force-dynamic"
+
+// Simulador 3D da estufa: só para quem está logado no sistema (não fica público).
+export async function GET() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return new Response("Não autorizado", { status: 401 })
+  }
+  return new Response(ESTUFA3D_HTML, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "private, no-store",
+      "X-Frame-Options": "SAMEORIGIN",
+      "X-Robots-Tag": "noindex, nofollow",
+    },
+  })
+}
