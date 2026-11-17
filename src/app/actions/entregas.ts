@@ -6,7 +6,7 @@ import { acharCidade, cidadePorIbge, cidadesDaUf, rotaPorEstrada } from "@/lib/g
 import {
   CONFIG_ENT_PADRAO,
   type CalculoFrete, type CidadeOpcao, type EntConfig, type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora,
-  type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem,
+  type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem, type VeiculoFrete,
 } from "@/lib/entregas-types"
 
 type Resultado<T = undefined> = { ok: true; dados?: T } | { ok: false; erro: string }
@@ -614,6 +614,8 @@ export async function salvarVeiculo(v: Partial<EntVeiculo> & { placa: string }) 
     placa: String(v.placa).trim().toUpperCase(), descricao: texto(v.descricao), proprio: v.proprio ?? true,
     transportadora_id: v.proprio === false ? v.transportadora_id || null : null,
     capacidade_kg: numero(v.capacidade_kg), cor: v.cor || "#d97021", ativo: v.ativo ?? true, observacoes: texto(v.observacoes),
+    // frete próprio do veículo (vazio = tabela geral)
+    frete_valor_km: numero(v.frete_valor_km), frete_valor_kg: numero(v.frete_valor_kg), frete_minimo: numero(v.frete_minimo),
   })
 }
 
@@ -670,8 +672,23 @@ export async function pesoDoOrcamento(orcamentoId: string): Promise<number> {
  * km cobrados (ida, ou ida e volta) × R$/km + peso × R$/kg, menos o desconto se aproveitar viagem,
  * nunca abaixo do mínimo.
  */
+/** Veículos ativos para escolher na calculadora de frete */
+export async function listarVeiculosFrete(): Promise<VeiculoFrete[]> {
+  const { supabase, user } = await sessao()
+  if (!user) return []
+  const { data } = await supabase.from("ent_veiculos").select("*").eq("ativo", true).order("capacidade_kg", { nullsFirst: false })
+  return (data || []).map((v: Record<string, any>) => ({
+    id: v.id, placa: v.placa, descricao: v.descricao, proprio: v.proprio !== false,
+    capacidade_kg: v.capacidade_kg != null ? Number(v.capacidade_kg) : null,
+    frete_valor_km: v.frete_valor_km != null ? Number(v.frete_valor_km) : null,
+    frete_valor_kg: v.frete_valor_kg != null ? Number(v.frete_valor_kg) : null,
+    frete_minimo: v.frete_minimo != null ? Number(v.frete_minimo) : null,
+  }))
+}
+
 export async function calcularFrete(p: {
   uf: string | null; cidade: string | null; cidade_ibge?: number | null; pesoKg?: number | null; aproveitarViagem?: boolean
+  veiculoId?: string | null
 }): Promise<Resultado<CalculoFrete>> {
   const { supabase, user } = await sessao()
   if (!user) return { ok: false, erro: "Não autenticado" }
@@ -679,25 +696,44 @@ export async function calcularFrete(p: {
   if (!cid) return { ok: false, erro: "Escolha o estado e a cidade de destino." }
   const cfg = await lerConfig(supabase)
 
+  // tarifa: a do veículo escolhido; o que estiver vazio vem da tabela geral
+  let veiculo: CalculoFrete["veiculo"] = null
+  let tarifaKm = cfg.frete_valor_km, tarifaKg = cfg.frete_valor_kg, minimo = cfg.frete_minimo
+  if (p.veiculoId) {
+    const { data: v } = await supabase.from("ent_veiculos").select("*").eq("id", p.veiculoId).maybeSingle()
+    if (v) {
+      const proprioKm = v.frete_valor_km != null, proprioKg = v.frete_valor_kg != null, proprioMin = v.frete_minimo != null
+      if (proprioKm) tarifaKm = Number(v.frete_valor_km)
+      if (proprioKg) tarifaKg = Number(v.frete_valor_kg)
+      if (proprioMin) minimo = Number(v.frete_minimo)
+      veiculo = {
+        id: v.id, nome: v.descricao ? `${v.descricao} (${v.placa})` : v.placa,
+        capacidade_kg: v.capacidade_kg != null ? Number(v.capacidade_kg) : null,
+        valorProprio: proprioKm || proprioKg || proprioMin,
+      }
+    }
+  }
+
   const rota = await rotaPorEstrada([{ lat: cfg.origem_lat, lng: cfg.origem_lng }, { lat: cid.lat, lng: cid.lng }])
   if (!rota) return { ok: false, erro: "Não consegui calcular a distância." }
 
   const kmIda = rota.km
   const kmCobrados = Math.round(kmIda * (cfg.frete_cobrar_volta ? 2 : 1) * 10) / 10
   const pesoKg = Math.max(0, Number(p.pesoKg) || 0)
-  const valorKm = kmCobrados * cfg.frete_valor_km
-  const valorPeso = pesoKg * cfg.frete_valor_kg
+  const valorKm = kmCobrados * tarifaKm
+  const valorPeso = pesoKg * tarifaKg
   const bruto = valorKm + valorPeso
   const desconto = p.aproveitarViagem ? bruto * (cfg.frete_desconto_viagem / 100) : 0
   let valor = bruto - desconto
-  const minimoAplicado = cfg.frete_minimo > 0 && valor < cfg.frete_minimo
-  if (minimoAplicado) valor = cfg.frete_minimo
+  const minimoAplicado = minimo > 0 && valor < minimo
+  if (minimoAplicado) valor = minimo
   valor = Math.round(valor * 100) / 100
 
   const origem = `${cfg.origem_nome}-${cfg.origem_uf}`
   const destino = `${cid.nome}-${cid.uf}`
   const descricao = [
     `Frete CIF ArcoForte: ${origem} → ${destino} (~${Math.round(kmIda).toLocaleString("pt-BR")} km)`,
+    veiculo ? `veículo: ${veiculo.nome}` : "",
     p.aproveitarViagem ? "aproveitando viagem programada" : "",
     cfg.frete_observacao || "",
   ].filter(Boolean).join(" · ")
@@ -709,9 +745,11 @@ export async function calcularFrete(p: {
       valorKm: Math.round(valorKm * 100) / 100, valorPeso: Math.round(valorPeso * 100) / 100,
       desconto: Math.round(desconto * 100) / 100, minimoAplicado, valor, descricao,
       tabela: {
-        frete_valor_km: cfg.frete_valor_km, frete_cobrar_volta: cfg.frete_cobrar_volta, frete_valor_kg: cfg.frete_valor_kg,
-        frete_minimo: cfg.frete_minimo, frete_desconto_viagem: cfg.frete_desconto_viagem,
+        frete_valor_km: tarifaKm, frete_cobrar_volta: cfg.frete_cobrar_volta, frete_valor_kg: tarifaKg,
+        frete_minimo: minimo, frete_desconto_viagem: cfg.frete_desconto_viagem,
       },
+      veiculo,
+      acimaCapacidade: !!veiculo?.capacidade_kg && pesoKg > veiculo.capacidade_kg,
     },
   }
 }

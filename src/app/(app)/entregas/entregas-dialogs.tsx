@@ -434,7 +434,7 @@ export function VeiculoDialog({ item, transportadoras, onFechar, onSalvo }: {
   return (
     <Dialog open={!!item} onOpenChange={o => { if (!o) onFechar() }}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Truck className="h-5 w-5 text-[#d97021]" /> {v.id ? "Editar caminhão" : "Novo caminhão"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Truck className="h-5 w-5 text-[#d97021]" /> {v.id ? "Editar veículo" : "Novo veículo"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-muted p-1">
             {[true, false].map(p => (
@@ -446,8 +446,17 @@ export function VeiculoDialog({ item, transportadoras, onFechar, onSalvo }: {
             <Campo rotulo="Placa *"><input className={inputClasse} value={v.placa || ""} onChange={x => set("placa", x.target.value.toUpperCase())} /></Campo>
             <Campo rotulo="Cor no mapa"><input type="color" className="h-9 w-full cursor-pointer rounded border" value={v.cor || "#d97021"} onChange={x => set("cor", x.target.value)} /></Campo>
           </div>
-          <Campo rotulo="Descrição"><input className={inputClasse} value={v.descricao || ""} onChange={x => set("descricao", x.target.value)} placeholder="Ex.: Truck baú, Carreta 12 m" /></Campo>
+          <Campo rotulo="Tipo / descrição"><input className={inputClasse} value={v.descricao || ""} onChange={x => set("descricao", x.target.value)} placeholder="Ex.: Carreta, Truck, Caminhão 3/4, Carro pequeno" /></Campo>
           <Campo rotulo="Capacidade (kg)"><input className={inputClasse} inputMode="decimal" value={v.capacidade_kg ?? ""} onChange={x => set("capacidade_kg", x.target.value)} /></Campo>
+          <div className="rounded-xl border bg-orange-50/50 p-3 space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-[#a8541a]">Frete deste veículo</div>
+            <div className="grid grid-cols-3 gap-2">
+              <Campo rotulo="R$ por km"><input className={inputClasse} inputMode="decimal" value={v.frete_valor_km ?? ""} onChange={x => set("frete_valor_km", x.target.value)} placeholder="geral" /></Campo>
+              <Campo rotulo="R$ por kg"><input className={inputClasse} inputMode="decimal" value={v.frete_valor_kg ?? ""} onChange={x => set("frete_valor_kg", x.target.value)} placeholder="geral" /></Campo>
+              <Campo rotulo="Mínimo (R$)"><input className={inputClasse} inputMode="decimal" value={v.frete_minimo ?? ""} onChange={x => set("frete_minimo", x.target.value)} placeholder="geral" /></Campo>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Campo vazio usa a tabela geral de frete. A calculadora sugere o menor veículo que leva o peso do orçamento.</p>
+          </div>
           {!v.proprio && (
             <Campo rotulo="Transportadora">
               <select className={inputClasse} value={v.transportadora_id || ""} onChange={x => set("transportadora_id", x.target.value || null)}>

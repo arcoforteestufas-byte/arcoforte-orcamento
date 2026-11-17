@@ -730,11 +730,11 @@ function AbaCadastros({ painel }: { painel: EntPainel }) {
       <TabelaFrete painel={painel} onSalvo={atualizar} />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Lista titulo="Caminhões" icone={<Truck className="h-4 w-4 text-[#d97021]" />} onNovo={() => setVeic({})}>
+        <Lista titulo="Veículos" icone={<Truck className="h-4 w-4 text-[#d97021]" />} onNovo={() => setVeic({})}>
           {!painel.veiculos.length && vazio("Nenhum caminhão cadastrado.")}
           {painel.veiculos.map(v => (
             <Linha key={v.id} ativo={v.ativo} cor={v.cor} principal={`${v.placa}${v.descricao ? ` · ${v.descricao}` : ""}`}
-              detalhe={[v.proprio ? "Próprio" : `Terceiro${nomeTr(v.transportadora_id) ? ` · ${nomeTr(v.transportadora_id)}` : ""}`, v.capacidade_kg ? `${Number(v.capacidade_kg).toLocaleString("pt-BR")} kg` : ""].filter(Boolean).join(" · ")}
+              detalhe={[v.proprio ? "Próprio" : `Terceiro${nomeTr(v.transportadora_id) ? ` · ${nomeTr(v.transportadora_id)}` : ""}`, v.capacidade_kg ? `${Number(v.capacidade_kg).toLocaleString("pt-BR")} kg` : "", v.frete_valor_km != null ? `frete ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v.frete_valor_km))}/km` : "frete: tabela geral"].filter(Boolean).join(" · ")}
               onEditar={() => setVeic(v)} onExcluir={() => excluir("ent_veiculos", v.id, v.placa)} />
           ))}
         </Lista>
@@ -807,9 +807,10 @@ function TabelaFrete({ painel, onSalvo }: { painel: EntPainel; onSalvo: () => vo
 
   return (
     <section className="rounded-2xl border bg-background p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold"><Route className="h-4 w-4 text-[#d97021]" /> Tabela de frete</div>
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold"><Route className="h-4 w-4 text-[#d97021]" /> Tabela geral de frete</div>
       <p className="mb-4 text-xs text-muted-foreground">
         Usada pelos vendedores no CRM e no orçamento: <b>km × R$/km + peso × R$/kg</b>, com desconto ao aproveitar viagem já programada, nunca abaixo do mínimo.
+        Cada veículo pode ter seu próprio valor (em Veículos → editar); quando o veículo não tem valor, vale esta tabela.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <label className="grid gap-1 text-xs font-medium">R$ por km<input className={campo} inputMode="decimal" value={t.km} onChange={e => setT({ ...t, km: e.target.value })} /></label>

@@ -24,6 +24,17 @@ export interface EntVeiculo {
   cor: string
   ativo: boolean
   observacoes: string | null
+  // frete próprio do veículo (vazio = tabela geral)
+  frete_valor_km: number | null
+  frete_valor_kg: number | null
+  frete_minimo: number | null
+}
+
+/** Veículo como opção na calculadora de frete */
+export type VeiculoFrete = Pick<EntVeiculo, "id" | "placa" | "descricao" | "capacidade_kg" | "frete_valor_km" | "frete_valor_kg" | "frete_minimo" | "proprio">
+
+export function nomeVeiculo(v: Pick<EntVeiculo, "placa" | "descricao">) {
+  return v.descricao ? `${v.descricao} (${v.placa})` : v.placa
 }
 
 export interface EntMotorista {
@@ -127,6 +138,8 @@ export interface CalculoFrete {
   valor: number              // valor final sugerido
   descricao: string          // texto para o campo "Tipo de frete" do orçamento
   tabela: Pick<EntConfig, "frete_valor_km" | "frete_cobrar_volta" | "frete_valor_kg" | "frete_minimo" | "frete_desconto_viagem">
+  veiculo: { id: string; nome: string; capacidade_kg: number | null; valorProprio: boolean } | null
+  acimaCapacidade: boolean   // peso maior que a capacidade do veículo escolhido
 }
 
 /** Entrega do lead, com os dados da viagem para mostrar no CRM */

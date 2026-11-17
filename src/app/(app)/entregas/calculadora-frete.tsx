@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Calculator, CheckCircle2, Info, Loader2, Route, Truck } from "lucide-react"
+import { AlertTriangle, Calculator, CheckCircle2, Info, Loader2, Route, Sparkles, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { aplicarFreteNoOrcamento, calcularFrete, pesoDoOrcamento } from "@/app/actions/entregas"
-import { formatarDuracao, formatarKm, type CalculoFrete } from "@/lib/entregas-types"
+import { aplicarFreteNoOrcamento, calcularFrete, listarVeiculosFrete, pesoDoOrcamento } from "@/app/actions/entregas"
+import { formatarDuracao, formatarKm, nomeVeiculo, type CalculoFrete, type VeiculoFrete } from "@/lib/entregas-types"
 import { CidadeSelect } from "./cidade-select"
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
@@ -54,7 +54,22 @@ export function CalculadoraFrete({
   const [valorFinal, setValorFinal] = useState("")
   const [descricao, setDescricao] = useState("")
   const [aplicando, setAplicando] = useState(false)
+  const [veiculos, setVeiculos] = useState<VeiculoFrete[]>([])
+  const [veiculoId, setVeiculoId] = useState("")
+  const [escolhaManual, setEscolhaManual] = useState(false)
   const seq = useRef(0)
+
+  useEffect(() => { listarVeiculosFrete().then(setVeiculos) }, [])
+
+  // sugere o menor veículo que comporta o peso (até o usuário escolher outro)
+  const sugerido = (() => {
+    const kg = numeroBR(peso)
+    const comCap = veiculos.filter(v => v.capacidade_kg)
+    if (!comCap.length) return veiculos[0]?.id || ""
+    const cabe = comCap.filter(v => (v.capacidade_kg || 0) >= kg).sort((a, b) => (a.capacidade_kg || 0) - (b.capacidade_kg || 0))
+    return (cabe[0] || comCap.sort((a, b) => (b.capacidade_kg || 0) - (a.capacidade_kg || 0))[0]).id
+  })()
+  useEffect(() => { if (!escolhaManual) setVeiculoId(sugerido) }, [sugerido, escolhaManual])
 
   // peso do orçamento escolhido
   useEffect(() => {
@@ -76,7 +91,7 @@ export function CalculadoraFrete({
     const t = setTimeout(async () => {
       setCalculando(true)
       setErro("")
-      const r = await calcularFrete({ uf, cidade: cidade.nome, cidade_ibge: cidade.ibge, pesoKg: numeroBR(peso), aproveitarViagem: aproveitar })
+      const r = await calcularFrete({ uf, cidade: cidade.nome, cidade_ibge: cidade.ibge, pesoKg: numeroBR(peso), aproveitarViagem: aproveitar, veiculoId: veiculoId || null })
       if (n !== seq.current) return
       setCalculando(false)
       if (!r.ok) { setErro(r.erro); setCalc(null); return }
@@ -85,7 +100,7 @@ export function CalculadoraFrete({
       setDescricao(r.dados!.descricao)
     }, 400)
     return () => clearTimeout(t)
-  }, [uf, cidade, peso, aproveitar])
+  }, [uf, cidade, peso, aproveitar, veiculoId])
 
   const aplicar = async () => {
     const v = numeroBR(valorFinal)
@@ -122,6 +137,23 @@ export function CalculadoraFrete({
           <Label className="flex items-center gap-1.5">Peso da carga (kg) {carregandoPeso && <Loader2 className="h-3 w-3 animate-spin" />}</Label>
           <input className={inp} inputMode="decimal" value={peso} onChange={e => setPeso(e.target.value)} placeholder="calculado pelos produtos do orçamento" />
         </div>
+        {veiculos.length > 0 && (
+          <div className="grid gap-1.5">
+            <Label className="flex items-center gap-1.5">
+              Veículo
+              {!escolhaManual && veiculoId && <span className="inline-flex items-center gap-0.5 rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-medium text-[#a8541a]"><Sparkles className="h-3 w-3" /> sugerido pelo peso</span>}
+            </Label>
+            <select className={inp} value={veiculoId} onChange={e => { setVeiculoId(e.target.value); setEscolhaManual(true) }}>
+              <option value="">Tabela geral (sem escolher veículo)</option>
+              {veiculos.map(v => (
+                <option key={v.id} value={v.id}>
+                  {nomeVeiculo(v)}{v.capacidade_kg ? ` · até ${v.capacidade_kg.toLocaleString("pt-BR")} kg` : ""}{v.frete_valor_km != null ? ` · ${brl.format(v.frete_valor_km)}/km` : " · tabela geral"}
+                </option>
+              ))}
+            </select>
+            {escolhaManual && <button type="button" className="justify-self-start text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setEscolhaManual(false)}>voltar para o sugerido pelo peso</button>}
+          </div>
+        )}
         {viagemDisponivel && (
           <label className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-sm transition-colors ${aproveitar ? "border-blue-400 bg-blue-50" : "hover:bg-muted/40"}`}>
             <input type="checkbox" className="mt-0.5 accent-blue-600" checked={aproveitar} onChange={e => setAproveitar(e.target.checked)} />
@@ -156,6 +188,17 @@ export function CalculadoraFrete({
               <Route className="h-4 w-4 text-orange-300" />
               <span>{calc.origem} → <b>{calc.destino}</b></span>
             </div>
+            {calc.veiculo && (
+              <div className="flex items-center gap-2 text-xs text-white/75">
+                <Truck className="h-3.5 w-3.5 text-orange-300" />
+                <span>{calc.veiculo.nome}{calc.veiculo.valorProprio ? "" : " · usando a tabela geral"}</span>
+              </div>
+            )}
+            {calc.acimaCapacidade && (
+              <div className="flex items-start gap-2 rounded-lg bg-amber-500/15 px-3 py-2 text-xs text-amber-200">
+                <AlertTriangle className="h-4 w-4 shrink-0" /> A carga ({calc.pesoKg.toLocaleString("pt-BR")} kg) passa da capacidade deste veículo ({calc.veiculo!.capacidade_kg!.toLocaleString("pt-BR")} kg).
+              </div>
+            )}
             <div className="space-y-1 text-xs text-white/75">
               <div className="flex justify-between"><span>Distância (ida)</span><span>{formatarKm(calc.kmIda)}{calc.minutos ? ` · ${formatarDuracao(calc.minutos)}` : ""}{calc.estimada ? " (estimada)" : ""}</span></div>
               <div className="flex justify-between"><span>{formatarKm(calc.kmCobrados)} cobrados{calc.tabela.frete_cobrar_volta ? " (ida e volta)" : ""} × {brl.format(calc.tabela.frete_valor_km)}/km</span><span>{brl.format(calc.valorKm)}</span></div>

@@ -66,13 +66,15 @@ export function CidadeSelect({ uf, cidade, onChange, placeholder = "Buscar cidad
 
   return (
     <div className={cn("flex gap-2", className)}>
-      <div className="relative w-[92px] shrink-0">
+      <div className="relative w-[80px] shrink-0">
+        {/* fechado mostra só a sigla; aberto, a lista mostra o nome do estado */}
+        <span className={cn("pointer-events-none absolute left-3 top-2 text-sm font-semibold", !uf && "font-normal text-muted-foreground")}>{uf || "UF"}</span>
         <select
-          className="h-9 w-full appearance-none rounded-md border border-input bg-background pl-3 pr-7 text-sm font-medium shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+          className="h-9 w-full appearance-none rounded-md border border-input bg-background pl-3 pr-7 text-sm text-transparent shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
           value={uf || ""} title={uf ? NOMES_UF[uf] : "Estado"}
           onChange={e => { onChange(null, e.target.value || null); setBusca(""); if (e.target.value) setTimeout(() => { setAberto(true); inputRef.current?.focus() }, 0) }}>
-          <option value="">UF</option>
-          {UFS_ORDEM.map(u => <option key={u} value={u}>{u} — {NOMES_UF[u]}</option>)}
+          <option value="" className="text-foreground">UF</option>
+          {UFS_ORDEM.map(u => <option key={u} value={u} className="text-foreground">{u} — {NOMES_UF[u]}</option>)}
         </select>
         <ChevronDown className="pointer-events-none absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
       </div>
