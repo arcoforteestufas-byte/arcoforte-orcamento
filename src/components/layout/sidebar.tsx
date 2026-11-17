@@ -13,8 +13,9 @@ import { User as SupabaseUser } from "@supabase/supabase-js"
 const navigation = [
   { name: "Painel", href: "/", icon: Home, adminOnly: false },
   { name: "CRM", href: "/crm", icon: Kanban, adminOnly: false },
-  { name: "Orçamentos", href: "/orcamentos", icon: FileText, adminOnly: false },
-  { name: "Propostas", href: "/propostas", icon: FileText, adminOnly: false },
+  // vendedor faz orçamento e proposta só pelo cartão do lead no CRM
+  { name: "Orçamentos", href: "/orcamentos", icon: FileText, adminOnly: false, escondeVendedor: true },
+  { name: "Propostas", href: "/propostas", icon: FileText, adminOnly: false, escondeVendedor: true },
   { name: "Entregas", href: "/entregas", icon: Truck, adminOnly: false },
   { name: "Croquis", href: "/croquis", icon: FileSearch, adminOnly: false },
   { name: "Clientes", href: "/clientes", icon: Users, adminOnly: false },
@@ -30,7 +31,8 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
   const isAdministrador = cargo === 'Administrador'
   const nome = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Usuário'
 
-  const filteredNavigation = navigation.filter(item => !item.adminOnly || isAdministrador)
+  const isVendedor = cargo === 'Vendedor'
+  const filteredNavigation = navigation.filter(item => (!item.adminOnly || isAdministrador) && !(isVendedor && item.escondeVendedor))
 
   return (
     <div className="flex h-full w-72 flex-col border-r border-slate-200 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-40">
@@ -57,6 +59,8 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
         <nav className="grid gap-1.5 px-4 text-sm font-medium">
           {filteredNavigation.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
+              // vendedor dentro de um orçamento/proposta continua "no CRM"
+              || (isVendedor && item.href === "/crm" && (pathname.startsWith("/orcamentos") || pathname.startsWith("/propostas")))
             return (
               <Link
                 key={item.name}

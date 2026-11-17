@@ -20,7 +20,7 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
 }) {
   const [orcamentos, setOrcamentos] = useState<CrmOrcamentoResumo[] | null>(null)
   const [titulo, setTitulo] = useState("")
-  const [escolhido, setEscolhido] = useState("")
+  const [escolhidos, setEscolhidos] = useState<string[]>([])
   const [valor, setValor] = useState("")
   const [salvando, setSalvando] = useState(false)
   // onFechar muda a cada render de quem chama; em ref para não recarregar a janela à toa
@@ -29,22 +29,25 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
 
   useEffect(() => {
     if (!alvo) return
-    setOrcamentos(null); setEscolhido(""); setValor("")
+    setOrcamentos(null); setEscolhidos([]); setValor("")
     obterFichaLead(alvo.leadId).then(r => {
       if (!r.ok) { toast.error(r.erro); return onFecharRef.current() }
       const orcs = r.dados!.orcamentos.filter(o => o.status !== "Perdido")
       setTitulo(r.dados!.lead.titulo)
       setOrcamentos(orcs)
-      if (orcs.length === 1) setEscolhido(orcs[0].id)
+      if (orcs.length === 1) setEscolhidos([orcs[0].id])
       else if (!orcs.length) setValor(r.dados!.lead.valor_estimado ? String(r.dados!.lead.valor_estimado).replace(".", ",") : "")
     })
   }, [alvo])
+
+  const alternar = (id: string) => setEscolhidos(a => a.includes(id) ? a.filter(x => x !== id) : [...a, id])
+  const soma = (orcamentos || []).filter(o => escolhidos.includes(o.id)).reduce((s, o) => s + (Number(o.valor_total) || 0), 0)
 
   const confirmar = async () => {
     if (!alvo) return
     setSalvando(true)
     const v = valor ? Number(valor.replace(/\./g, "").replace(",", ".")) : null
-    const r = await marcarGanho(alvo.leadId, alvo.etapaId, escolhido || null, escolhido ? null : v)
+    const r = await marcarGanho(alvo.leadId, alvo.etapaId, escolhidos, escolhidos.length ? null : v)
     setSalvando(false)
     if (!r.ok) return toast.error(r.erro)
     toast.success("Venda ganha! 🎉")
@@ -62,26 +65,35 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
             <p className="text-sm"><b>{titulo}</b></p>
             {orcamentos.length > 0 ? (
               <>
-                <Label>Qual orçamento foi fechado?</Label>
-                <div className="space-y-2">
-                  {orcamentos.map(o => (
-                    <label key={o.id} className={`flex items-center gap-3 rounded-lg border p-3 text-sm cursor-pointer transition-colors ${escolhido === o.id ? "border-emerald-600 bg-emerald-50" : "hover:bg-muted/50"}`}>
-                      <input type="radio" name="orc" checked={escolhido === o.id} onChange={() => setEscolhido(o.id)} className="accent-emerald-600" />
-                      <span className="flex-1">{o.numero_pedido || o.id.slice(0, 8).toUpperCase()} · {formatarData(o.criado_em)} · {o.status}</span>
-                      <b>{brlCentavos.format(o.valor_total)}</b>
-                    </label>
-                  ))}
-                  <label className={`flex items-center gap-3 rounded-lg border p-3 text-sm cursor-pointer transition-colors ${escolhido === "" ? "border-emerald-600 bg-emerald-50" : "hover:bg-muted/50"}`}>
-                    <input type="radio" name="orc" checked={escolhido === ""} onChange={() => setEscolhido("")} className="accent-emerald-600" />
-                    Fechou sem um destes orçamentos
-                  </label>
+                <div>
+                  <Label>Quais orçamentos o cliente fechou?</Label>
+                  <p className="text-xs text-muted-foreground">Marque um ou mais. Pode alterar depois no cartão do lead.</p>
                 </div>
-                <p className="text-xs text-muted-foreground">O orçamento escolhido passa para o status <b>Aprovado</b>.</p>
+                <div className="space-y-2">
+                  {orcamentos.map(o => {
+                    const marcado = escolhidos.includes(o.id)
+                    return (
+                      <label key={o.id} className={`flex items-center gap-3 rounded-lg border p-3 text-sm cursor-pointer transition-colors ${marcado ? "border-emerald-600 bg-emerald-50" : "hover:bg-muted/50"}`}>
+                        <input type="checkbox" checked={marcado} onChange={() => alternar(o.id)} className="h-4 w-4 accent-emerald-600" />
+                        <span className="flex-1">{o.numero_pedido || o.id.slice(0, 8).toUpperCase()} · {formatarData(o.criado_em)} · {o.status}</span>
+                        <b>{brlCentavos.format(o.valor_total)}</b>
+                      </label>
+                    )
+                  })}
+                </div>
+                {escolhidos.length > 0 ? (
+                  <div className="flex items-center justify-between rounded-lg bg-emerald-600/10 px-3 py-2 text-sm">
+                    <span>{escolhidos.length} orçamento{escolhidos.length > 1 ? "s" : ""} fechado{escolhidos.length > 1 ? "s" : ""} → status <b>Aprovado</b></span>
+                    <b className="text-emerald-700">{brlCentavos.format(soma)}</b>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-700">Nenhum marcado: informe o valor fechado abaixo.</p>
+                )}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">Este lead não tem orçamento ligado.</p>
             )}
-            {escolhido === "" && (
+            {escolhidos.length === 0 && (
               <div className="grid gap-1.5">
                 <Label>Valor fechado (R$)</Label>
                 <input className={inputClasse} inputMode="decimal" value={valor} onChange={e => setValor(e.target.value)} />

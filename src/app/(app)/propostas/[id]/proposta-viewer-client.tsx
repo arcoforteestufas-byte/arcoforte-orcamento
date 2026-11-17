@@ -17,7 +17,7 @@ const PDFDownloadLink = dynamic(
 )
 import { PropostaDocument } from "../../components/PropostaDocument"
 
-export function PropostaViewerClient({ proposta }: { proposta: any }) {
+export function PropostaViewerClient({ proposta, voltarPara = "/propostas" }: { proposta: any; voltarPara?: string }) {
   const hasDadosJson = !!proposta.dados_json
 
   const handlePrint = () => {
@@ -28,7 +28,7 @@ export function PropostaViewerClient({ proposta }: { proposta: any }) {
     <div className="flex flex-col gap-6 pb-12 print:pb-0 h-[calc(100vh-100px)]">
       <div className="flex items-center justify-between gap-4 print:hidden shrink-0">
         <div className="flex items-center gap-4">
-          <Link href={`/propostas`} className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 w-9">
+          <Link href={voltarPara} title={voltarPara.startsWith("/crm") ? "Voltar ao lead" : "Voltar"} className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 w-9">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>

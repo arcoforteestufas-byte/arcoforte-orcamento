@@ -20,6 +20,8 @@ type User = {
     telefone?: string
     foto_url?: string | null
   }
+  crm_ver_todos?: boolean
+  crm_editar_todos?: boolean
 }
 
 export function UsersManager() {
@@ -29,7 +31,7 @@ export function UsersManager() {
   const [isSaving, setIsSaving] = useState(false)
   
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState({ email: '', password: '', nome: '', cargo: 'Visualizador', telefone: '', foto_url: null as string | null })
+  const [form, setForm] = useState({ email: '', password: '', nome: '', cargo: 'Visualizador', telefone: '', foto_url: null as string | null, crm_ver_todos: false, crm_editar_todos: false })
 
   const fetchUsers = async () => {
     setIsLoading(true)
@@ -52,7 +54,7 @@ export function UsersManager() {
 
   const handleOpenNew = () => {
     setEditingId(null)
-    setForm({ email: '', password: '', nome: '', cargo: 'Visualizador', telefone: '', foto_url: null })
+    setForm({ email: '', password: '', nome: '', cargo: 'Visualizador', telefone: '', foto_url: null, crm_ver_todos: false, crm_editar_todos: false })
     setIsOpen(true)
   }
 
@@ -64,7 +66,9 @@ export function UsersManager() {
       nome: user.user_metadata?.nome || '', 
       cargo: user.user_metadata?.cargo || 'Visualizador',
       telefone: user.user_metadata?.telefone || '',
-      foto_url: user.user_metadata?.foto_url || null
+      foto_url: user.user_metadata?.foto_url || null,
+      crm_ver_todos: !!user.crm_ver_todos,
+      crm_editar_todos: !!user.crm_editar_todos
     })
     setIsOpen(true)
   }
@@ -174,6 +178,11 @@ export function UsersManager() {
                         {u.user_metadata?.cargo === 'Vendedor' && <Shield size={12} className="mr-1" />}
                         {u.user_metadata?.cargo || 'Visualizador'}
                       </Badge>
+                      {u.user_metadata?.cargo === 'Vendedor' && (
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          CRM: {u.crm_ver_todos ? (u.crm_editar_todos ? 'vê e edita todos os leads' : 'vê todos os leads') : 'só os próprios leads'}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(u)} className="h-8 w-8 text-slate-500 hover:text-blue-600">
@@ -240,6 +249,23 @@ export function UsersManager() {
                 </SelectContent>
               </Select>
             </div>
+
+            {form.cargo === 'Vendedor' && (
+              <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">Leads no CRM</div>
+                <p className="text-xs text-slate-500">Por padrão o vendedor vê só os leads dele. Entregas, ele vê todas.</p>
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#d97021]" checked={form.crm_ver_todos}
+                    onChange={e => setForm(f => ({ ...f, crm_ver_todos: e.target.checked, crm_editar_todos: e.target.checked ? f.crm_editar_todos : false }))} />
+                  <span>Liberar para ver os leads de todos os vendedores</span>
+                </label>
+                <label className={`flex items-start gap-2 text-sm ${form.crm_ver_todos ? '' : 'opacity-50'}`}>
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#d97021]" disabled={!form.crm_ver_todos} checked={form.crm_editar_todos}
+                    onChange={e => setForm(f => ({ ...f, crm_editar_todos: e.target.checked }))} />
+                  <span>Também pode editar os leads dos outros</span>
+                </label>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>

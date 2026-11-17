@@ -16,9 +16,17 @@ export default async function PropostaViewPage({ params }: { params: Promise<{ i
     notFound()
   }
 
+  // proposta de um orçamento ligado a lead: o "voltar" leva ao lead no CRM
+  let voltarPara = "/propostas"
+  if (proposta.orcamento_id) {
+    const { data: orc } = await supabase.from('orcamentos').select('lead_id').eq('id', proposta.orcamento_id).maybeSingle()
+    if (orc?.lead_id) voltarPara = `/crm/lead/${orc.lead_id}`
+  }
+
   return (
     <PropostaViewerClient 
       proposta={proposta} 
+      voltarPara={voltarPara}
     />
   )
 }

@@ -177,6 +177,10 @@ export interface CrmQuadro {
   config: CrmConfig
   isAdmin: boolean
   userId: string
+  /** vendedor sem liberação: só vê os próprios leads */
+  restrito: boolean
+  /** admin liberou este usuário para ver os leads de todos */
+  liberadoVerTodos: boolean
   erro?: string
 }
 

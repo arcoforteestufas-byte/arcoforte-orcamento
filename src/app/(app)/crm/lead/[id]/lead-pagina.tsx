@@ -12,7 +12,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  adicionarAtividade, alternarTarefa, assumirLead, atualizarLead, criarTarefa, desvincularOrcamento, excluirAtividade,
+  adicionarAtividade, alternarTarefa, assumirLead, atualizarLead, criarTarefa, definirOrcamentoFechado, desvincularOrcamento, excluirAtividade,
   excluirLead, excluirTarefa, listarOrcamentosSemLead, moverLead, vincularOrcamento,
 } from "@/app/actions/crm"
 import { TIPOS_ATIVIDADE, hojeISO, type CrmFichaLead, type CrmOrcamentoResumo, type CrmQuadro } from "@/lib/crm-types"
@@ -70,7 +70,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
   const nomeUsuario = (id: string | null) => quadro.usuarios.find(u => u.id === id)?.nome || "—"
   const whats = linkWhatsApp(lead.telefone)
   const equipe = funil?.usuarios || []
-  const podeAssumir = !!funil?.membros_veem_todos && lead.status === "aberto" && lead.vendedor_id !== quadro.userId
+  const podeAssumir = (quadro.liberadoVerTodos || (!quadro.restrito && !!funil?.membros_veem_todos)) && lead.status === "aberto" && lead.vendedor_id !== quadro.userId
     && (equipe.includes(quadro.userId) || (!equipe.length && !quadro.isAdmin))
 
   // Formulários (voltam ao valor salvo quando o lead muda no servidor)
@@ -326,7 +326,14 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
             ) : (
               <div className="space-y-3">
                 {orcamentos.map(o => (
-                  <OrcamentoFluxo key={o.id} o={o} fechado={lead.orcamento_ganho_id === o.id} podeEditar={podeEditar}
+                  <OrcamentoFluxo key={o.id} o={o} podeEditar={podeEditar}
+                    fechado={lead.status === "ganho" && (o.status === "Aprovado" || lead.orcamento_ganho_id === o.id)}
+                    onFechado={lead.status === "ganho" && podeEditar ? async (sim) => {
+                      const r = await definirOrcamentoFechado(lead.id, o.id, sim)
+                      if (!r.ok) return toast.error(r.erro)
+                      toast.success(sim ? "Orçamento marcado como fechado" : "Orçamento desmarcado")
+                      atualizar()
+                    } : undefined}
                     onDesligar={async () => {
                       if (!confirm("Desligar este orçamento do lead? O orçamento não é apagado.")) return
                       const r = await desvincularOrcamento(lead.id, o.id)
@@ -351,11 +358,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
                   {entregas.map(en => <LinhaEntrega key={en.id} en={en} />)}
                 </div>
               )}
-              {orcamentos.length === 0 ? (
-                <div className="rounded-lg border-2 border-dashed p-6 text-center text-sm text-muted-foreground">
-                  Faça o orçamento primeiro: o frete é calculado para a cidade de entrega e gravado no orçamento.
-                </div>
-              ) : (
+              {(
                 <div className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Calcular frete</div>
                   <CalculadoraFrete
@@ -460,12 +463,15 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
 // ======================================================================
 
 /** Um orçamento do lead com os passos até o contrato */
-function OrcamentoFluxo({ o, fechado, podeEditar, onDesligar }: {
+function OrcamentoFluxo({ o, fechado, podeEditar, onDesligar, onFechado }: {
   o: CrmOrcamentoResumo
   fechado: boolean
   podeEditar: boolean
   onDesligar: () => void
+  /** lead ganho: marcar/desmarcar como fechado pelo cliente */
+  onFechado?: (fechado: boolean) => void
 }) {
+  const [mudando, setMudando] = useState(false)
   const faltam = o.faltam_para_proposta || []
   const detalhesOk = faltam.length === 0
   const propostaOk = !!o.proposta
@@ -504,8 +510,15 @@ function OrcamentoFluxo({ o, fechado, podeEditar, onDesligar }: {
           {formatarData(o.criado_em)}
           {o.largura && o.comprimento ? ` · ${o.largura} × ${o.comprimento} m (${Math.round(o.largura * o.comprimento).toLocaleString("pt-BR")} m²)` : ""}
         </span>
+        {onFechado && (
+          <label className={`ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset transition-colors ${fechado ? "bg-emerald-600 text-white ring-emerald-600" : "bg-background text-muted-foreground ring-border hover:text-foreground"}`}>
+            <input type="checkbox" className="h-3.5 w-3.5 accent-white" checked={fechado} disabled={mudando}
+              onChange={async e => { setMudando(true); await onFechado(e.target.checked); setMudando(false) }} />
+            Cliente fechou
+          </label>
+        )}
         {podeEditar && (
-          <button title="Desligar do lead" className="ml-auto text-muted-foreground hover:text-red-600" onClick={onDesligar}>
+          <button title="Desligar do lead" className={`${onFechado ? "" : "ml-auto "}text-muted-foreground hover:text-red-600`} onClick={onDesligar}>
             <Unlink className="h-4 w-4" />
           </button>
         )}

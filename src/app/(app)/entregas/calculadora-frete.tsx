@@ -61,9 +61,12 @@ export function CalculadoraFrete({
 
   useEffect(() => { listarVeiculosFrete().then(setVeiculos) }, [])
 
-  // sugere o menor veículo que comporta o peso (até o usuário escolher outro)
+  // sugere o menor veículo que comporta o peso (até o usuário escolher outro).
+  // Peso é opcional: sem peso, não sugere veículo (usa a tabela geral ou o que o vendedor escolher).
+  const kgInformado = numeroBR(peso)
   const sugerido = (() => {
-    const kg = numeroBR(peso)
+    const kg = kgInformado
+    if (!kg) return ""
     const comCap = veiculos.filter(v => v.capacidade_kg)
     if (!comCap.length) return veiculos[0]?.id || ""
     const cabe = comCap.filter(v => (v.capacidade_kg || 0) >= kg).sort((a, b) => (a.capacidade_kg || 0) - (b.capacidade_kg || 0))
@@ -134,8 +137,13 @@ export function CalculadoraFrete({
           </div>
         )}
         <div className="grid gap-1.5">
-          <Label className="flex items-center gap-1.5">Peso da carga (kg) {carregandoPeso && <Loader2 className="h-3 w-3 animate-spin" />}</Label>
-          <input className={inp} inputMode="decimal" value={peso} onChange={e => setPeso(e.target.value)} placeholder="calculado pelos produtos do orçamento" />
+          <Label className="flex items-center gap-1.5">
+            Peso da carga (kg) <span className="font-normal text-muted-foreground">— opcional</span>
+            {carregandoPeso && <Loader2 className="h-3 w-3 animate-spin" />}
+          </Label>
+          <input className={inp} inputMode="decimal" value={peso} onChange={e => setPeso(e.target.value)}
+            placeholder={orcId ? "vem dos produtos do orçamento, se tiverem peso" : "deixe vazio se não souber"} />
+          {!kgInformado && <p className="text-[11px] text-muted-foreground">Sem peso, o frete é calculado só pela distância. Escolha o veículo abaixo, se quiser.</p>}
         </div>
         {veiculos.length > 0 && (
           <div className="grid gap-1.5">
@@ -151,7 +159,7 @@ export function CalculadoraFrete({
                 </option>
               ))}
             </select>
-            {escolhaManual && <button type="button" className="justify-self-start text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setEscolhaManual(false)}>voltar para o sugerido pelo peso</button>}
+            {escolhaManual && !!kgInformado && <button type="button" className="justify-self-start text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setEscolhaManual(false)}>voltar para o sugerido pelo peso</button>}
           </div>
         )}
         {viagemDisponivel && (
@@ -202,10 +210,15 @@ export function CalculadoraFrete({
             <div className="space-y-1 text-xs text-white/75">
               <div className="flex justify-between"><span>Distância (ida)</span><span>{formatarKm(calc.kmIda)}{calc.minutos ? ` · ${formatarDuracao(calc.minutos)}` : ""}{calc.estimada ? " (estimada)" : ""}</span></div>
               <div className="flex justify-between"><span>{formatarKm(calc.kmCobrados)} cobrados{calc.tabela.frete_cobrar_volta ? " (ida e volta)" : ""} × {brl.format(calc.tabela.frete_valor_km)}/km</span><span>{brl.format(calc.valorKm)}</span></div>
-              {calc.tabela.frete_valor_kg > 0 && <div className="flex justify-between"><span>{calc.pesoKg.toLocaleString("pt-BR")} kg × {brl.format(calc.tabela.frete_valor_kg)}/kg</span><span>{brl.format(calc.valorPeso)}</span></div>}
+              {calc.tabela.frete_valor_kg > 0 && calc.pesoKg > 0 && <div className="flex justify-between"><span>{calc.pesoKg.toLocaleString("pt-BR")} kg × {brl.format(calc.tabela.frete_valor_kg)}/kg</span><span>{brl.format(calc.valorPeso)}</span></div>}
               {calc.desconto > 0 && <div className="flex justify-between text-emerald-300"><span>Desconto aproveitando viagem</span><span>− {brl.format(calc.desconto)}</span></div>}
               {calc.minimoAplicado && <div className="flex justify-between text-amber-300"><span>Frete mínimo aplicado</span><span>{brl.format(calc.tabela.frete_minimo)}</span></div>}
             </div>
+            {!onAplicar && !orcId ? (
+              <p className="flex items-start gap-1.5 border-t border-white/10 pt-3 text-xs text-white/60">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Estimativa para passar ao cliente. Para gravar o frete, faça um orçamento neste lead.
+              </p>
+            ) : (
             <div className="grid gap-1.5 border-t border-white/10 pt-3">
               <label className="text-xs text-white/60">Valor do frete no orçamento (pode ajustar)</label>
               <div className="flex gap-2">
@@ -219,6 +232,7 @@ export function CalculadoraFrete({
                 value={descricao} onChange={e => setDescricao(e.target.value)} title="Texto que vai no campo 'Tipo de frete' do orçamento" />
               <p className="flex items-center gap-1 text-[11px] text-white/45"><Info className="h-3 w-3" /> O frete entra no total do orçamento e na proposta.</p>
             </div>
+            )}
           </div>
         )}
       </div>

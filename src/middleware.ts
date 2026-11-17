@@ -34,17 +34,30 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  const cargoUsuario = user?.user_metadata?.cargo || 'Visualizador'
+  const ehVendedor = cargoUsuario === 'Vendedor'
+  // vendedor trabalha pelo CRM; os demais começam em orçamentos
+  const inicio = ehVendedor ? '/crm' : '/orcamentos'
+
   if (user && isLoginPage) {
-    // Redireciona para orçamentos se já estiver logado e tentar acessar o login
-    return NextResponse.redirect(new URL('/orcamentos', request.url))
+    return NextResponse.redirect(new URL(inicio, request.url))
+  }
+
+  // Vendedor faz orçamento e proposta só pelo cartão do lead no CRM:
+  // as listas gerais e o "novo orçamento" sem lead levam de volta ao CRM.
+  if (user && ehVendedor) {
+    const p = request.nextUrl.pathname
+    const semLead = p === '/orcamentos/novo' && !request.nextUrl.searchParams.get('lead')
+    if (p === '/orcamentos' || p === '/propostas' || semLead) {
+      return NextResponse.redirect(new URL('/crm', request.url))
+    }
   }
 
 
   // Proteção de rotas Admin
   if (user && (request.nextUrl.pathname.startsWith('/admin') || request.nextUrl.pathname.startsWith('/produtos'))) {
-    const cargo = user.user_metadata?.cargo || 'Visualizador'
-    if (cargo !== 'Administrador') {
-      return NextResponse.redirect(new URL('/orcamentos', request.url))
+    if (cargoUsuario !== 'Administrador') {
+      return NextResponse.redirect(new URL(inicio, request.url))
     }
   }
 

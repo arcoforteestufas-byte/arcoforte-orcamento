@@ -51,10 +51,12 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
   const funil = quadro.funilAtual
   const proximoFunil = quadro.funis.find(f => f.id === funil?.proximo_funil_id)
   const nomeUsuario = (id: string) => quadro.usuarios.find(u => u.id === id)?.nome || "?"
-  const mostraFiltroVendedor = quadro.isAdmin || !!funil?.membros_veem_todos
+  // vê leads dos outros: admin, liberado pelo admin, ou funil "membros veem todos" (menos para vendedor)
+  const veOutros = quadro.isAdmin || quadro.liberadoVerTodos || (!quadro.restrito && !!funil?.membros_veem_todos)
+  const mostraFiltroVendedor = veOutros
   const equipe = useMemo(() => funil?.usuarios || [], [funil])
   // Pode pegar leads da fila: funil compartilhado e a pessoa trabalha nele
-  const podeAssumir = !!funil?.membros_veem_todos && (equipe.includes(quadro.userId) || (!equipe.length && !quadro.isAdmin))
+  const podeAssumir = veOutros && (equipe.includes(quadro.userId) || (!equipe.length && !quadro.isAdmin))
 
   const assumir = async (l: CrmLead) => {
     const r = await assumirLead(l.id)

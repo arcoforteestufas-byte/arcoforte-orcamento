@@ -120,12 +120,12 @@ export async function obterQuadro(funilId?: string, opcoes?: { semLeads?: boolea
   const { supabase, user } = await sessao()
   const vazio: CrmQuadro = {
     funis: [], funilAtual: null, etapas: [], leads: [], usuarios: [], origens: [], motivos: [], campos: [],
-    contagemFunis: {}, config: CONFIG_PADRAO, isAdmin: false, userId: "",
+    contagemFunis: {}, config: CONFIG_PADRAO, isAdmin: false, userId: "", restrito: false, liberadoVerTodos: false,
   }
   if (!user) return { ...vazio, erro: "Não autenticado" }
   const isAdmin = ehAdmin(user)
 
-  const [funisR, acessosR, configR, usuariosR, origensR, motivosR, camposR, contagemR] = await Promise.all([
+  const [funisR, acessosR, configR, usuariosR, origensR, motivosR, camposR, contagemR, permR] = await Promise.all([
     supabase.from("crm_funis").select("*").eq("ativo", true).order("ordem"),
     supabase.from("crm_funil_usuarios").select("funil_id, usuario_id"),
     supabase.from("crm_config").select("*").eq("id", 1).maybeSingle(),
@@ -134,12 +134,17 @@ export async function obterQuadro(funilId?: string, opcoes?: { semLeads?: boolea
     supabase.from("crm_motivos_perda").select("*").order("ordem"),
     supabase.from("crm_campos").select("*").order("ordem"),
     supabase.from("crm_leads").select("funil_id").eq("status", "aberto"),
+    // liberação dada pelo admin (tabela do CRM v5; se ainda não existir, vem erro e vale "não liberado")
+    supabase.from("crm_permissoes_usuario").select("ver_todos").eq("usuario_id", user.id).maybeSingle(),
   ])
+  const liberadoVerTodos = !permR.error && !!permR.data?.ver_todos
+  // vendedor sem liberação só enxerga os próprios leads
+  const restrito = !isAdmin && user.user_metadata?.cargo === "Vendedor" && !liberadoVerTodos
 
   if (funisR.error || acessosR.error) {
     const msg = (funisR.error || acessosR.error)!.message
     return {
-      ...vazio, userId: user.id, isAdmin,
+      ...vazio, userId: user.id, isAdmin, restrito, liberadoVerTodos,
       erro: /crm_funis|crm_funil_usuarios|membros_veem_todos|column/.test(msg) ? MSG_SEM_TABELAS : msg,
     }
   }
@@ -207,6 +212,8 @@ export async function obterQuadro(funilId?: string, opcoes?: { semLeads?: boolea
     config: { ...CONFIG_PADRAO, ...(configR.data || {}) } as CrmConfig,
     isAdmin,
     userId: user.id,
+    restrito,
+    liberadoVerTodos,
   }
 }
 
@@ -490,7 +497,7 @@ export async function assumirLead(id: string): Promise<Resultado> {
 export async function marcarGanho(
   id: string,
   etapaId: string,
-  orcamentoId: string | null,
+  orcamentoIds: string[],
   valorFechado: number | null
 ): Promise<Resultado> {
   const { supabase, user } = await sessao()
@@ -499,28 +506,71 @@ export async function marcarGanho(
   const { data: etapa } = await supabase.from("crm_etapas").select("nome, tipo").eq("id", etapaId).maybeSingle()
   if (etapa?.tipo !== "ganho") return { ok: false, erro: "Etapa inválida para ganho." }
 
+  // o cliente pode fechar mais de um orçamento: todos viram "Aprovado" e o valor é a soma
   let valor = valorFechado
-  if (orcamentoId) {
-    const { data: orc, error: eOrc } = await supabase
-      .from("orcamentos").update({ status: "Aprovado", lead_id: id }).eq("id", orcamentoId)
-      .select("valor_total, numero_pedido")
+  const ids = Array.from(new Set(orcamentoIds.filter(Boolean)))
+  if (ids.length) {
+    const { data: orcs, error: eOrc } = await supabase
+      .from("orcamentos").update({ status: "Aprovado", lead_id: id }).in("id", ids)
+      .select("id, valor_total")
     if (eOrc) return { ok: false, erro: eOrc.message }
-    if (!orc?.length) return { ok: false, erro: "Sem permissão para aprovar esse orçamento." }
-    if (valor === null) valor = Number(orc[0].valor_total) || 0
+    if ((orcs?.length || 0) < ids.length) return { ok: false, erro: "Sem permissão para aprovar algum desses orçamentos." }
+    if (valor === null) valor = Math.round((orcs || []).reduce((s, o) => s + (Number(o.valor_total) || 0), 0) * 100) / 100
   }
 
   const agora = new Date().toISOString()
   const { data, error } = await supabase.from("crm_leads").update({
     etapa_id: etapaId, status: "ganho", ganho_em: agora, perdido_em: null, etapa_desde: agora,
     motivo_perda_id: null, motivo_perda_obs: null,
-    orcamento_ganho_id: orcamentoId, valor_fechado: valor, atualizado_em: agora,
+    orcamento_ganho_id: ids[0] || null, valor_fechado: valor, atualizado_em: agora,
   }).eq("id", id).select("id")
   if (error) return { ok: false, erro: error.message }
   if (!data?.length) return { ok: false, erro: "Sem permissão para alterar este lead." }
 
   const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
-  await registrar(supabase, id, "ganho", `Lead GANHO${valor ? ` — ${brl.format(valor)}` : ""}${orcamentoId ? " (orçamento aprovado)" : ""}`)
+  await registrar(supabase, id, "ganho", `Lead GANHO${valor ? ` — ${brl.format(valor)}` : ""}${ids.length ? ` (${ids.length} orçamento${ids.length > 1 ? "s" : ""} aprovado${ids.length > 1 ? "s" : ""})` : ""}`)
   revalidar(id)
+  revalidatePath("/orcamentos")
+  return { ok: true }
+}
+
+/**
+ * Lead já ganho: marca/desmarca um orçamento como fechado pelo cliente.
+ * O valor fechado do lead passa a ser a soma dos orçamentos aprovados.
+ */
+export async function definirOrcamentoFechado(leadId: string, orcamentoId: string, fechado: boolean): Promise<Resultado> {
+  const { supabase, user } = await sessao()
+  if (!user) return { ok: false, erro: "Não autenticado" }
+
+  const { data: lead } = await supabase.from("crm_leads").select("id, status, orcamento_ganho_id").eq("id", leadId).maybeSingle()
+  if (!lead) return { ok: false, erro: "Lead não encontrado." }
+  if (lead.status !== "ganho") return { ok: false, erro: "Marque o lead como Ganho para escolher os orçamentos fechados." }
+
+  let novoStatus = "Aprovado"
+  if (!fechado) {
+    // volta para Enviado se já tem proposta, senão Rascunho
+    const { data: prop } = await supabase.from("propostas").select("id").eq("orcamento_id", orcamentoId).limit(1)
+    novoStatus = prop?.length ? "Enviado" : "Rascunho"
+  }
+  const { data: orc, error: eOrc } = await supabase.from("orcamentos")
+    .update({ status: novoStatus }).eq("id", orcamentoId).eq("lead_id", leadId).select("id, numero_pedido")
+  if (eOrc) return { ok: false, erro: eOrc.message }
+  if (!orc?.length) return { ok: false, erro: "Sem permissão para alterar esse orçamento." }
+
+  const { data: aprovados } = await supabase.from("orcamentos").select("id, valor_total").eq("lead_id", leadId).eq("status", "Aprovado")
+  const soma = Math.round((aprovados || []).reduce((s, o) => s + (Number(o.valor_total) || 0), 0) * 100) / 100
+  const ganhoId = (aprovados || []).some(o => o.id === lead.orcamento_ganho_id) ? lead.orcamento_ganho_id : (aprovados?.[0]?.id || null)
+
+  const { data, error } = await supabase.from("crm_leads").update({
+    orcamento_ganho_id: ganhoId, ...(aprovados?.length ? { valor_fechado: soma } : {}), atualizado_em: new Date().toISOString(),
+  }).eq("id", leadId).select("id")
+  if (error) return { ok: false, erro: error.message }
+  if (!data?.length) return { ok: false, erro: "Sem permissão para alterar este lead." }
+
+  const nome = orc[0].numero_pedido || "#" + orcamentoId.slice(0, 8).toUpperCase()
+  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+  await registrar(supabase, leadId, "sistema", `Orçamento ${nome} ${fechado ? "marcado como fechado" : "desmarcado"}${aprovados?.length ? ` — valor fechado: ${brl.format(soma)}` : ""}`)
+  revalidar(leadId)
   revalidatePath("/orcamentos")
   return { ok: true }
 }
