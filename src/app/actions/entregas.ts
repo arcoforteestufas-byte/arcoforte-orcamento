@@ -5,8 +5,8 @@ import { createClient } from "@/utils/supabase/server"
 import { acharCidade, cidadePorIbge, cidadesDaUf, rotaPorEstrada } from "@/lib/geo/geo-server"
 import {
   CONFIG_ENT_PADRAO,
-  type CidadeOpcao, type EntConfig, type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora,
-  type EntVeiculo, type EntViagem, type StatusViagem,
+  type CalculoFrete, type CidadeOpcao, type EntConfig, type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora,
+  type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem,
 } from "@/lib/entregas-types"
 
 type Resultado<T = undefined> = { ok: true; dados?: T } | { ok: false; erro: string }
@@ -56,9 +56,21 @@ function msgErro(m: string) {
   return /ent_|column|schema cache/i.test(m) && /exist|find|column/i.test(m) ? MSG_SEM_TABELAS : m
 }
 
+function normalizarConfig(data: Record<string, unknown> | null | undefined): EntConfig {
+  const c = { ...CONFIG_ENT_PADRAO, ...(data || {}) } as EntConfig
+  // colunas NUMERIC chegam como texto
+  return {
+    ...c,
+    origem_lat: Number(c.origem_lat), origem_lng: Number(c.origem_lng),
+    frete_valor_km: Number(c.frete_valor_km) || 0, frete_valor_kg: Number(c.frete_valor_kg) || 0,
+    frete_minimo: Number(c.frete_minimo) || 0, frete_desconto_viagem: Number(c.frete_desconto_viagem) || 0,
+    frete_cobrar_volta: c.frete_cobrar_volta !== false,
+  }
+}
+
 async function lerConfig(supabase: Supa): Promise<EntConfig> {
   const { data } = await supabase.from("ent_config").select("*").eq("id", 1).maybeSingle()
-  return { ...CONFIG_ENT_PADRAO, ...(data || {}) } as EntConfig
+  return normalizarConfig(data)
 }
 
 // =====================================================================
@@ -174,7 +186,7 @@ export async function obterPainel(): Promise<EntPainel> {
     viagens: (vi.data || []) as EntViagem[],
     entregas: ((en.data || []) as EntEntrega[]).map(e => ({ ...e, distancia_estimada: !!e.distancia_estimada })),
     usuarios: us.data || [],
-    config: { ...CONFIG_ENT_PADRAO, ...(cfg.data || {}) } as EntConfig,
+    config: normalizarConfig(cfg.data),
     podeGerenciar: podeGerenciar(user),
     userId: user.id,
   }
@@ -635,6 +647,139 @@ export async function salvarOrigem(ibge: number): Promise<Resultado> {
     atualizado_em: new Date().toISOString(),
   })
   if (error) return { ok: false, erro: msgErro(error.message) }
+  revalidar()
+  return { ok: true }
+}
+
+// =====================================================================
+// FRETE (cálculo no CRM e no orçamento)
+// =====================================================================
+
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+
+/** Peso da carga de um orçamento = soma(quantidade × peso do produto) */
+export async function pesoDoOrcamento(orcamentoId: string): Promise<number> {
+  const { supabase } = await sessao()
+  const { data: itens } = await supabase.from("orcamento_itens").select("quantidade, produtos(peso_bruto_kg)").eq("orcamento_id", orcamentoId)
+  const total = (itens || []).reduce((s: number, i: Record<string, any>) => s + (Number(i.quantidade) || 0) * (Number(i.produtos?.peso_bruto_kg) || 0), 0)
+  return Math.round(total * 100) / 100
+}
+
+/**
+ * Calcula o frete da origem (ex.: Anápolis) até a cidade:
+ * km cobrados (ida, ou ida e volta) × R$/km + peso × R$/kg, menos o desconto se aproveitar viagem,
+ * nunca abaixo do mínimo.
+ */
+export async function calcularFrete(p: {
+  uf: string | null; cidade: string | null; cidade_ibge?: number | null; pesoKg?: number | null; aproveitarViagem?: boolean
+}): Promise<Resultado<CalculoFrete>> {
+  const { supabase, user } = await sessao()
+  if (!user) return { ok: false, erro: "Não autenticado" }
+  const cid = cidadePorIbge(p.cidade_ibge) || acharCidade(p.cidade, p.uf)
+  if (!cid) return { ok: false, erro: "Escolha o estado e a cidade de destino." }
+  const cfg = await lerConfig(supabase)
+
+  const rota = await rotaPorEstrada([{ lat: cfg.origem_lat, lng: cfg.origem_lng }, { lat: cid.lat, lng: cid.lng }])
+  if (!rota) return { ok: false, erro: "Não consegui calcular a distância." }
+
+  const kmIda = rota.km
+  const kmCobrados = Math.round(kmIda * (cfg.frete_cobrar_volta ? 2 : 1) * 10) / 10
+  const pesoKg = Math.max(0, Number(p.pesoKg) || 0)
+  const valorKm = kmCobrados * cfg.frete_valor_km
+  const valorPeso = pesoKg * cfg.frete_valor_kg
+  const bruto = valorKm + valorPeso
+  const desconto = p.aproveitarViagem ? bruto * (cfg.frete_desconto_viagem / 100) : 0
+  let valor = bruto - desconto
+  const minimoAplicado = cfg.frete_minimo > 0 && valor < cfg.frete_minimo
+  if (minimoAplicado) valor = cfg.frete_minimo
+  valor = Math.round(valor * 100) / 100
+
+  const origem = `${cfg.origem_nome}-${cfg.origem_uf}`
+  const destino = `${cid.nome}-${cid.uf}`
+  const descricao = [
+    `Frete CIF ArcoForte: ${origem} → ${destino} (~${Math.round(kmIda).toLocaleString("pt-BR")} km)`,
+    p.aproveitarViagem ? "aproveitando viagem programada" : "",
+    cfg.frete_observacao || "",
+  ].filter(Boolean).join(" · ")
+
+  return {
+    ok: true,
+    dados: {
+      origem, destino, kmIda, kmCobrados, minutos: rota.minutos, estimada: rota.estimada, pesoKg,
+      valorKm: Math.round(valorKm * 100) / 100, valorPeso: Math.round(valorPeso * 100) / 100,
+      desconto: Math.round(desconto * 100) / 100, minimoAplicado, valor, descricao,
+      tabela: {
+        frete_valor_km: cfg.frete_valor_km, frete_cobrar_volta: cfg.frete_cobrar_volta, frete_valor_kg: cfg.frete_valor_kg,
+        frete_minimo: cfg.frete_minimo, frete_desconto_viagem: cfg.frete_desconto_viagem,
+      },
+    },
+  }
+}
+
+/** Grava o frete no orçamento (entra no total e na proposta) */
+export async function aplicarFreteNoOrcamento(orcamentoId: string, valor: number, descricao: string, leadId?: string | null): Promise<Resultado> {
+  const { supabase, user } = await sessao()
+  if (!user) return { ok: false, erro: "Não autenticado" }
+  const v = Math.round((Number(valor) || 0) * 100) / 100
+  if (v < 0) return { ok: false, erro: "Valor de frete inválido." }
+  const { data, error } = await supabase.from("orcamentos")
+    .update({ frete: v, tipo_frete: descricao?.trim() || null })
+    .eq("id", orcamentoId).select("id, numero_pedido")
+  if (error) return { ok: false, erro: error.message }
+  if (!data?.length) return { ok: false, erro: "Sem permissão para alterar este orçamento (ele é de outro vendedor)." }
+  if (leadId) {
+    await supabase.from("crm_lead_atividades").insert({
+      lead_id: leadId, tipo: "orcamento",
+      descricao: `Frete ${brl.format(v)} aplicado no orçamento ${data[0].numero_pedido || "#" + String(orcamentoId).slice(0, 8).toUpperCase()}`,
+    })
+    revalidatePath(`/crm/lead/${leadId}`)
+  }
+  revalidatePath(`/orcamentos/${orcamentoId}`)
+  return { ok: true }
+}
+
+/** Entregas ligadas a um lead, com viagem, caminhão e motorista */
+export async function entregasDoLead(leadId: string): Promise<EntregaDoLead[]> {
+  const { supabase, user } = await sessao()
+  if (!user) return []
+  const { data: entregas, error } = await supabase.from("ent_entregas").select("*").eq("lead_id", leadId).order("criado_em", { ascending: false })
+  if (error || !entregas?.length) return []
+  const ids = [...new Set(entregas.map(e => e.viagem_id).filter(Boolean))] as string[]
+  const { data: viagens } = ids.length
+    ? await supabase.from("ent_viagens").select("id, titulo, status, saida_prevista, retorno_previsto, ultima_posicao_em, veiculo_id, motorista_id").in("id", ids)
+    : { data: [] as Record<string, any>[] }
+  const veicIds = [...new Set((viagens || []).map(v => v.veiculo_id).filter(Boolean))] as string[]
+  const motIds = [...new Set((viagens || []).map(v => v.motorista_id).filter(Boolean))] as string[]
+  const [{ data: veics }, { data: mots }] = await Promise.all([
+    veicIds.length ? supabase.from("ent_veiculos").select("id, placa").in("id", veicIds) : Promise.resolve({ data: [] as { id: string; placa: string }[] }),
+    motIds.length ? supabase.from("ent_motoristas").select("id, nome").in("id", motIds) : Promise.resolve({ data: [] as { id: string; nome: string }[] }),
+  ])
+  return (entregas as EntEntrega[]).map(e => {
+    const v = (viagens || []).find(x => x.id === e.viagem_id)
+    return {
+      ...e,
+      distancia_estimada: !!e.distancia_estimada,
+      viagem: v ? { id: v.id, titulo: v.titulo, status: v.status, saida_prevista: v.saida_prevista, retorno_previsto: v.retorno_previsto, ultima_posicao_em: v.ultima_posicao_em } : null,
+      veiculo: (veics || []).find(x => x.id === v?.veiculo_id)?.placa || null,
+      motorista: (mots || []).find(x => x.id === v?.motorista_id)?.nome || null,
+    }
+  })
+}
+
+export async function salvarTabelaFrete(t: Pick<EntConfig, "frete_valor_km" | "frete_cobrar_volta" | "frete_valor_kg" | "frete_minimo" | "frete_desconto_viagem" | "frete_observacao">): Promise<Resultado> {
+  const { supabase, erro } = await exigirGerente()
+  if (erro) return { ok: false, erro }
+  const { error } = await supabase.from("ent_config").upsert({
+    id: 1,
+    frete_valor_km: Math.max(0, numero(t.frete_valor_km) ?? 0),
+    frete_cobrar_volta: !!t.frete_cobrar_volta,
+    frete_valor_kg: Math.max(0, numero(t.frete_valor_kg) ?? 0),
+    frete_minimo: Math.max(0, numero(t.frete_minimo) ?? 0),
+    frete_desconto_viagem: Math.min(100, Math.max(0, numero(t.frete_desconto_viagem) ?? 0)),
+    frete_observacao: texto(t.frete_observacao),
+    atualizado_em: new Date().toISOString(),
+  })
+  if (error) return { ok: false, erro: /frete_/.test(error.message) ? "Rode a migração 20261119000000_entregas_frete.sql para salvar a tabela de frete." : msgErro(error.message) }
   revalidar()
   return { ok: true }
 }

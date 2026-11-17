@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/utils/supabase/client"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Save, Loader2 } from "lucide-react"
+import { Save, Loader2, Calculator } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { CalculadoraFrete } from "../../entregas/calculadora-frete"
 import { CroquiPicker } from "./croqui-picker"
 import { CulturaSelect } from "./cultura-select"
 
@@ -62,6 +64,12 @@ export function OrcamentoComercial({ orcamento }: { orcamento: any }) {
     !enderecoJaCustomizado && !!clienteEndereco
   )
   const [enderecoCustom, setEnderecoCustom] = useState(enderecoJaCustomizado ? orcamento.endereco_entrega : '')
+
+  // Calculadora de frete: parte da cidade do cliente ("Cidade / UF")
+  const [calcFreteAberto, setCalcFreteAberto] = useState(false)
+  const [cidadeTexto, ufTexto] = String(orcamento.clientes?.cidade_uf || "").split(/\s*[/-]\s*/)
+  const ufCliente = /^[A-Za-z]{2}$/.test(ufTexto || "") ? ufTexto.toUpperCase() : null
+  const cidadeCliente = ufCliente ? cidadeTexto : null
 
   const [formData, setFormData] = useState({
     desconto: orcamento.desconto || 0,
@@ -317,12 +325,33 @@ export function OrcamentoComercial({ orcamento }: { orcamento: any }) {
 
             <div className="grid grid-cols-3 items-center gap-4">
               <Label className="text-right text-blue-500">Frete (R$)</Label>
-              <Input
-                type="number" step="0.01" className="col-span-2 text-right"
-                value={formData.frete}
-                onChange={e => setFormData({ ...formData, frete: Number(e.target.value) })}
-              />
+              <div className="col-span-2 flex gap-2">
+                <Input
+                  type="number" step="0.01" className="text-right"
+                  value={formData.frete}
+                  onChange={e => setFormData({ ...formData, frete: Number(e.target.value) })}
+                />
+                <Button type="button" variant="outline" size="icon" title="Calcular frete pela distância" onClick={() => setCalcFreteAberto(true)}>
+                  <Calculator className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
+
+            <Dialog open={calcFreteAberto} onOpenChange={setCalcFreteAberto}>
+              <DialogContent className="sm:max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2"><Calculator className="h-5 w-5 text-[#d97021]" /> Calcular frete</DialogTitle>
+                  <DialogDescription>Distância por estrada desde a origem até a cidade de entrega, pela tabela de frete da logística.</DialogDescription>
+                </DialogHeader>
+                <CalculadoraFrete
+                  orcamentoFixo={orcamento.id}
+                  uf={ufCliente} cidade={cidadeCliente}
+                  onAplicar={(valor, descricao) => {
+                    setFormData(f => ({ ...f, frete: valor, tipo_frete: descricao }))
+                    setCalcFreteAberto(false)
+                  }} />
+              </DialogContent>
+            </Dialog>
 
             <div className="grid grid-cols-3 items-center gap-4">
               <Label className="text-right text-slate-500">Outras Desp. (R$)</Label>

@@ -97,10 +97,43 @@ export interface EntConfig {
   origem_ibge: number | null
   origem_lat: number
   origem_lng: number
+  // tabela de frete
+  frete_valor_km: number
+  frete_cobrar_volta: boolean
+  frete_valor_kg: number
+  frete_minimo: number
+  frete_desconto_viagem: number
+  frete_observacao: string | null
 }
 
 export const CONFIG_ENT_PADRAO: EntConfig = {
   origem_nome: "Anápolis", origem_uf: "GO", origem_ibge: 5201108, origem_lat: -16.3281, origem_lng: -48.953,
+  frete_valor_km: 6.5, frete_cobrar_volta: true, frete_valor_kg: 0, frete_minimo: 0, frete_desconto_viagem: 30, frete_observacao: null,
+}
+
+/** Resultado do cálculo de frete */
+export interface CalculoFrete {
+  origem: string
+  destino: string
+  kmIda: number
+  kmCobrados: number
+  minutos: number
+  estimada: boolean          // true = sem serviço de rota (linha reta × 1,3)
+  pesoKg: number
+  valorKm: number            // km cobrados × R$/km
+  valorPeso: number          // peso × R$/kg
+  desconto: number           // R$ de desconto por aproveitar viagem
+  minimoAplicado: boolean
+  valor: number              // valor final sugerido
+  descricao: string          // texto para o campo "Tipo de frete" do orçamento
+  tabela: Pick<EntConfig, "frete_valor_km" | "frete_cobrar_volta" | "frete_valor_kg" | "frete_minimo" | "frete_desconto_viagem">
+}
+
+/** Entrega do lead, com os dados da viagem para mostrar no CRM */
+export interface EntregaDoLead extends EntEntrega {
+  viagem: Pick<EntViagem, "id" | "titulo" | "status" | "saida_prevista" | "retorno_previsto" | "ultima_posicao_em"> | null
+  veiculo: string | null
+  motorista: string | null
 }
 
 export type CidadeOpcao = { ibge: number; nome: string; uf: string; lat: number; lng: number }

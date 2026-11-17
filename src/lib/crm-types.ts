@@ -139,6 +139,8 @@ export interface CrmOrcamentoResumo {
   largura?: number | null
   comprimento?: number | null
   faltam_para_proposta?: string[]
+  frete?: number
+  tipo_frete?: string | null
   proposta?: { id: string; status: string; criado_em: string } | null
 }
 

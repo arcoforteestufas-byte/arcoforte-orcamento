@@ -9,7 +9,7 @@ import {
   Radio, RefreshCw, Route, Star, Trash2, Truck, UserRound, XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { cancelarEntrega, excluirCadastro, programarEntrega, salvarOrigem } from "@/app/actions/entregas"
+import { cancelarEntrega, excluirCadastro, programarEntrega, salvarOrigem, salvarTabelaFrete } from "@/app/actions/entregas"
 import {
   NOMES_UF, STATUS_ENTREGA, STATUS_VIAGEM, formatarKm, posicaoRecente,
   type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora, type EntVeiculo, type EntViagem,
@@ -727,6 +727,8 @@ function AbaCadastros({ painel }: { painel: EntPainel }) {
         }}>Salvar origem</Button>
       </section>
 
+      <TabelaFrete painel={painel} onSalvo={atualizar} />
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Lista titulo="Caminhões" icone={<Truck className="h-4 w-4 text-[#d97021]" />} onNovo={() => setVeic({})}>
           {!painel.veiculos.length && vazio("Nenhum caminhão cadastrado.")}
@@ -784,5 +786,55 @@ function Linha({ ativo, principal, detalhe, onEditar, onExcluir, cor }: { ativo:
       <button className="text-muted-foreground hover:text-foreground" onClick={onEditar}><Pencil className="h-3.5 w-3.5" /></button>
       <button className="text-muted-foreground hover:text-red-600" onClick={onExcluir}><Trash2 className="h-3.5 w-3.5" /></button>
     </div>
+  )
+}
+
+/** Tabela de frete usada no cálculo do CRM e do orçamento */
+function TabelaFrete({ painel, onSalvo }: { painel: EntPainel; onSalvo: () => void }) {
+  const c = painel.config
+  const br = (n: number) => String(n).replace(".", ",")
+  const [t, setT] = useState({
+    km: br(c.frete_valor_km), volta: c.frete_cobrar_volta, kg: br(c.frete_valor_kg), minimo: br(c.frete_minimo),
+    desconto: br(c.frete_desconto_viagem), obs: c.frete_observacao || "",
+  })
+  const [salvando, setSalvando] = useState(false)
+  const n = (s: string) => Number(String(s).replace(/\./g, "").replace(",", ".")) || 0
+  // exemplo: 300 km de ida, 2.000 kg
+  const exKm = 300 * (t.volta ? 2 : 1)
+  const exemplo = Math.max(n(t.minimo), exKm * n(t.km) + 2000 * n(t.kg))
+  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+  const campo = "flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+
+  return (
+    <section className="rounded-2xl border bg-background p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold"><Route className="h-4 w-4 text-[#d97021]" /> Tabela de frete</div>
+      <p className="mb-4 text-xs text-muted-foreground">
+        Usada pelos vendedores no CRM e no orçamento: <b>km × R$/km + peso × R$/kg</b>, com desconto ao aproveitar viagem já programada, nunca abaixo do mínimo.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <label className="grid gap-1 text-xs font-medium">R$ por km<input className={campo} inputMode="decimal" value={t.km} onChange={e => setT({ ...t, km: e.target.value })} /></label>
+        <label className="grid gap-1 text-xs font-medium">R$ por kg (opcional)<input className={campo} inputMode="decimal" value={t.kg} onChange={e => setT({ ...t, kg: e.target.value })} /></label>
+        <label className="grid gap-1 text-xs font-medium">Frete mínimo (R$)<input className={campo} inputMode="decimal" value={t.minimo} onChange={e => setT({ ...t, minimo: e.target.value })} /></label>
+        <label className="grid gap-1 text-xs font-medium">Desconto ao aproveitar viagem (%)<input className={campo} inputMode="decimal" value={t.desconto} onChange={e => setT({ ...t, desconto: e.target.value })} /></label>
+        <label className="flex items-center gap-2 self-end pb-2 text-sm"><input type="checkbox" className="accent-[#d97021]" checked={t.volta} onChange={e => setT({ ...t, volta: e.target.checked })} /> Cobrar ida e volta</label>
+      </div>
+      <label className="mt-3 grid gap-1 text-xs font-medium">Texto extra no orçamento (opcional)
+        <input className={campo} value={t.obs} onChange={e => setT({ ...t, obs: e.target.value })} placeholder="Ex.: descarga por conta do cliente" />
+      </label>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <span className="text-xs text-muted-foreground">Exemplo: cidade a 300 km, 2.000 kg → <b className="text-foreground">{brl.format(exemplo)}</b>{n(t.desconto) ? ` (aproveitando viagem: ${brl.format(Math.max(n(t.minimo), exemplo * (1 - n(t.desconto) / 100)))})` : ""}</span>
+        <Button className="bg-[#d97021] hover:bg-[#c3631b]" disabled={salvando} onClick={async () => {
+          setSalvando(true)
+          const r = await salvarTabelaFrete({
+            frete_valor_km: n(t.km), frete_cobrar_volta: t.volta, frete_valor_kg: n(t.kg), frete_minimo: n(t.minimo),
+            frete_desconto_viagem: n(t.desconto), frete_observacao: t.obs,
+          })
+          setSalvando(false)
+          if (!r.ok) return toast.error(r.erro)
+          toast.success("Tabela de frete salva")
+          onSalvo()
+        }}>{salvando ? "Salvando..." : "Salvar tabela de frete"}</Button>
+      </div>
+    </section>
   )
 }

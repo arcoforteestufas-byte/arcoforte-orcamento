@@ -254,6 +254,8 @@ export async function obterFichaLead(id: string): Promise<Resultado<CrmFichaLead
     ...medidas(o.parametros_utilizados),
     faltam_para_proposta: getCamposFaltando(o).map(c => c.label),
     proposta: propostasPorOrc[o.id] || null,
+    frete: Number(o.frete) || 0,
+    tipo_frete: o.tipo_frete ?? null,
   }))
 
   const { clientes, ...resto } = lead as Record<string, any>

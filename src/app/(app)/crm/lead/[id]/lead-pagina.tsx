@@ -20,6 +20,8 @@ import { LeadCampos, leadParaValores, type LeadFormValores } from "../../lead-ca
 import { CamposQualificacao, ScoreBadge } from "../../crm-score"
 import { EnviarFunilDialog, GanhoDialog, PerdidoDialog, type AlvoEtapa } from "../../crm-dialogs"
 import { ClienteDoLead, type ModoCliente } from "../../cliente-do-lead"
+import { CalculadoraFrete } from "../../../entregas/calculadora-frete"
+import { STATUS_ENTREGA, formatarKm, posicaoRecente, type EntregaDoLead } from "@/lib/entregas-types"
 import { brlCentavos, dataHora, diasDesde, formatarData, iniciais, inputClasse, linkWhatsApp, validarDataOpcional } from "../../crm-utils"
 
 const ROTULO_ATIVIDADE: Record<string, string> = {
@@ -54,8 +56,8 @@ function Cartao({ titulo, icone, acoes, children, className = "" }: {
 
 type FreteProximo = { id: string; titulo: string | null; saida_prevista: string; cidades: string[] }
 
-export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = [] }: {
-  ficha: CrmFichaLead; quadro: CrmQuadro; orcamentoSalvoId?: string | null; fretes?: FreteProximo[]
+export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = [], entregas = [] }: {
+  ficha: CrmFichaLead; quadro: CrmQuadro; orcamentoSalvoId?: string | null; fretes?: FreteProximo[]; entregas?: EntregaDoLead[]
 }) {
   const router = useRouter()
   const { lead, cliente, orcamentos, atividades, tarefas, podeEditar } = ficha
@@ -336,6 +338,39 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
             )}
           </Cartao>
 
+          <Cartao titulo="Entrega e frete" icone={<Truck className="h-4 w-4 text-[#d97021]" />}
+            acoes={lead.status === "ganho" && (
+              <Link href={`/entregas?lead=${lead.id}`} className={buttonVariants({ size: "sm", className: "gap-1 bg-emerald-600 hover:bg-emerald-700" })}>
+                <Truck className="h-3.5 w-3.5" /> Programar entrega
+              </Link>
+            )}>
+            <div className="space-y-5">
+              {entregas.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Entregas deste cliente</div>
+                  {entregas.map(en => <LinhaEntrega key={en.id} en={en} />)}
+                </div>
+              )}
+              {orcamentos.length === 0 ? (
+                <div className="rounded-lg border-2 border-dashed p-6 text-center text-sm text-muted-foreground">
+                  Faça o orçamento primeiro: o frete é calculado para a cidade de entrega e gravado no orçamento.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Calcular frete</div>
+                  <CalculadoraFrete
+                    uf={lead.uf} cidade={lead.cidade} leadId={lead.id}
+                    orcamentos={orcamentos.filter(o => o.status !== "Perdido").map(o => ({
+                      id: o.id, frete: o.frete,
+                      rotulo: `${o.numero_pedido || "#" + o.id.slice(0, 8).toUpperCase()} · ${brlCentavos.format(o.valor_total)}${o.frete ? ` · frete ${brlCentavos.format(o.frete)}` : " · sem frete"}`,
+                    }))}
+                    viagemDisponivel={fretes.length ? fretes.map(f => `saída ${formatarData(f.saida_prevista)} → ${f.cidades.slice(0, 3).join(", ")}`).join(" · ") : null}
+                    onAplicado={atualizar} />
+                </div>
+              )}
+            </div>
+          </Cartao>
+
           <Cartao titulo="Qualificação do lead" icone={<ClipboardList className="h-4 w-4 text-[#d97021]" />}
             acoes={podeEditar && camposMudaram && (
               <Button size="sm" className="gap-1 bg-[#d97021] hover:bg-[#c3631b]" disabled={salvando === "campos"} onClick={() => salvar("campos")}>
@@ -463,6 +498,8 @@ function OrcamentoFluxo({ o, fechado, podeEditar, onDesligar }: {
         <span className="font-semibold text-sm">{o.numero_pedido || `#${o.id.slice(0, 8).toUpperCase()}`}</span>
         <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${COR_STATUS_ORC[o.status] || "bg-muted"}`}>{o.status}</span>
         {fechado && <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-medium text-white">Fechado</span>}
+        {o.frete ? <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-inset ring-blue-200" title={o.tipo_frete || ""}>Frete {brlCentavos.format(o.frete)}</span>
+          : <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">sem frete</span>}
         <span className="text-xs text-muted-foreground">
           {formatarData(o.criado_em)}
           {o.largura && o.comprimento ? ` · ${o.largura} × ${o.comprimento} m (${Math.round(o.largura * o.comprimento).toLocaleString("pt-BR")} m²)` : ""}
@@ -791,5 +828,51 @@ function Historico({ leadId, atividades, nomeUsuario, userId, isAdmin, onMudou }
         ))}
       </ol>
     </Cartao>
+  )
+}
+
+/** Uma entrega do lead (status, viagem, caminhão, motorista e datas) */
+function LinhaEntrega({ en }: { en: EntregaDoLead }) {
+  const st = STATUS_ENTREGA[en.status]
+  const aoVivo = en.viagem?.status === "em_rota" && posicaoRecente(en.viagem.ultima_posicao_em)
+  const passos: { nome: string; feito: boolean; atual: boolean }[] = [
+    { nome: "Solicitada", feito: true, atual: en.status === "a_programar" },
+    { nome: "Programada", feito: ["programada", "em_rota", "entregue"].includes(en.status), atual: en.status === "programada" },
+    { nome: "Em rota", feito: ["em_rota", "entregue"].includes(en.status), atual: en.status === "em_rota" },
+    { nome: "Entregue", feito: en.status === "entregue", atual: en.status === "entregue" },
+  ]
+  return (
+    <div className={`rounded-xl border p-3 ${en.status === "cancelada" ? "opacity-60" : ""}`}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <MapPin className="h-4 w-4 text-[#d97021]" />
+            <b>{[en.cidade, en.uf].filter(Boolean).join(" - ") || en.destinatario}</b>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${st.classe}`}>{st.rotulo}</span>
+            {aoVivo && <span className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-medium text-white">● ao vivo</span>}
+          </div>
+          <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+            {en.distancia_km != null && <span>{formatarKm(en.distancia_km)}</span>}
+            {en.viagem && <span>Saída {formatarData(en.viagem.saida_prevista)}</span>}
+            {en.chegada_prevista && <span>Chegada prevista {formatarData(en.chegada_prevista)}</span>}
+            {en.entregue_em && <span className="text-emerald-700">Entregue {formatarData(en.entregue_em)}</span>}
+            {en.veiculo && <span>🚚 {en.veiculo}</span>}
+            {en.motorista && <span>{en.motorista}</span>}
+            {en.peso_kg ? <span>{Number(en.peso_kg).toLocaleString("pt-BR")} kg</span> : null}
+          </div>
+        </div>
+        {en.viagem && <Link href={`/entregas/viagem/${en.viagem.id}`} className="text-xs font-medium text-[#d97021] hover:underline">ver viagem</Link>}
+      </div>
+      {en.status !== "cancelada" && (
+        <ol className="mt-3 grid grid-cols-4 gap-1">
+          {passos.map(p => (
+            <li key={p.nome} className="space-y-1">
+              <div className={`h-1.5 rounded-full ${p.feito ? (p.nome === "Entregue" ? "bg-emerald-500" : "bg-[#d97021]") : "bg-muted"}`} />
+              <div className={`text-[10px] ${p.atual ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{p.nome}</div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
   )
 }
