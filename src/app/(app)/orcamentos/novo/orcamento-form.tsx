@@ -2304,25 +2304,27 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       <p className="text-xs text-slate-500">Módulo de {larguraModuloAtual} m só tem arco simples.</p>
                     )}
                     {param.nome_tecnico === 'tipo_arco' && podeArcoPorModulo && (
-                      <div className="mt-1 rounded-md border border-dashed border-slate-300 bg-slate-50/60 p-3 grid gap-2">
-                        <div className="flex items-center gap-2">
+                      <div className={`mt-1 overflow-hidden rounded-lg border transition-colors ${arcoPorModulo ? 'border-orange-200 bg-orange-50/40' : 'border-slate-200 bg-slate-50/60'}`}>
+                        <div className="flex items-start gap-2.5 px-3 py-2.5">
                           <Checkbox
                             id="arco_por_modulo"
+                            className="mt-0.5"
                             checked={arcoPorModulo}
                             onCheckedChange={(c) => alternarArcoPorModulo(!!c)}
                           />
-                          <Label htmlFor="arco_por_modulo" className="text-xs font-medium text-slate-600 cursor-pointer">
-                            Avançado: escolher o arco de cada módulo
+                          <Label htmlFor="arco_por_modulo" className="grid cursor-pointer gap-0.5">
+                            <span className="text-xs font-semibold text-slate-700">Arco diferente por módulo</span>
+                            <span className="text-[11px] font-normal leading-snug text-slate-500">Opção avançada: escolha o tipo de arco de cada módulo.</span>
                           </Label>
                         </div>
                         {arcoPorModulo && (
-                          <>
-                            <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="grid gap-2.5 border-t border-orange-200/70 bg-white/70 px-3 py-3">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-2">
                               {arcosModulosForm.map((arco, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                  <span className="text-xs text-slate-600 w-20 shrink-0">Módulo {i + 1}</span>
+                                <div key={i} className="grid gap-1 rounded-md border border-slate-200 bg-white p-2 shadow-xs">
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Módulo {i + 1}</span>
                                   <Select value={arco} onValueChange={(val) => { if (val) mudarArcoDoModulo(i, val) }}>
-                                    <SelectTrigger aria-label={`Arco do módulo ${i + 1}`} className="h-8 w-full bg-white text-xs">
+                                    <SelectTrigger aria-label={`Arco do módulo ${i + 1}`} className="h-8 w-full min-w-0 bg-white text-xs font-medium">
                                       <SelectValue placeholder="Selecione..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -2334,10 +2336,14 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                                 </div>
                               ))}
                             </div>
-                            <p className="text-[11px] text-muted-foreground leading-tight">
-                              Cada módulo é calculado com o arco escolhido aqui. Módulos novos começam com o tipo de arco acima.
-                            </p>
-                          </>
+                            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                              <span className="text-[11px] font-medium text-slate-600">
+                                {Object.entries(arcosModulosForm.reduce<Record<string, number>>((acc, a) => { if (a) acc[a] = (acc[a] || 0) + 1; return acc }, {}))
+                                  .map(([tipo, n]) => `${n} ${tipo.toLowerCase()}`).join(' · ')}
+                              </span>
+                              <span className="text-[11px] text-slate-500">Módulos novos começam com o tipo de arco acima.</span>
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}
