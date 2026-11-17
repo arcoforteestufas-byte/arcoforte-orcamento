@@ -25,7 +25,12 @@ export type CaminhaoMapa = {
   popupHtml?: string
 }
 
-export type LinhaMapa = { pontos: [number, number][]; cor: string; tracejada?: boolean; espessura?: number; popupHtml?: string }
+export type LinhaMapa = {
+  pontos: [number, number][]; cor: string; tracejada?: boolean; espessura?: number; popupHtml?: string
+  id?: string; opacidade?: number; animada?: boolean
+}
+
+export type TemaMapa = "claro" | "escuro"
 
 export function escaparHtml(s: unknown) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!))
@@ -49,7 +54,16 @@ const UFS = (brasilUfs as unknown as { features: FeatureUf[] }).features
 export function Mapa({
   pontos = [], caminhoes = [], linhas = [], altura = 480, pontoEditavel, onMover, ajustarAoMudar = true, centralizar = 0,
   coresUf, dicaUf, onUf, ufSelecionada, origem, className = "",
+  tema = "claro", onLinha, onLinhaHover, foco, ajustarInicial = true,
 }: {
+  tema?: TemaMapa
+  /** clique / mouse sobre uma rota (usa LinhaMapa.id) */
+  onLinha?: (id: string) => void
+  onLinhaHover?: (id: string | null) => void
+  /** enquadra estes pontos sempre que `chave` mudar */
+  foco?: { limites: [number, number][]; chave: number } | null
+  /** false = não enquadra os pontos automaticamente (quem controla é o `foco`) */
+  ajustarInicial?: boolean
   pontos?: PontoMapa[]
   caminhoes?: CaminhaoMapa[]
   linhas?: LinhaMapa[]
@@ -74,23 +88,26 @@ export function Mapa({
   const siglasRef = useRef<Leaflet.LayerGroup | null>(null)
   const ruasRef = useRef<Leaflet.TileLayer | null>(null)
   const editRef = useRef<Leaflet.Marker | null>(null)
-  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada })
-  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada }
-  const ajustouRef = useRef(false)
+  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover })
+  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover }
+  const ajustouRef = useRef(!ajustarInicial)
   const chaveAjusteRef = useRef("")
   const centralizarRef = useRef(0)
+  const focoRef = useRef(0)
+  const escuro = tema === "escuro"
 
   function estiloUf(uf: string): Leaflet.PathOptions {
     const p = props.current
+    const esc = p.tema === "escuro"
     const sel = p.ufSelecionada === uf
     const cor = p.coresUf?.[uf]
     const zoom = mapaRef.current?.getZoom() ?? 4
     const comRuas = zoom >= ZOOM_RUAS
     return {
-      color: sel ? "#d97021" : "#ffffff",
+      color: sel ? "#f59e0b" : esc ? "#334155" : "#ffffff",
       weight: sel ? 2.5 : 1.2,
-      fillColor: cor || "#e2e8f0",
-      fillOpacity: comRuas ? (cor ? 0.18 : 0) : (cor ? 0.9 : 1),
+      fillColor: cor || (esc ? "#1e293b" : "#e2e8f0"),
+      fillOpacity: comRuas ? (cor ? 0.18 : 0) : (cor ? (esc ? 0.75 : 0.9) : 1),
       opacity: comRuas ? 0.9 : 1,
     }
   }
@@ -120,10 +137,23 @@ export function Mapa({
 
     for (const ln of linhas) {
       if (ln.pontos.length < 2) continue
-      // contorno branco por baixo deixa a rota legível sobre qualquer fundo
-      L.polyline(ln.pontos, { color: "#fff", weight: (ln.espessura || 4) + 3, opacity: 0.9, interactive: false }).addTo(camada)
-      const pl = L.polyline(ln.pontos, { color: ln.cor, weight: ln.espessura || 4, opacity: 0.9, dashArray: ln.tracejada ? "8 8" : undefined }).addTo(camada)
-      if (ln.popupHtml) pl.bindPopup(ln.popupHtml)
+      const op = ln.opacidade ?? 0.9
+      const esp = ln.espessura || 4
+      // contorno por baixo deixa a rota legível sobre qualquer fundo
+      L.polyline(ln.pontos, { color: escuro ? "#0f172a" : "#fff", weight: esp + 3, opacity: op, interactive: false }).addTo(camada)
+      const pl = L.polyline(ln.pontos, {
+        color: ln.cor, weight: esp, opacity: op, dashArray: ln.tracejada || ln.animada ? "10 10" : undefined,
+        className: ln.animada ? "rota-animada" : undefined,
+      }).addTo(camada)
+      // área de clique mais larga (invisível)
+      if (ln.id && (props.current.onLinha || props.current.onLinhaHover)) {
+        const id = ln.id
+        L.polyline(ln.pontos, { color: "#000", weight: 18, opacity: 0 })
+          .on("click", () => props.current.onLinha?.(id))
+          .on("mouseover", () => props.current.onLinhaHover?.(id))
+          .on("mouseout", () => props.current.onLinhaHover?.(null))
+          .addTo(camada)
+      } else if (ln.popupHtml) pl.bindPopup(ln.popupHtml)
       for (const p of ln.pontos) limites.push(p)
     }
 
@@ -199,6 +229,16 @@ export function Mapa({
       return
     }
 
+    // foco controlado de fora (ex.: clicou numa viagem)
+    if (foco && foco.chave !== focoRef.current) {
+      focoRef.current = foco.chave
+      if (foco.limites.length >= 2) mapa.flyToBounds(L.latLngBounds(foco.limites), { padding: [80, 80], maxZoom: 9, duration: 1.1 })
+      else if (foco.limites.length === 1) mapa.flyTo(foco.limites[0], 9, { duration: 1.1 })
+      else mapa.flyToBounds(LIMITES_BRASIL, { padding: [10, 10], duration: 1.1 })
+      ajustouRef.current = true
+      return
+    }
+
     // enquadra os pontos (na primeira vez e quando o conjunto muda); sem pontos: Brasil inteiro
     const chave = limites.map(l => l.map(n => n.toFixed(2)).join(",")).sort().join("|")
     if (!ajustouRef.current || (ajustarAoMudar && chave !== chaveAjusteRef.current)) {
@@ -219,7 +259,7 @@ export function Mapa({
       if (cancelado || !divRef.current || mapaRef.current) return
       LRef.current = L
       const mapa = L.map(divRef.current, {
-        zoomControl: true, attributionControl: true, minZoom: 3, maxZoom: 18,
+        zoomControl: props.current.tema !== "escuro", attributionControl: true, minZoom: 3, maxZoom: 18,
         maxBounds: LIMITES_BRASIL, maxBoundsViscosity: 0.9, zoomSnap: 0.5, worldCopyJump: false,
       })
       mapa.fitBounds(LIMITES_BRASIL, { padding: [10, 10] })
@@ -231,6 +271,11 @@ export function Mapa({
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       })
+      // tema escuro: escurece as ruas com filtro (o mapa do OpenStreetMap só existe claro)
+      if (props.current.tema === "escuro") {
+        const painelRuas = mapa.getPane("tilePane")
+        if (painelRuas) painelRuas.style.filter = "invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6)"
+      }
 
       // estados do Brasil
       ufsRef.current = L.geoJSON(brasilUfs as unknown as GeoJSON.FeatureCollection, {
@@ -258,7 +303,13 @@ export function Mapa({
         const [dy, dx] = ajuste[f.properties.uf] || [0, 0]
         L.marker([centro.lat + dy, centro.lng + dx], {
           interactive: false,
-          icon: L.divIcon({ className: "", html: `<span style="font:700 10px/1 system-ui;color:#475569;letter-spacing:.04em;text-shadow:0 0 3px #fff,0 0 3px #fff">${f.properties.uf}</span>`, iconSize: [24, 12], iconAnchor: [12, 6] }),
+          icon: L.divIcon({
+            className: "",
+            html: props.current.tema === "escuro"
+              ? `<span style="font:700 10px/1 system-ui;color:#94a3b8;letter-spacing:.06em;text-shadow:0 0 4px #0f172a,0 0 4px #0f172a">${f.properties.uf}</span>`
+              : `<span style="font:700 10px/1 system-ui;color:#475569;letter-spacing:.04em;text-shadow:0 0 3px #fff,0 0 3px #fff">${f.properties.uf}</span>`,
+            iconSize: [24, 12], iconAnchor: [12, 6],
+          }),
         }).addTo(siglasRef.current!)
       })
       siglasRef.current.addTo(mapa)
@@ -291,8 +342,15 @@ export function Mapa({
   useEffect(() => { desenhar() })
 
   return (
-    <div className={`relative z-0 w-full overflow-hidden rounded-2xl border shadow-sm ${className}`}
-      style={{ height: altura, background: "radial-gradient(ellipse at 40% 35%, #f8fafc 0%, #eef2f7 55%, #e2e8f0 100%)" }}>
+    <div className={`relative z-0 w-full overflow-hidden ${escuro ? "" : "rounded-2xl border shadow-sm"} ${className}`}
+      style={{
+        height: altura,
+        background: escuro
+          ? "radial-gradient(ellipse at 45% 40%, #1e293b 0%, #0f172a 60%, #020617 100%)"
+          : "radial-gradient(ellipse at 40% 35%, #f8fafc 0%, #eef2f7 55%, #e2e8f0 100%)",
+      }}>
+      {/* animação das rotas em andamento */}
+      <style>{`.rota-animada{animation:rota-correr 1.2s linear infinite}@keyframes rota-correr{to{stroke-dashoffset:-20}}`}</style>
       <div ref={divRef} className="absolute inset-0" style={{ background: "transparent" }} />
     </div>
   )

@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
-  Building2, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Package, Pencil, Plus,
+  Building2, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Maximize2, Package, Pencil, Plus,
   Radio, RefreshCw, Route, Star, Trash2, Truck, UserRound, XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -149,6 +149,9 @@ export function EntregasClient({ painel, novaDoLead, abaInicial }: {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="icon" className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" title="Atualizar" onClick={() => router.refresh()}><RefreshCw className="h-4 w-4" /></Button>
+            <Link href="/painel-entregas" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 text-sm font-medium text-white hover:bg-white/20" title="Painel em tela cheia (bom para TV)">
+              <Maximize2 className="h-4 w-4" /> Tela cheia
+            </Link>
             {painel.podeGerenciar && (
               <Button variant="outline" className="gap-1 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => setViagemEdit({})}><Truck className="h-4 w-4" /> Nova viagem</Button>
             )}
