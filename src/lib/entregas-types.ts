@@ -56,6 +56,11 @@ export interface EntViagem {
   ultima_lng: number | null
   ultima_posicao_em: string | null
   criado_em: string
+  distancia_ida_km: number | null
+  distancia_total_km: number | null
+  duracao_total_min: number | null
+  trechos: number[] | null
+  rota: [number, number][] | null
 }
 
 export interface EntEntrega {
@@ -81,7 +86,24 @@ export interface EntEntrega {
   obs_motorista: string | null
   solicitado_por: string | null
   criado_em: string
+  cidade_ibge: number | null
+  distancia_km: number | null
+  distancia_estimada: boolean
 }
+
+export interface EntConfig {
+  origem_nome: string
+  origem_uf: string
+  origem_ibge: number | null
+  origem_lat: number
+  origem_lng: number
+}
+
+export const CONFIG_ENT_PADRAO: EntConfig = {
+  origem_nome: "Anápolis", origem_uf: "GO", origem_ibge: 5201108, origem_lat: -16.3281, origem_lng: -48.953,
+}
+
+export type CidadeOpcao = { ibge: number; nome: string; uf: string; lat: number; lng: number }
 
 export interface EntCadastros {
   transportadoras: EntTransportadora[]
@@ -93,6 +115,7 @@ export interface EntPainel extends EntCadastros {
   viagens: EntViagem[]
   entregas: EntEntrega[]
   usuarios: { id: string; nome: string }[]
+  config: EntConfig
   podeGerenciar: boolean
   userId: string
   erro?: string
@@ -116,4 +139,22 @@ export const STATUS_ENTREGA: Record<StatusEntrega, { rotulo: string; classe: str
 /** Posição "ao vivo" é considerada atual se chegou nos últimos 15 minutos */
 export function posicaoRecente(iso: string | null | undefined) {
   return !!iso && Date.now() - new Date(iso).getTime() < 15 * 60 * 1000
+}
+
+export const NOMES_UF: Record<string, string> = {
+  AC: "Acre", AL: "Alagoas", AP: "Amapá", AM: "Amazonas", BA: "Bahia", CE: "Ceará", DF: "Distrito Federal",
+  ES: "Espírito Santo", GO: "Goiás", MA: "Maranhão", MT: "Mato Grosso", MS: "Mato Grosso do Sul", MG: "Minas Gerais",
+  PA: "Pará", PB: "Paraíba", PR: "Paraná", PE: "Pernambuco", PI: "Piauí", RJ: "Rio de Janeiro", RN: "Rio Grande do Norte",
+  RS: "Rio Grande do Sul", RO: "Rondônia", RR: "Roraima", SC: "Santa Catarina", SP: "São Paulo", SE: "Sergipe", TO: "Tocantins",
+}
+
+export function formatarKm(km: number | null | undefined) {
+  if (km == null) return ""
+  return `${Math.round(Number(km)).toLocaleString("pt-BR")} km`
+}
+
+export function formatarDuracao(min: number | null | undefined) {
+  if (!min) return ""
+  const h = Math.floor(min / 60), m = min % 60
+  return h ? `${h} h${m ? ` ${m} min` : ""}` : `${m} min`
 }

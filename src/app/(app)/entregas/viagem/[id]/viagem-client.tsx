@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
   ArrowDown, ArrowLeft, ArrowUp, Building2, CheckCircle2, Copy, ExternalLink, MapPin, MessageCircle, Navigation,
-  Pencil, Play, Plus, Radio, RotateCcw, Square, Trash2, Truck, Undo2, UserRound, XCircle,
+  Pencil, Play, Plus, Radio, RotateCcw, Route, Sparkles, Square, Trash2, Truck, Undo2, UserRound, XCircle,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
-  alterarStatusViagem, excluirViagem, marcarEntregue, programarEntrega, reordenarEntregas,
+  alterarStatusViagem, excluirViagem, marcarEntregue, ordenarPorProximidade, programarEntrega, recalcularRotaViagem, reordenarEntregas,
 } from "@/app/actions/entregas"
-import { STATUS_ENTREGA, STATUS_VIAGEM, posicaoRecente, type EntEntrega, type EntPainel, type EntViagem } from "@/lib/entregas-types"
+import { STATUS_ENTREGA, STATUS_VIAGEM, formatarDuracao, formatarKm, posicaoRecente, type EntEntrega, type EntPainel, type EntViagem } from "@/lib/entregas-types"
 import { cn } from "@/lib/utils"
 import { brlCentavos, formatarData, inputClasse, linkWhatsApp } from "../../../crm/crm-utils"
 import { Mapa, escaparHtml, type PontoMapa } from "../../mapa"
@@ -70,7 +70,11 @@ export function ViagemClient({ painel, viagem, trilha }: {
     rotulo: e.status === "entregue" ? "✓" : String(paradas.indexOf(e) + 1 || i + 1),
     popupHtml: `<div style="font:13px system-ui"><b>${paradas.indexOf(e) + 1}. ${escaparHtml(e.destinatario)}</b><br/>${escaparHtml([e.endereco, e.cidade, e.uf].filter(Boolean).join(", "))}<br/>${e.chegada_prevista ? "Chegada: " + escaparHtml(formatarData(e.chegada_prevista)) : ""}</div>`,
   }))
-  const rota = paradas.filter(e => e.lat != null).map(e => [e.lat!, e.lng!] as [number, number])
+  const origem = { lat: painel.config.origem_lat, lng: painel.config.origem_lng, nome: painel.config.origem_nome }
+  const rota = [[origem.lat, origem.lng] as [number, number], ...paradas.filter(e => e.lat != null).map(e => [e.lat!, e.lng!] as [number, number])]
+  // km de cada trecho: trechos[0] = origem → 1ª parada (só paradas com local no mapa)
+  const comLocal = paradas.filter(e => e.lat != null)
+  const trechoDe = (e: EntEntrega) => { const i = comLocal.indexOf(e); return i >= 0 && viagem.trechos ? viagem.trechos[i] ?? null : null }
   const caminhoes = viagem.ultima_lat != null && viagem.ultima_lng != null && viagem.status !== "cancelada"
     ? [{ id: viagem.id, lat: viagem.ultima_lat, lng: viagem.ultima_lng!, cor, placa: ve?.placa || "Caminhão", recente: aoVivo }]
     : []
@@ -109,6 +113,11 @@ export function ViagemClient({ painel, viagem, trilha }: {
                 <span className="inline-flex items-center gap-1"><UserRound className="h-3.5 w-3.5" />{mo ? `${mo.nome}${mo.telefone ? ` · ${mo.telefone}` : ""}` : "sem motorista"}</span>
                 {tr && <span className="inline-flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{tr.nome}</span>}
                 {viagem.custo_frete ? <span>Frete {brlCentavos.format(Number(viagem.custo_frete))}</span> : null}
+                {viagem.distancia_total_km != null && (
+                  <span className="inline-flex items-center gap-1"><Route className="h-3.5 w-3.5" />
+                    <b className="text-foreground">{formatarKm(viagem.distancia_ida_km)}</b> de ida · {formatarKm(viagem.distancia_total_km)} com a volta{viagem.duracao_total_min ? ` · ~${formatarDuracao(viagem.duracao_total_min)} dirigindo` : ""}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -141,13 +150,13 @@ export function ViagemClient({ painel, viagem, trilha }: {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         <div className="space-y-5">
-          <Mapa pontos={pontos} caminhoes={caminhoes} altura={420}
+          <Mapa pontos={pontos} caminhoes={caminhoes} altura={460} origem={origem}
             linhas={[
-              ...(rota.length > 1 ? [{ pontos: rota, cor, tracejada: true }] : []),
+              ...(viagem.rota?.length ? [{ pontos: viagem.rota, cor, espessura: 4 }] : rota.length > 1 ? [{ pontos: rota, cor, tracejada: true }] : []),
               ...(trilha.length > 1 ? [{ pontos: trilha.map(t => [t.lat, t.lng] as [number, number]), cor: "#2563eb" }] : []),
             ]} />
           <p className="-mt-3 text-xs text-muted-foreground">
-            Tracejado: ordem das paradas · Linha azul: caminho feito pelo caminhão{viagem.ultima_posicao_em ? ` · última posição ${new Date(viagem.ultima_posicao_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}` : ""}
+            {viagem.rota?.length ? "Linha colorida: rota por estrada" : "Tracejado: ordem das paradas"} · Linha azul: caminho feito pelo caminhão{viagem.ultima_posicao_em ? ` · última posição ${new Date(viagem.ultima_posicao_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}` : ""}
           </p>
 
           {/* Paradas */}
@@ -156,6 +165,17 @@ export function ViagemClient({ painel, viagem, trilha }: {
               <h3 className="flex items-center gap-2 text-sm font-semibold"><MapPin className="h-4 w-4 text-[#d97021]" /> Entregas desta viagem ({paradas.length})</h3>
               {gerente && viagem.status !== "concluida" && viagem.status !== "cancelada" && (
                 <div className="flex flex-wrap gap-2">
+                  {paradas.length > 1 && (
+                    <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" title={`Começa em ${origem.nome} e vai sempre para a entrega mais perto`}
+                      onClick={() => executar(ordenarPorProximidade(viagem.id), "Paradas ordenadas pela mais próxima")}>
+                      <Sparkles className="h-3.5 w-3.5" /> Ordenar pela mais próxima
+                    </Button>
+                  )}
+                  {paradas.length > 0 && (
+                    <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs" onClick={() => executar(recalcularRotaViagem(viagem.id), "Rota recalculada")}>
+                      <Route className="h-3.5 w-3.5" /> Recalcular rota
+                    </Button>
+                  )}
                   {aProgramar.length > 0 && (
                     <select className={cn(inputClasse, "h-8 w-56 text-xs")} value="" onChange={e => { if (e.target.value) executar(programarEntrega(e.target.value, viagem.id), "Entrega adicionada") }}>
                       <option value="">+ Adicionar das &quot;a programar&quot; ({aProgramar.length})</option>
@@ -170,7 +190,7 @@ export function ViagemClient({ painel, viagem, trilha }: {
             </header>
             {paradas.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">Nenhuma entrega nesta viagem ainda.</p>}
             <ol className="divide-y">
-              {paradas.map((e, i) => <Parada key={e.id} e={e} i={i} total={paradas.length} gerente={gerente} cor={cor}
+              {paradas.map((e, i) => <Parada key={e.id} e={e} i={i} total={paradas.length} gerente={gerente} cor={cor} trechoKm={trechoDe(e)} origemNome={origem.nome}
                 onSubir={() => mover(i, -1)} onDescer={() => mover(i, 1)} onEditar={() => setEntregaEdit(e)}
                 onEntregue={(v) => executar(marcarEntregue(e.id, v), v ? "Marcada como entregue" : "Desmarcada")}
                 onTirar={() => { if (confirm(`Tirar "${e.destinatario}" desta viagem? Ela volta para "a programar".`)) executar(programarEntrega(e.id, null), "Entrega voltou para a programar") }} />)}
@@ -239,15 +259,15 @@ export function ViagemClient({ painel, viagem, trilha }: {
         </div>
       </div>
 
-      <ViagemDialog aberto={editViagem} inicial={viagem} cadastros={painel} onFechar={() => setEditViagem(false)} onSalvo={() => { setEditViagem(false); router.refresh() }} />
-      <EntregaDialog aberto={!!entregaEdit} inicial={entregaEdit} viagens={painel.viagens} podeGerenciar={gerente}
+      <ViagemDialog aberto={editViagem} inicial={viagem} cadastros={painel} entregas={painel.entregas} onFechar={() => setEditViagem(false)} onSalvo={() => { setEditViagem(false); router.refresh() }} />
+      <EntregaDialog aberto={!!entregaEdit} inicial={entregaEdit} viagens={painel.viagens} podeGerenciar={gerente} config={painel.config}
         onFechar={() => setEntregaEdit(null)} onSalvo={() => { setEntregaEdit(null); router.refresh() }} />
     </div>
   )
 }
 
-function Parada({ e, i, total, gerente, cor, onSubir, onDescer, onEditar, onEntregue, onTirar }: {
-  e: EntEntrega; i: number; total: number; gerente: boolean; cor: string
+function Parada({ e, i, total, gerente, cor, trechoKm, origemNome, onSubir, onDescer, onEditar, onEntregue, onTirar }: {
+  e: EntEntrega; i: number; total: number; gerente: boolean; cor: string; trechoKm: number | null; origemNome: string
   onSubir: () => void; onDescer: () => void; onEditar: () => void; onEntregue: (v: boolean) => void; onTirar: () => void
 }) {
   const st = STATUS_ENTREGA[e.status]
@@ -266,6 +286,8 @@ function Parada({ e, i, total, gerente, cor, onSubir, onDescer, onEditar, onEntr
         </div>
         <div className="text-xs text-muted-foreground">{[e.endereco, [e.cidade, e.uf].filter(Boolean).join(" - ")].filter(Boolean).join(" · ") || "sem endereço"}</div>
         <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+          {trechoKm != null && <span className="font-medium text-foreground">↳ {formatarKm(trechoKm)} {i === 0 ? `de ${origemNome}` : "da parada anterior"}</span>}
+          {e.distancia_km != null && i > 0 && <span>{formatarKm(e.distancia_km)} de {origemNome}</span>}
           {e.chegada_prevista && <span>Chegada {formatarData(e.chegada_prevista)}</span>}
           {e.entregue_em && <span className="text-emerald-700">Entregue {new Date(e.entregue_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</span>}
           {e.peso_kg ? <span>{Number(e.peso_kg).toLocaleString("pt-BR")} kg</span> : null}

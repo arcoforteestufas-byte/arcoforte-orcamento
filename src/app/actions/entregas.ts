@@ -2,8 +2,11 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
-import type {
-  EntEntrega, EntMotorista, EntPainel, EntTransportadora, EntVeiculo, EntViagem, StatusViagem,
+import { acharCidade, cidadePorIbge, cidadesDaUf, rotaPorEstrada } from "@/lib/geo/geo-server"
+import {
+  CONFIG_ENT_PADRAO,
+  type CidadeOpcao, type EntConfig, type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora,
+  type EntVeiculo, type EntViagem, type StatusViagem,
 } from "@/lib/entregas-types"
 
 type Resultado<T = undefined> = { ok: true; dados?: T } | { ok: false; erro: string }
@@ -46,11 +49,27 @@ function numero(v: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-const MSG_SEM_TABELAS = "As tabelas de entregas ainda não foram criadas neste banco. Rode a migração 20261117000000_entregas.sql."
+const MSG_SEM_TABELAS =
+  "As tabelas de entregas ainda não estão atualizadas neste banco. Rode as migrações 20261117000000_entregas.sql e 20261118000000_entregas_v2.sql."
+
+function msgErro(m: string) {
+  return /ent_|column|schema cache/i.test(m) && /exist|find|column/i.test(m) ? MSG_SEM_TABELAS : m
+}
+
+async function lerConfig(supabase: Supa): Promise<EntConfig> {
+  const { data } = await supabase.from("ent_config").select("*").eq("id", 1).maybeSingle()
+  return { ...CONFIG_ENT_PADRAO, ...(data || {}) } as EntConfig
+}
 
 // =====================================================================
-// LOCALIZAÇÃO (endereço → coordenadas) — OpenStreetMap / Nominatim
+// GEOGRAFIA: cidades, endereço → coordenadas, distâncias
 // =====================================================================
+
+/** Cidades de um estado (para a busca de cidade) */
+export async function listarCidades(uf: string): Promise<CidadeOpcao[]> {
+  if (!/^[A-Za-z]{2}$/.test(uf || "")) return []
+  return cidadesDaUf(uf)
+}
 
 async function buscarCoordenadas(consulta: string): Promise<{ lat: number; lng: number } | null> {
   try {
@@ -58,6 +77,7 @@ async function buscarCoordenadas(consulta: string): Promise<{ lat: number; lng: 
     const r = await fetch(url, {
       headers: { "User-Agent": "ArcoForte-Orcamento/1.0 (sistema interno de entregas)", "Accept-Language": "pt-BR" },
       cache: "no-store",
+      signal: AbortSignal.timeout(10000),
     })
     if (!r.ok) return null
     const j = (await r.json()) as { lat: string; lon: string }[]
@@ -68,18 +88,58 @@ async function buscarCoordenadas(consulta: string): Promise<{ lat: number; lng: 
   }
 }
 
-/** Tenta o endereço completo; se não achar, usa só a cidade/UF. */
+/** Endereço exato (OpenStreetMap); se não achar, usa a coordenada da cidade. */
 export async function geocodificar(endereco: string | null, cidade: string | null, uf: string | null) {
-  const cidadeUf = [cidade, uf].filter(Boolean).join(", ")
-  if (endereco && cidadeUf) {
-    const r = await buscarCoordenadas(`${endereco}, ${cidadeUf}, Brasil`)
-    if (r) return { ...r, precisao: "endereco" as const }
+  const cid = acharCidade(cidade, uf)
+  if (endereco && (cid || cidade)) {
+    const r = await buscarCoordenadas(`${endereco}, ${cid?.nome || cidade}, ${uf || ""}, Brasil`)
+    if (r && (!cid || Math.abs(r.lat - cid.lat) + Math.abs(r.lng - cid.lng) < 1.5)) return { ...r, precisao: "endereco" as const }
   }
-  if (cidadeUf) {
-    const r = await buscarCoordenadas(`${cidadeUf}, Brasil`)
+  if (cid) return { lat: cid.lat, lng: cid.lng, precisao: "cidade" as const }
+  if (cidade && uf) {
+    const r = await buscarCoordenadas(`${cidade}, ${uf}, Brasil`)
     if (r) return { ...r, precisao: "cidade" as const }
   }
   return null
+}
+
+/** Distância por estrada da cidade de origem (ex.: Anápolis) até um ponto */
+export async function distanciaDaOrigem(lat: number, lng: number) {
+  const { supabase } = await sessao()
+  const cfg = await lerConfig(supabase)
+  const r = await rotaPorEstrada([{ lat: cfg.origem_lat, lng: cfg.origem_lng }, { lat, lng }])
+  return r ? { km: r.km, minutos: r.minutos, estimada: r.estimada, origem: `${cfg.origem_nome} - ${cfg.origem_uf}` } : null
+}
+
+/** Recalcula a rota da viagem: origem → entregas na ordem → volta à origem */
+async function recalcularRota(supabase: Supa, viagemId: string | null | undefined) {
+  if (!viagemId) return
+  const cfg = await lerConfig(supabase)
+  const { data: paradas } = await supabase
+    .from("ent_entregas").select("lat, lng")
+    .eq("viagem_id", viagemId).neq("status", "cancelada").not("lat", "is", null)
+    .order("ordem")
+  const origem = { lat: cfg.origem_lat, lng: cfg.origem_lng }
+  const pts = (paradas || []).map(p => ({ lat: Number(p.lat), lng: Number(p.lng) }))
+  if (!pts.length) {
+    await supabase.from("ent_viagens").update({ distancia_ida_km: null, distancia_total_km: null, duracao_total_min: null, trechos: null, rota: null }).eq("id", viagemId)
+    return
+  }
+  const r = await rotaPorEstrada([origem, ...pts, origem])
+  if (!r) return
+  const ida = Math.round(r.trechosKm.slice(0, -1).reduce((s, t) => s + t, 0) * 10) / 10
+  await supabase.from("ent_viagens").update({
+    distancia_ida_km: ida, distancia_total_km: r.km, duracao_total_min: r.minutos,
+    trechos: r.trechosKm, rota: r.desenho,
+  }).eq("id", viagemId)
+}
+
+export async function recalcularRotaViagem(viagemId: string): Promise<Resultado> {
+  const { supabase, erro } = await exigirGerente()
+  if (erro) return { ok: false, erro }
+  await recalcularRota(supabase, viagemId)
+  revalidar(viagemId)
+  return { ok: true }
 }
 
 // =====================================================================
@@ -90,29 +150,31 @@ export async function obterPainel(): Promise<EntPainel> {
   const { supabase, user } = await sessao()
   const vazio: EntPainel = {
     transportadoras: [], veiculos: [], motoristas: [], viagens: [], entregas: [], usuarios: [],
-    podeGerenciar: false, userId: "",
+    config: CONFIG_ENT_PADRAO, podeGerenciar: false, userId: "",
   }
   if (!user) return { ...vazio, erro: "Não autenticado" }
 
-  const [tr, ve, mo, vi, en, us] = await Promise.all([
+  const [tr, ve, mo, vi, en, us, cfg] = await Promise.all([
     supabase.from("ent_transportadoras").select("*").order("nome"),
     supabase.from("ent_veiculos").select("*").order("placa"),
     supabase.from("ent_motoristas").select("*").order("nome"),
     supabase.from("ent_viagens").select("*").order("saida_prevista", { ascending: false }),
     supabase.from("ent_entregas").select("*").order("chegada_prevista", { nullsFirst: false }).order("ordem"),
     supabase.from("usuarios").select("id, nome").order("nome"),
+    supabase.from("ent_config").select("*").eq("id", 1).maybeSingle(),
   ])
   const erro = tr.error || vi.error || en.error
   if (erro) {
-    return { ...vazio, userId: user.id, podeGerenciar: podeGerenciar(user), erro: /ent_/.test(erro.message) ? MSG_SEM_TABELAS : erro.message }
+    return { ...vazio, userId: user.id, podeGerenciar: podeGerenciar(user), erro: msgErro(erro.message) }
   }
   return {
     transportadoras: (tr.data || []) as EntTransportadora[],
     veiculos: (ve.data || []) as EntVeiculo[],
     motoristas: (mo.data || []) as EntMotorista[],
     viagens: (vi.data || []) as EntViagem[],
-    entregas: (en.data || []) as EntEntrega[],
+    entregas: ((en.data || []) as EntEntrega[]).map(e => ({ ...e, distancia_estimada: !!e.distancia_estimada })),
     usuarios: us.data || [],
+    config: { ...CONFIG_ENT_PADRAO, ...(cfg.data || {}) } as EntConfig,
     podeGerenciar: podeGerenciar(user),
     userId: user.id,
   }
@@ -124,6 +186,25 @@ export async function obterPosicoes(viagemId: string, limite = 300) {
     .from("ent_posicoes").select("lat, lng, registrado_em")
     .eq("viagem_id", viagemId).order("registrado_em", { ascending: false }).limit(limite)
   return (data || []).reverse() as { lat: number; lng: number; registrado_em: string }[]
+}
+
+/** Próximas viagens que passam por um estado (para o vendedor aproveitar o frete) */
+export async function proximasViagensPorUf(uf: string | null | undefined) {
+  if (!uf) return []
+  const { supabase, user } = await sessao()
+  if (!user) return []
+  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date())
+  const { data: viagens, error } = await supabase
+    .from("ent_viagens").select("id, titulo, saida_prevista, status, veiculo_id")
+    .in("status", ["planejada", "em_rota"]).gte("saida_prevista", hoje).order("saida_prevista").limit(20)
+  if (error || !viagens?.length) return []
+  const { data: paradas } = await supabase
+    .from("ent_entregas").select("viagem_id, cidade, uf").in("viagem_id", viagens.map(v => v.id)).neq("status", "cancelada")
+  const u = uf.toUpperCase()
+  return viagens
+    .map(v => ({ ...v, cidades: [...new Set((paradas || []).filter(p => p.viagem_id === v.id && p.uf === u).map(p => p.cidade).filter(Boolean))] as string[] }))
+    .filter(v => v.cidades.length)
+    .slice(0, 3)
 }
 
 /** Dados para criar uma entrega a partir de um lead (ganho) */
@@ -158,6 +239,8 @@ export async function dadosEntregaDoLead(leadId: string): Promise<Resultado<Part
 
   const cli = (lead as Record<string, any>).clientes as Record<string, any> | null
   const [cidCli, ufCli] = String(cli?.cidade_uf || "").split(/\s*[/-]\s*/)
+  const uf = lead.uf || (ufCli && ufCli.length === 2 ? ufCli.toUpperCase() : null)
+  const cidade = acharCidade(lead.cidade || cidCli, uf)
   const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
   return {
     ok: true,
@@ -168,8 +251,9 @@ export async function dadosEntregaDoLead(leadId: string): Promise<Resultado<Part
       destinatario: cli?.nome || lead.titulo,
       telefone: lead.telefone || cli?.telefone || null,
       endereco: orc?.endereco_entrega || cli?.endereco || null,
-      cidade: lead.cidade || cidCli || null,
-      uf: lead.uf || (ufCli && ufCli.length === 2 ? ufCli.toUpperCase() : null),
+      cidade: cidade?.nome || lead.cidade || cidCli || null,
+      uf,
+      cidade_ibge: cidade?.ibge ?? null,
       peso_kg: peso,
       descricao_carga: orc ? `Pedido ${orc.numero_pedido || "#" + String(orc.id).slice(0, 8).toUpperCase()} — ${brl.format(Number(orc.valor_total) || 0)}` : null,
       observacoes: orc?.prazo_entrega ? `Prazo combinado: ${orc.prazo_entrega}` : null,
@@ -203,7 +287,17 @@ export async function salvarEntrega(
   if (!campos.destinatario) return { ok: false, erro: "Informe o destinatário (cliente)." }
   if (typeof campos.uf === "string") campos.uf = campos.uf.toUpperCase().slice(0, 2)
 
-  // Localização: usa a marcada no mapa; senão busca pelo endereço
+  // Cidade da lista do IBGE (garante nome certo e coordenada)
+  const cid = cidadePorIbge(e.cidade_ibge) || acharCidade(campos.cidade as string | null, campos.uf as string | null)
+  if (cid) {
+    campos.cidade = cid.nome
+    campos.uf = cid.uf
+    campos.cidade_ibge = cid.ibge
+  } else if ("cidade" in e) {
+    campos.cidade_ibge = null
+  }
+
+  // Local: o marcado no mapa; senão endereço exato; senão o centro da cidade
   let aviso: string | undefined
   if (e.lat != null && e.lng != null && !e.localizar) {
     campos.lat = e.lat
@@ -213,12 +307,22 @@ export async function salvarEntrega(
     if (g) {
       campos.lat = g.lat
       campos.lng = g.lng
-      if (g.precisao === "cidade") aviso = "Endereço exato não encontrado no mapa: o ponto ficou no centro da cidade. Ajuste no mapa se quiser."
+      if (g.precisao === "cidade" && campos.endereco) aviso = "Endereço exato não encontrado: o ponto ficou no centro da cidade. Ajuste no mapa se quiser."
     } else {
       campos.lat = null
       campos.lng = null
-      aviso = "Não achei esse endereço no mapa. A entrega foi salva, mas sem ponto no mapa — marque no mapa ao editar."
+      aviso = "Não achei esse local no mapa. A entrega foi salva sem ponto no mapa — escolha a cidade da lista."
     }
+  }
+
+  // Distância por estrada desde a origem
+  if (campos.lat != null && campos.lng != null) {
+    const cfg = await lerConfig(supabase)
+    const r = await rotaPorEstrada([{ lat: cfg.origem_lat, lng: cfg.origem_lng }, { lat: Number(campos.lat), lng: Number(campos.lng) }])
+    campos.distancia_km = r?.km ?? null
+    campos.distancia_estimada = r?.estimada ?? false
+  } else if ("lat" in campos) {
+    campos.distancia_km = null
   }
 
   if (gerente) {
@@ -232,7 +336,14 @@ export async function salvarEntrega(
   } else if (gerente && "viagem_id" in e && e.status !== "entregue" && e.status !== "cancelada") {
     campos.status = campos.viagem_id ? (e.status === "em_rota" ? "em_rota" : "programada") : "a_programar"
   }
-  if (campos.viagem_id && !e.id) {
+
+  // viagem anterior (para recalcular a rota de onde a entrega saiu)
+  let viagemAnterior: string | null = null
+  if (e.id) {
+    const { data: atual } = await supabase.from("ent_entregas").select("viagem_id").eq("id", e.id).maybeSingle()
+    viagemAnterior = atual?.viagem_id ?? null
+  }
+  if (campos.viagem_id && campos.viagem_id !== viagemAnterior) {
     const { data: ult } = await supabase.from("ent_entregas").select("ordem").eq("viagem_id", campos.viagem_id).order("ordem", { ascending: false }).limit(1).maybeSingle()
     campos.ordem = (ult?.ordem ?? -1) + 1
   }
@@ -241,7 +352,7 @@ export async function salvarEntrega(
   const r = e.id
     ? await supabase.from("ent_entregas").update(campos).eq("id", e.id).select("id, viagem_id")
     : await supabase.from("ent_entregas").insert({ ...campos, solicitado_por: user.id }).select("id, viagem_id")
-  if (r.error) return { ok: false, erro: /ent_entregas/.test(r.error.message) ? MSG_SEM_TABELAS : r.error.message }
+  if (r.error) return { ok: false, erro: msgErro(r.error.message) }
   if (!r.data?.length) return { ok: false, erro: "Sem permissão para alterar esta entrega." }
 
   // registra no histórico do lead
@@ -252,16 +363,23 @@ export async function salvarEntrega(
     })
     revalidatePath(`/crm/lead/${campos.lead_id}`)
   }
+  if (gerente) {
+    await recalcularRota(supabase, r.data[0].viagem_id)
+    if (viagemAnterior && viagemAnterior !== r.data[0].viagem_id) await recalcularRota(supabase, viagemAnterior)
+  }
   revalidar(r.data[0].viagem_id)
+  if (viagemAnterior) revalidar(viagemAnterior)
   return { ok: true, dados: { id: r.data[0].id, aviso } }
 }
 
 export async function excluirEntrega(id: string): Promise<Resultado> {
   const { supabase, erro } = await exigirGerente()
   if (erro) return { ok: false, erro }
+  const { data: atual } = await supabase.from("ent_entregas").select("viagem_id").eq("id", id).maybeSingle()
   const { error } = await supabase.from("ent_entregas").delete().eq("id", id)
   if (error) return { ok: false, erro: error.message }
-  revalidar()
+  await recalcularRota(supabase, atual?.viagem_id)
+  revalidar(atual?.viagem_id)
   return { ok: true }
 }
 
@@ -274,15 +392,17 @@ export async function programarEntrega(id: string, viagemId: string | null): Pro
   if (viagemId) {
     const [{ data: ult }, { data: vg }] = await Promise.all([
       supabase.from("ent_entregas").select("ordem").eq("viagem_id", viagemId).order("ordem", { ascending: false }).limit(1).maybeSingle(),
-      supabase.from("ent_viagens").select("status, saida_prevista").eq("id", viagemId).maybeSingle(),
+      supabase.from("ent_viagens").select("status").eq("id", viagemId).maybeSingle(),
     ])
     ordem = (ult?.ordem ?? -1) + 1
     status = vg?.status === "em_rota" ? "em_rota" : "programada"
   }
-  const { data: atual } = await supabase.from("ent_entregas").select("viagem_id, chegada_prevista").eq("id", id).maybeSingle()
+  const { data: atual } = await supabase.from("ent_entregas").select("viagem_id").eq("id", id).maybeSingle()
   const { error } = await supabase.from("ent_entregas")
     .update({ viagem_id: viagemId, ordem, status, atualizado_em: new Date().toISOString() }).eq("id", id)
   if (error) return { ok: false, erro: error.message }
+  await recalcularRota(supabase, viagemId)
+  if (atual?.viagem_id && atual.viagem_id !== viagemId) await recalcularRota(supabase, atual.viagem_id)
   revalidar(viagemId || atual?.viagem_id)
   return { ok: true }
 }
@@ -294,8 +414,34 @@ export async function reordenarEntregas(viagemId: string, ids: string[]): Promis
     const { error } = await supabase.from("ent_entregas").update({ ordem: i }).eq("id", ids[i]).eq("viagem_id", viagemId)
     if (error) return { ok: false, erro: error.message }
   }
+  await recalcularRota(supabase, viagemId)
   revalidar(viagemId)
   return { ok: true }
+}
+
+/** Ordena as paradas pela mais próxima (começa na origem e vai sempre para a mais perto) */
+export async function ordenarPorProximidade(viagemId: string): Promise<Resultado> {
+  const { supabase, erro } = await exigirGerente()
+  if (erro) return { ok: false, erro }
+  const cfg = await lerConfig(supabase)
+  const { data } = await supabase.from("ent_entregas").select("id, lat, lng, ordem").eq("viagem_id", viagemId).neq("status", "cancelada").order("ordem")
+  const com = (data || []).filter(p => p.lat != null)
+  const sem = (data || []).filter(p => p.lat == null)
+  const ordenadas: string[] = []
+  let atual = { lat: cfg.origem_lat, lng: cfg.origem_lng }
+  const restantes = [...com]
+  while (restantes.length) {
+    let melhor = 0
+    let menor = Infinity
+    restantes.forEach((p, i) => {
+      const d = (Number(p.lat) - atual.lat) ** 2 + (Number(p.lng) - atual.lng) ** 2
+      if (d < menor) { menor = d; melhor = i }
+    })
+    const [p] = restantes.splice(melhor, 1)
+    ordenadas.push(p.id)
+    atual = { lat: Number(p.lat), lng: Number(p.lng) }
+  }
+  return reordenarEntregas(viagemId, [...ordenadas, ...sem.map(s => s.id)])
 }
 
 export async function marcarEntregue(id: string, entregue: boolean): Promise<Resultado> {
@@ -326,6 +472,7 @@ export async function cancelarEntrega(id: string): Promise<Resultado> {
   const { data, error } = await supabase.from("ent_entregas")
     .update({ status: "cancelada", atualizado_em: new Date().toISOString() }).eq("id", id).select("viagem_id")
   if (error) return { ok: false, erro: error.message }
+  await recalcularRota(supabase, data?.[0]?.viagem_id)
   revalidar(data?.[0]?.viagem_id)
   return { ok: true }
 }
@@ -334,7 +481,13 @@ export async function cancelarEntrega(id: string): Promise<Resultado> {
 // VIAGENS
 // =====================================================================
 
-export async function salvarViagem(v: Partial<EntViagem> & { saida_prevista: string }): Promise<Resultado<{ id: string }>> {
+/**
+ * Cria/edita a viagem. Se vier `entregas`, essa passa a ser a lista de entregas da viagem
+ * (as que saírem e ainda não foram entregues voltam para "a programar").
+ */
+export async function salvarViagem(
+  v: Partial<EntViagem> & { saida_prevista: string; entregas?: string[] }
+): Promise<Resultado<{ id: string }>> {
   const { supabase, erro } = await exigirGerente()
   if (erro) return { ok: false, erro }
   if (!v.saida_prevista) return { ok: false, erro: "Informe a data de saída." }
@@ -353,11 +506,32 @@ export async function salvarViagem(v: Partial<EntViagem> & { saida_prevista: str
     atualizado_em: new Date().toISOString(),
   }
   const r = v.id
-    ? await supabase.from("ent_viagens").update(campos).eq("id", v.id).select("id")
-    : await supabase.from("ent_viagens").insert(campos).select("id")
-  if (r.error) return { ok: false, erro: /ent_viagens/.test(r.error.message) ? MSG_SEM_TABELAS : r.error.message }
-  revalidar(r.data?.[0]?.id)
-  return { ok: true, dados: { id: r.data![0].id } }
+    ? await supabase.from("ent_viagens").update(campos).eq("id", v.id).select("id, status")
+    : await supabase.from("ent_viagens").insert(campos).select("id, status")
+  if (r.error) return { ok: false, erro: msgErro(r.error.message) }
+  const id = r.data![0].id as string
+  const statusParada = r.data![0].status === "em_rota" ? "em_rota" : "programada"
+
+  if (v.entregas) {
+    const { data: atuais } = await supabase.from("ent_entregas").select("id, status, ordem").eq("viagem_id", id)
+    const ficam = new Set(v.entregas)
+    // saem da viagem (as já entregues ficam)
+    const saem = (atuais || []).filter(a => !ficam.has(a.id) && a.status !== "entregue").map(a => a.id)
+    if (saem.length) {
+      await supabase.from("ent_entregas").update({ viagem_id: null, status: "a_programar" }).in("id", saem)
+    }
+    // entram na viagem, mantendo a ordem escolhida
+    const jaNaViagem = new Set((atuais || []).map(a => a.id))
+    let ordem = Math.max(-1, ...(atuais || []).filter(a => ficam.has(a.id)).map(a => a.ordem)) + 1
+    for (const eid of v.entregas) {
+      if (jaNaViagem.has(eid)) continue
+      await supabase.from("ent_entregas").update({ viagem_id: id, status: statusParada, ordem: ordem++, atualizado_em: new Date().toISOString() })
+        .eq("id", eid).in("status", ["a_programar", "programada", "em_rota"])
+    }
+  }
+  await recalcularRota(supabase, id)
+  revalidar(id)
+  return { ok: true, dados: { id } }
 }
 
 export async function alterarStatusViagem(id: string, status: StatusViagem): Promise<Resultado> {
@@ -378,6 +552,7 @@ export async function alterarStatusViagem(id: string, status: StatusViagem): Pro
     // as entregas não entregues voltam para "a programar"
     await supabase.from("ent_entregas").update({ status: "a_programar", viagem_id: null })
       .eq("viagem_id", id).in("status", ["programada", "em_rota"])
+    await recalcularRota(supabase, id)
   }
   revalidar(id)
   return { ok: true }
@@ -395,7 +570,7 @@ export async function excluirViagem(id: string): Promise<Resultado> {
 }
 
 // =====================================================================
-// CADASTROS
+// CADASTROS E CONFIGURAÇÃO
 // =====================================================================
 
 async function salvarCadastro(
@@ -404,7 +579,7 @@ async function salvarCadastro(
   const r = id
     ? await supabase.from(tabela).update(campos).eq("id", id).select("id")
     : await supabase.from(tabela).insert(campos).select("id")
-  if (r.error) return { ok: false, erro: /ent_/.test(r.error.message) && /exist|find/.test(r.error.message) ? MSG_SEM_TABELAS : r.error.message }
+  if (r.error) return { ok: false, erro: msgErro(r.error.message) }
   revalidar()
   return { ok: true, dados: { id: r.data![0].id } }
 }
@@ -445,6 +620,21 @@ export async function excluirCadastro(tabela: "ent_transportadoras" | "ent_veicu
   if (erro) return { ok: false, erro }
   const { error } = await supabase.from(tabela).delete().eq("id", id)
   if (error) return { ok: false, erro: error.message }
+  revalidar()
+  return { ok: true }
+}
+
+/** Cidade de onde os caminhões saem (as distâncias são calculadas a partir dela) */
+export async function salvarOrigem(ibge: number): Promise<Resultado> {
+  const { supabase, erro } = await exigirGerente()
+  if (erro) return { ok: false, erro }
+  const c = cidadePorIbge(ibge)
+  if (!c) return { ok: false, erro: "Cidade não encontrada." }
+  const { error } = await supabase.from("ent_config").upsert({
+    id: 1, origem_nome: c.nome, origem_uf: c.uf, origem_ibge: c.ibge, origem_lat: c.lat, origem_lng: c.lng,
+    atualizado_em: new Date().toISOString(),
+  })
+  if (error) return { ok: false, erro: msgErro(error.message) }
   revalidar()
   return { ok: true }
 }

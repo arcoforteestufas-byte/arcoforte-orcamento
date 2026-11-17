@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import type * as Leaflet from "leaflet"
 import "leaflet/dist/leaflet.css"
+import brasilUfs from "@/lib/geo/brasil-ufs.json"
 
 export type PontoMapa = {
   id: string
@@ -11,6 +12,7 @@ export type PontoMapa = {
   cor: string
   rotulo?: string        // texto curto dentro do marcador (ex.: número da parada)
   popupHtml?: string     // já escapado (use escaparHtml)
+  destaque?: boolean
 }
 
 export type CaminhaoMapa = {
@@ -23,26 +25,31 @@ export type CaminhaoMapa = {
   popupHtml?: string
 }
 
-export type LinhaMapa = { pontos: [number, number][]; cor: string; tracejada?: boolean }
+export type LinhaMapa = { pontos: [number, number][]; cor: string; tracejada?: boolean; espessura?: number; popupHtml?: string }
 
 export function escaparHtml(s: unknown) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!))
 }
 
-const CENTRO_BRASIL: [number, number] = [-15.8, -47.9]
+// Limites do Brasil (com folga) — o mapa não sai daqui
+const LIMITES_BRASIL: [[number, number], [number, number]] = [[-35.5, -75.5], [7.5, -27.5]]
+const ZOOM_RUAS = 7 // a partir deste zoom aparecem ruas/estradas
+
+type FeatureUf = { type: "Feature"; properties: { uf: string; nome: string }; geometry: { type: string; coordinates: unknown } }
+const UFS = (brasilUfs as unknown as { features: FeatureUf[] }).features
 
 /**
- * Mapa (Leaflet + OpenStreetMap). Carrega só no navegador.
- * - pontos: entregas
- * - caminhoes: posição ao vivo
- * - linhas: rota da viagem / trilha do caminhão
+ * Mapa do Brasil (Leaflet). Mostra os estados; ao aproximar, mostra ruas (CARTO/OpenStreetMap).
+ * - pontos: entregas · caminhoes: posição ao vivo · linhas: rotas
+ * - coresUf: cor de preenchimento de cada estado (ex.: quantidade de entregas)
+ * - onUf: clique no estado
+ * - origem: cidade de onde os caminhões saem
  * - pontoEditavel + onMover: marcador arrastável para escolher o local da entrega
  */
 export function Mapa({
-  pontos = [], caminhoes = [], linhas = [], altura = 480, pontoEditavel, onMover, ajustarAoMudar = true, centralizar = 0, className = "",
+  pontos = [], caminhoes = [], linhas = [], altura = 480, pontoEditavel, onMover, ajustarAoMudar = true, centralizar = 0,
+  coresUf, dicaUf, onUf, ufSelecionada, origem, className = "",
 }: {
-  /** mude este número para centralizar no ponto editável (ex.: depois de localizar o endereço) */
-  centralizar?: number
   pontos?: PontoMapa[]
   caminhoes?: CaminhaoMapa[]
   linhas?: LinhaMapa[]
@@ -50,52 +57,57 @@ export function Mapa({
   pontoEditavel?: { lat: number; lng: number } | null
   onMover?: (lat: number, lng: number) => void
   ajustarAoMudar?: boolean
+  /** mude este número para centralizar no ponto editável (ex.: depois de escolher a cidade) */
+  centralizar?: number
+  coresUf?: Record<string, string>
+  dicaUf?: Record<string, string>
+  onUf?: (uf: string) => void
+  ufSelecionada?: string | null
+  origem?: { lat: number; lng: number; nome: string } | null
   className?: string
 }) {
   const divRef = useRef<HTMLDivElement>(null)
   const mapaRef = useRef<Leaflet.Map | null>(null)
   const LRef = useRef<typeof Leaflet | null>(null)
   const camadaRef = useRef<Leaflet.LayerGroup | null>(null)
+  const ufsRef = useRef<Leaflet.GeoJSON | null>(null)
+  const siglasRef = useRef<Leaflet.LayerGroup | null>(null)
+  const ruasRef = useRef<Leaflet.TileLayer | null>(null)
   const editRef = useRef<Leaflet.Marker | null>(null)
-  const onMoverRef = useRef(onMover)
-  onMoverRef.current = onMover
+  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada })
+  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada }
   const ajustouRef = useRef(false)
   const chaveAjusteRef = useRef("")
   const centralizarRef = useRef(0)
 
-  // cria o mapa uma vez
-  useEffect(() => {
-    let cancelado = false
-    let observador: ResizeObserver | null = null
-    ;(async () => {
-      const L = (await import("leaflet")).default
-      if (cancelado || !divRef.current || mapaRef.current) return
-      LRef.current = L
-      const mapa = L.map(divRef.current, { zoomControl: true, attributionControl: true }).setView(CENTRO_BRASIL, 4)
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }).addTo(mapa)
-      camadaRef.current = L.layerGroup().addTo(mapa)
-      mapa.on("click", (ev: Leaflet.LeafletMouseEvent) => {
-        if (onMoverRef.current) onMoverRef.current(ev.latlng.lat, ev.latlng.lng)
-      })
-      mapaRef.current = mapa
-      // dentro de janelas/abas o tamanho muda depois de criar: reajusta
-      observador = new ResizeObserver(() => mapa.invalidateSize())
-      observador.observe(divRef.current)
-      desenhar()
-    })()
-    return () => {
-      cancelado = true
-      observador?.disconnect()
-      mapaRef.current?.remove()
-      mapaRef.current = null
-      camadaRef.current = null
-      editRef.current = null
+  function estiloUf(uf: string): Leaflet.PathOptions {
+    const p = props.current
+    const sel = p.ufSelecionada === uf
+    const cor = p.coresUf?.[uf]
+    const zoom = mapaRef.current?.getZoom() ?? 4
+    const comRuas = zoom >= ZOOM_RUAS
+    return {
+      color: sel ? "#d97021" : "#ffffff",
+      weight: sel ? 2.5 : 1.2,
+      fillColor: cor || "#e2e8f0",
+      fillOpacity: comRuas ? (cor ? 0.18 : 0) : (cor ? 0.9 : 1),
+      opacity: comRuas ? 0.9 : 1,
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }
+
+  function atualizarZoom() {
+    const mapa = mapaRef.current
+    if (!mapa) return
+    const z = mapa.getZoom()
+    if (z >= ZOOM_RUAS) {
+      if (ruasRef.current && !mapa.hasLayer(ruasRef.current)) ruasRef.current.addTo(mapa)
+      if (siglasRef.current && mapa.hasLayer(siglasRef.current)) siglasRef.current.remove()
+    } else {
+      if (ruasRef.current && mapa.hasLayer(ruasRef.current)) ruasRef.current.remove()
+      if (siglasRef.current && !mapa.hasLayer(siglasRef.current)) siglasRef.current.addTo(mapa)
+    }
+    ufsRef.current?.setStyle(f => estiloUf((f as FeatureUf).properties.uf))
+  }
 
   function desenhar() {
     const L = LRef.current
@@ -103,20 +115,38 @@ export function Mapa({
     const camada = camadaRef.current
     if (!L || !mapa || !camada) return
     camada.clearLayers()
+    ufsRef.current?.setStyle(f => estiloUf((f as FeatureUf).properties.uf))
     const limites: [number, number][] = []
 
     for (const ln of linhas) {
       if (ln.pontos.length < 2) continue
-      L.polyline(ln.pontos, { color: ln.cor, weight: 4, opacity: 0.75, dashArray: ln.tracejada ? "6 8" : undefined }).addTo(camada)
+      // contorno branco por baixo deixa a rota legível sobre qualquer fundo
+      L.polyline(ln.pontos, { color: "#fff", weight: (ln.espessura || 4) + 3, opacity: 0.9, interactive: false }).addTo(camada)
+      const pl = L.polyline(ln.pontos, { color: ln.cor, weight: ln.espessura || 4, opacity: 0.9, dashArray: ln.tracejada ? "8 8" : undefined }).addTo(camada)
+      if (ln.popupHtml) pl.bindPopup(ln.popupHtml)
+      for (const p of ln.pontos) limites.push(p)
+    }
+
+    if (origem) {
+      L.marker([origem.lat, origem.lng], {
+        icon: L.divIcon({
+          className: "",
+          html: `<div style="display:flex;align-items:center;gap:4px;background:#0f172a;color:#fff;border:2px solid #fff;border-radius:999px;padding:3px 8px 3px 4px;font:700 11px/1 system-ui;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap"><span style="display:inline-flex;width:16px;height:16px;border-radius:50%;background:#d97021;align-items:center;justify-content:center">★</span>${escaparHtml(origem.nome)}</div>`,
+          iconSize: [110, 24], iconAnchor: [12, 12],
+        }),
+        zIndexOffset: 500,
+      }).bindPopup(`<b>Origem:</b> ${escaparHtml(origem.nome)}`).addTo(camada)
+      limites.push([origem.lat, origem.lng])
     }
 
     for (const p of pontos) {
+      const t = p.destaque ? 32 : 26
       const icone = L.divIcon({
         className: "",
-        html: `<div style="background:${p.cor};width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);color:#fff;font:700 11px/1 system-ui">${escaparHtml(p.rotulo ?? "")}</span></div>`,
-        iconSize: [26, 26],
-        iconAnchor: [13, 26],
-        popupAnchor: [0, -24],
+        html: `<div style="background:${p.cor};width:${t}px;height:${t}px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.35);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);color:#fff;font:700 11px/1 system-ui">${escaparHtml(p.rotulo ?? "")}</span></div>`,
+        iconSize: [t, t],
+        iconAnchor: [t / 2, t],
+        popupAnchor: [0, -t + 2],
       })
       const m = L.marker([p.lat, p.lng], { icon: icone }).addTo(camada)
       if (p.popupHtml) m.bindPopup(p.popupHtml)
@@ -145,12 +175,12 @@ export function Mapa({
         editRef.current = L.marker([pontoEditavel.lat, pontoEditavel.lng], { draggable: true, zIndexOffset: 2000 })
           .on("dragend", ev => {
             const ll = (ev.target as Leaflet.Marker).getLatLng()
-            onMoverRef.current?.(ll.lat, ll.lng)
+            props.current.onMover?.(ll.lat, ll.lng)
           })
         editRef.current.setIcon(L.divIcon({
           className: "",
-          html: `<div style="background:#d97021;width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
-          iconSize: [30, 30], iconAnchor: [15, 30],
+          html: `<div style="background:#d97021;width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.4)"></div>`,
+          iconSize: [32, 32], iconAnchor: [16, 32],
         }))
         editRef.current.addTo(mapa)
       } else {
@@ -164,25 +194,105 @@ export function Mapa({
 
     if (pontoEditavel && centralizar !== centralizarRef.current) {
       centralizarRef.current = centralizar
-      mapa.setView([pontoEditavel.lat, pontoEditavel.lng], 15)
+      mapa.setView([pontoEditavel.lat, pontoEditavel.lng], 11)
       ajustouRef.current = true
       return
     }
 
-    // enquadra os pontos (na primeira vez e quando o conjunto muda)
-    const chave = limites.map(l => l.map(n => n.toFixed(3)).join(",")).sort().join("|")
-    if ((!ajustouRef.current || (ajustarAoMudar && chave !== chaveAjusteRef.current)) && limites.length) {
-      if (limites.length === 1) mapa.setView(limites[0], pontoEditavel ? 15 : 11)
-      else mapa.fitBounds(L.latLngBounds(limites), { padding: [40, 40], maxZoom: 13 })
+    // enquadra os pontos (na primeira vez e quando o conjunto muda); sem pontos: Brasil inteiro
+    const chave = limites.map(l => l.map(n => n.toFixed(2)).join(",")).sort().join("|")
+    if (!ajustouRef.current || (ajustarAoMudar && chave !== chaveAjusteRef.current)) {
+      if (limites.length >= 2) mapa.fitBounds(L.latLngBounds(limites), { padding: [40, 40], maxZoom: 10 })
+      else if (limites.length === 1) mapa.setView(limites[0], 9)
+      else mapa.fitBounds(LIMITES_BRASIL, { padding: [10, 10] })
       ajustouRef.current = true
       chaveAjusteRef.current = chave
     }
   }
 
+  // cria o mapa uma vez
+  useEffect(() => {
+    let cancelado = false
+    let observador: ResizeObserver | null = null
+    ;(async () => {
+      const L = (await import("leaflet")).default
+      if (cancelado || !divRef.current || mapaRef.current) return
+      LRef.current = L
+      const mapa = L.map(divRef.current, {
+        zoomControl: true, attributionControl: true, minZoom: 3, maxZoom: 18,
+        maxBounds: LIMITES_BRASIL, maxBoundsViscosity: 0.9, zoomSnap: 0.5, worldCopyJump: false,
+      })
+      mapa.fitBounds(LIMITES_BRASIL, { padding: [10, 10] })
+      mapa.attributionControl.setPrefix(false)
+
+      // ruas/estradas (só com zoom)
+      ruasRef.current = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        maxZoom: 19, subdomains: "abcd",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      })
+
+      // estados do Brasil
+      ufsRef.current = L.geoJSON(brasilUfs as unknown as GeoJSON.FeatureCollection, {
+        style: f => estiloUf((f as unknown as FeatureUf).properties.uf),
+        onEachFeature: (f, layer) => {
+          const uf = (f as unknown as FeatureUf).properties
+          layer.on({
+            click: () => props.current.onUf?.(uf.uf),
+            mouseover: e => {
+              const l = e.target as Leaflet.Path
+              l.setStyle({ weight: 2.5, color: "#d97021" })
+              l.bindTooltip(`<b>${escaparHtml(uf.nome)}</b>${props.current.dicaUf?.[uf.uf] ? `<br/>${escaparHtml(props.current.dicaUf[uf.uf])}` : ""}`, { sticky: true, direction: "top" }).openTooltip()
+            },
+            mouseout: e => { ufsRef.current?.resetStyle(e.target as Leaflet.Path); (e.target as Leaflet.Path).setStyle(estiloUf(uf.uf)) },
+          })
+        },
+      }).addTo(mapa)
+
+      // siglas dos estados (no zoom do país)
+      siglasRef.current = L.layerGroup()
+      ufsRef.current.eachLayer(l => {
+        const f = (l as Leaflet.Polygon).feature as unknown as FeatureUf
+        const centro = (l as Leaflet.Polygon).getBounds().getCenter()
+        const ajuste: Record<string, [number, number]> = { DF: [0.35, 0.2], GO: [-0.8, -0.4], RJ: [-0.1, 0.4], ES: [0, 0.2], SE: [0, 0.1], AL: [0, 0.2], PB: [0, 0.4], RN: [0.1, 0.3], PE: [-0.2, 1.5], SC: [0, 0.3], MA: [-0.8, 0], PA: [-1, 0] }
+        const [dy, dx] = ajuste[f.properties.uf] || [0, 0]
+        L.marker([centro.lat + dy, centro.lng + dx], {
+          interactive: false,
+          icon: L.divIcon({ className: "", html: `<span style="font:700 10px/1 system-ui;color:#475569;letter-spacing:.04em;text-shadow:0 0 3px #fff,0 0 3px #fff">${f.properties.uf}</span>`, iconSize: [24, 12], iconAnchor: [12, 6] }),
+        }).addTo(siglasRef.current!)
+      })
+      siglasRef.current.addTo(mapa)
+
+      camadaRef.current = L.layerGroup().addTo(mapa)
+      mapa.on("click", (ev: Leaflet.LeafletMouseEvent) => { props.current.onMover?.(ev.latlng.lat, ev.latlng.lng) })
+      mapa.on("zoomend", atualizarZoom)
+      mapaRef.current = mapa
+      // dentro de janelas/abas o tamanho muda depois de criar: reajusta
+      observador = new ResizeObserver(() => mapa.invalidateSize())
+      observador.observe(divRef.current)
+      atualizarZoom()
+      desenhar()
+    })()
+    return () => {
+      cancelado = true
+      observador?.disconnect()
+      mapaRef.current?.remove()
+      mapaRef.current = null
+      camadaRef.current = null
+      ufsRef.current = null
+      siglasRef.current = null
+      ruasRef.current = null
+      editRef.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // redesenha quando os dados mudam
   useEffect(() => { desenhar() })
 
   return (
-    <div ref={divRef} className={`relative z-0 w-full overflow-hidden rounded-xl border bg-slate-100 ${className}`} style={{ height: altura }} />
+    <div className={`relative z-0 w-full overflow-hidden rounded-2xl border shadow-sm ${className}`}
+      style={{ height: altura, background: "radial-gradient(ellipse at 40% 35%, #f8fafc 0%, #eef2f7 55%, #e2e8f0 100%)" }}>
+      <div ref={divRef} className="absolute inset-0" style={{ background: "transparent" }} />
+    </div>
   )
 }

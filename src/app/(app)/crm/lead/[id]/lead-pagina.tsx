@@ -52,7 +52,11 @@ function Cartao({ titulo, icone, acoes, children, className = "" }: {
   )
 }
 
-export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null }: { ficha: CrmFichaLead; quadro: CrmQuadro; orcamentoSalvoId?: string | null }) {
+type FreteProximo = { id: string; titulo: string | null; saida_prevista: string; cidades: string[] }
+
+export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = [] }: {
+  ficha: CrmFichaLead; quadro: CrmQuadro; orcamentoSalvoId?: string | null; fretes?: FreteProximo[]
+}) {
   const router = useRouter()
   const { lead, cliente, orcamentos, atividades, tarefas, podeEditar } = ficha
   const funil = quadro.funis.find(f => f.id === lead.funil_id)
@@ -144,6 +148,18 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null }: { ficha: 
 
   return (
     <div className="flex flex-col gap-5 pb-12">
+      {lead.status === "aberto" && fretes.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-sm">
+          <Truck className="h-5 w-5 shrink-0 text-blue-600" />
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold">Aproveite o frete: tem caminhão indo para {lead.uf}</div>
+            <div className="text-xs text-blue-800">
+              {fretes.map(f => `${formatarData(f.saida_prevista)} → ${f.cidades.slice(0, 3).join(", ")}${f.cidades.length > 3 ? "…" : ""}`).join(" · ")}
+            </div>
+          </div>
+          <Link href="/entregas?aba=rotas" className="text-xs font-semibold text-blue-700 hover:underline">ver rotas</Link>
+        </div>
+      )}
       {mostrarSalvo && orcamentoSalvoId && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
