@@ -56,15 +56,33 @@ export function Estufa3DViewer({ opcoes, inicialId, podeSalvar }: { opcoes: Opca
       resolve(Array.isArray(d.imgs) ? d.imgs.filter(Boolean) : [])
     }
     window.addEventListener("message", ouvir)
-    win.postMessage({ afe: "stg", id, w: 1600, q: 0.85, wide: true, fit: true, zoom: 0.78 }, window.location.origin)
+    win.postMessage({ afe: "stg", id, w: 1600, q: 0.85, wide: true, fit: true, zoom: 0.78, noBand: true }, window.location.origin)
+  })
+
+  // Pede ao 3D as ilustrações passo a passo da etapa 1 (furos, pilares de canto, linha e esquadro...)
+  const capturarPassos = () => new Promise<string[]>((resolve) => {
+    const win = frame.current?.contentWindow
+    if (!win) return resolve([])
+    const id = Math.random().toString(36).slice(2)
+    const fim = setTimeout(() => { window.removeEventListener("message", ouvir); resolve([]) }, 25000)
+    function ouvir(ev: MessageEvent) {
+      const d = ev.data
+      if (ev.source !== win || !d || d.afe !== "pas" || d.id !== id) return
+      clearTimeout(fim)
+      window.removeEventListener("message", ouvir)
+      resolve(Array.isArray(d.imgs) ? d.imgs : [])
+    }
+    window.addEventListener("message", ouvir)
+    win.postMessage({ afe: "pas", id, w: 1200, q: 0.85, wide: true, fit: true }, window.location.origin)
   })
 
   const gerarManual = async () => {
     if (!selecionado) return
     setGerandoManual(true)
     try {
-      const { url: final, cfg } = await capturar({ wide: true, fit: true, zoom: 0.85 })
+      const { url: final, cfg } = await capturar({ wide: true, fit: true, zoom: 0.95, noBand: true })
       const etapas = await capturarEtapas()
+      const passosEtapa1 = await capturarPassos()
       const supabase = createClient()
       const [{ data: orc }, { data: itens, error: erroItens }] = await Promise.all([
         supabase.from("orcamentos").select("id, clientes ( nome ), usuarios ( nome )").eq("id", selecionado).single(),
@@ -82,7 +100,7 @@ export function Estufa3DViewer({ opcoes, inicialId, podeSalvar }: { opcoes: Opca
         cliente: um((orc as any)?.clientes)?.nome || "",
         vendedor: um((orc as any)?.usuarios)?.nome || "",
         cfg,
-        imagens: { etapas, final },
+        imagens: { etapas, final, passos: [passosEtapa1] },
         itens: (itens || []).map((i: any) => ({
           codigo: String(i.produto_codigo || ""),
           descricao: um(i.produtos)?.descricao || "",
