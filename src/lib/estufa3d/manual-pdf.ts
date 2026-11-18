@@ -252,18 +252,19 @@ export async function gerarManualMontagemPdf(d: DadosManual): Promise<jsPDF> {
     {
       titulo: "Etapa 1 · Marcação e postes",
       passos: [
-        `Limpe e nivele a área. Marque o retângulo de ${br(L)} × ${br(C)} m com estacas e linha.`,
-        `Confira o esquadro medindo as duas diagonais: devem ter a mesma medida (aprox. ${br(diagonal)} m).`,
-        `Marque ${linhas} linhas de postes no sentido do comprimento, nas divisas dos módulos (${larguras.map(x => br(x) + " m").join(", ")}).`,
-        `Em cada linha, marque um poste a cada ${br(vao)} m: ${postesLinha} postes por linha, ${totalPostes} no total.`,
-        chumb
-          ? `Abra os buracos e chumbe os postes com ${br(chumb)} m enterrados, deixando ${br(PD)} m livres acima do chão.`
-          : `Abra os buracos e chumbe os postes na profundidade indicada pela ArcoForte, deixando ${br(PD)} m livres acima do chão.`,
-        "Coloque cada poste no prumo nas duas direções e alinhado pela linha. Confira a altura de todos com o nível antes de concretar.",
-        topoArco ? `Na frente e no fundo de cada módulo, chumbe os postes topo de arco (${topoArco} no total), no meio de cada arco frontal.` : "Confira o alinhamento das cabeceiras (frente e fundo).",
-        "Aguarde a cura do concreto antes de subir calhas e arcos.",
+        `Limpe e nivele a área onde a estufa de ${br(L)} × ${br(C)} m vai ficar.`,
+        `Marque e fure primeiro os 4 cantos, no lugar certo: ${br(L)} m de largura por ${br(C)} m de comprimento.`,
+        `Coloque os 4 pilares de canto nos furos, no prumo e com ${br(PD)} m livres acima do chão${chumb ? ` (${br(chumb)} m enterrados)` : ""}.`,
+        `Passe a linha bem esticada nos 4 pilares de canto e confira o esquadro: as duas diagonais têm que dar a mesma medida (aprox. ${br(diagonal)} m). Se não der, ajuste os cantos antes de continuar.`,
+        `Com o esquadro certo, fure os locais dos outros postes alinhados com a linha, um a cada ${br(vao)} m: ${postesLinha} postes por linha.`,
+        nM > 1
+          ? `Faça o mesmo nas linhas de divisa entre os módulos (${linhas} linhas no total, nas medidas ${larguras.map(x => br(x) + " m").join(", ")}), conferindo a distância a partir da linha de canto.`
+          : "Confira de novo a distância entre os furos antes de colocar os postes.",
+        `Coloque os demais postes (${totalPostes} no total, contando os cantos) no prumo, encostados na linha e todos na mesma altura. Confira com o nível antes de concretar.`,
+        topoArco ? `Na frente e no fundo de cada módulo, coloque os postes topo de arco (${topoArco} no total), no meio de cada arco frontal.` : "Confira o alinhamento das cabeceiras (frente e fundo).",
+        "Concrete os postes e aguarde a cura antes de subir calhas e arcos.",
       ],
-      atencao: "A altura igual de todos os postes é o que garante calhas com caimento certo e arcos alinhados. Confira antes do concreto endurecer.",
+      atencao: "Só fure os outros postes depois de conferir o esquadro nos 4 cantos: esquadro errado no começo entorta a estufa inteira. E todos os postes na mesma altura, para as calhas e os arcos ficarem alinhados.",
     },
     {
       titulo: "Etapa 2 · Laterais, calhas e suportes",
