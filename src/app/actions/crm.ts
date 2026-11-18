@@ -530,7 +530,7 @@ export async function marcarGanho(
   }
 
   // Prazo de entrega obrigatório
-  if (!/^d{4}-d{2}-d{2}$/.test(prazoEntrega || "")) return { ok: false, erro: "Defina o prazo de entrega para marcar como Ganho." }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(prazoEntrega || "")) return { ok: false, erro: "Defina o prazo de entrega para marcar como Ganho." }
 
   // o cliente pode fechar mais de um orçamento: todos viram "Aprovado" e o valor é a soma
   let valor = valorFechado
