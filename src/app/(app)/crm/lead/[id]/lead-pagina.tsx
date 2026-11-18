@@ -65,7 +65,8 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
   const etapas = quadro.etapas.filter(e => e.funil_id === lead.funil_id)
   const etapa = etapas.find(e => e.id === lead.etapa_id)
   const etapasAbertas = etapas.filter(e => e.tipo === "aberta")
-  const etapaGanho = etapas.find(e => e.tipo === "ganho")
+  // Ganho só no funil de vendas
+  const etapaGanho = funil?.permite_ganho ? etapas.find(e => e.tipo === "ganho") : undefined
   const etapaPerdido = etapas.find(e => e.tipo === "perdido")
   const nomeUsuario = (id: string | null) => quadro.usuarios.find(u => u.id === id)?.nome || "—"
   const whats = linkWhatsApp(lead.telefone)
@@ -250,6 +251,11 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
                   <Button variant="outline" className="gap-1" onClick={() => setEnviar(true)}>
                     <Send className="h-4 w-4" /> Enviar para funil
                   </Button>
+                )}
+                {lead.status === "aberto" && !funil?.permite_ganho && (
+                  <span className="self-center text-xs text-muted-foreground" title="Só o funil de vendas permite marcar Ganho">
+                    Ganho só no funil de vendas
+                  </span>
                 )}
                 {lead.status === "aberto" && etapaGanho && (
                   <Button className="gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => setGanho({ leadId: lead.id, etapaId: etapaGanho.id })}>

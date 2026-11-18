@@ -18,13 +18,14 @@ export type LeadFormValores = {
   valor_estimado: string
   vendedor_id: string
   proxima_acao_em: string
+  prazo_entrega: string
   observacoes: string
 }
 
 export const LEAD_VAZIO: LeadFormValores = {
   titulo: "", contato_nome: "", telefone: "", email: "", cidade: "", uf: "",
   origem_id: "", cultura: "", area_m2: "", valor_estimado: "", vendedor_id: "",
-  proxima_acao_em: "", observacoes: "",
+  proxima_acao_em: "", prazo_entrega: "", observacoes: "",
 }
 
 export function LeadCampos({
@@ -98,6 +99,11 @@ export function LeadCampos({
         <Label>Próximo contato</Label>
         <input className={inputClasse} type="date" value={valores.proxima_acao_em} onChange={set("proxima_acao_em")} />
       </div>
+      <div className="sm:col-span-3 grid gap-1.5">
+        <Label>Prazo de entrega</Label>
+        <input className={inputClasse} type="date" value={valores.prazo_entrega} onChange={set("prazo_entrega")} />
+        <span className="text-[11px] text-muted-foreground">Obrigatório para marcar o lead como Ganho.</span>
+      </div>
       {podeTrocarVendedor && (
         <div className="sm:col-span-6 grid gap-1.5">
           <Label>Vendedor responsável</Label>
@@ -120,6 +126,6 @@ export function leadParaValores(l: Record<string, unknown>): LeadFormValores {
     titulo: s(l.titulo), contato_nome: s(l.contato_nome), telefone: s(l.telefone), email: s(l.email),
     cidade: s(l.cidade), uf: s(l.uf), origem_id: s(l.origem_id), cultura: s(l.cultura),
     area_m2: s(l.area_m2), valor_estimado: Number(l.valor_estimado) ? s(l.valor_estimado) : "",
-    vendedor_id: s(l.vendedor_id), proxima_acao_em: s(l.proxima_acao_em), observacoes: s(l.observacoes),
+    vendedor_id: s(l.vendedor_id), proxima_acao_em: s(l.proxima_acao_em), prazo_entrega: s(l.prazo_entrega), observacoes: s(l.observacoes),
   }
 }

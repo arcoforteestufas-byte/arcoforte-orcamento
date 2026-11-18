@@ -21,6 +21,7 @@ import {
   type CrmTarefa,
 } from "@/lib/crm-types"
 import { validarDataOpcional } from "@/app/(app)/crm/crm-utils"
+import { criarEntregaDoGanho } from "@/app/actions/entregas"
 
 const MOTIVOS_PERDA_PADRAO: CrmItemLista[] = [
   { id: "fallback:Preço", nome: "Preço", ordem: 0, ativo: true },
@@ -105,6 +106,8 @@ function normalizarFunil(f: Record<string, any>, acessos: { funil_id: string; us
     membros_veem_todos: !!f.membros_veem_todos,
     membros_editam_todos: !!f.membros_editam_todos,
     distribuicao_automatica: !!f.distribuicao_automatica,
+    // antes do SQL v7 a coluna não existe: mantém o comportamento antigo (permite)
+    permite_ganho: f.permite_ganho === undefined ? true : !!f.permite_ganho,
     usuarios: acessos.filter(a => a.funil_id === f.id).map(a => a.usuario_id),
   } as CrmFunil
 }
@@ -316,7 +319,7 @@ export async function listarOrcamentosSemLead(clienteId?: string | null) {
 
 const CAMPOS_LEAD = [
   "titulo", "contato_nome", "telefone", "email", "cidade", "uf", "origem_id", "cultura",
-  "area_m2", "valor_estimado", "vendedor_id", "cliente_id", "proxima_acao_em", "observacoes",
+  "area_m2", "valor_estimado", "vendedor_id", "cliente_id", "proxima_acao_em", "observacoes", "prazo_entrega",
 ] as const
 
 function limparLead(dados: Record<string, unknown>) {
@@ -340,6 +343,7 @@ export async function criarLead(
   if (!user) return { ok: false, erro: "Não autenticado" }
   const campos = limparLead(dados)
   if (!campos.titulo) return { ok: false, erro: "Informe o nome do lead." }
+  if (!campos.prazo_entrega) delete campos.prazo_entrega // vazio: não manda (funciona mesmo antes do SQL v7)
 
   let etapaId = dados.etapa_id
   if (!etapaId) {
@@ -404,11 +408,17 @@ export async function atualizarLead(id: string, dados: Record<string, unknown> &
     campos.score = calcularScore(defs, valores)
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("crm_leads")
     .update({ ...campos, atualizado_em: new Date().toISOString() })
     .eq("id", id)
     .select("id")
+  // antes do SQL v7 a coluna prazo_entrega não existe: salva o resto
+  if (error && /prazo_entrega/.test(error.message) && "prazo_entrega" in campos) {
+    if (campos.prazo_entrega) return { ok: false, erro: "Para salvar o prazo de entrega, rode a migração 20261124000000_crm_v7_ganho_vendas.sql." }
+    delete campos.prazo_entrega
+    ;({ data, error } = await supabase.from("crm_leads").update({ ...campos, atualizado_em: new Date().toISOString() }).eq("id", id).select("id"))
+  }
   if (error) return { ok: false, erro: error.message }
   if (!data?.length) return { ok: false, erro: "Sem permissão para editar este lead." }
 
@@ -501,13 +511,26 @@ export async function marcarGanho(
   id: string,
   etapaId: string,
   orcamentoIds: string[],
-  valorFechado: number | null
-): Promise<Resultado> {
+  valorFechado: number | null,
+  prazoEntrega: string
+): Promise<Resultado<{ aviso?: string }>> {
   const { supabase, user } = await sessao()
   if (!user) return { ok: false, erro: "Não autenticado" }
 
-  const { data: etapa } = await supabase.from("crm_etapas").select("nome, tipo").eq("id", etapaId).maybeSingle()
+  const { data: etapa } = await supabase.from("crm_etapas").select("nome, tipo, funil_id").eq("id", etapaId).maybeSingle()
   if (etapa?.tipo !== "ganho") return { ok: false, erro: "Etapa inválida para ganho." }
+
+  // Ganho só no funil de vendas
+  const { data: lead } = await supabase.from("crm_leads").select("funil_id").eq("id", id).maybeSingle()
+  if (!lead) return { ok: false, erro: "Lead não encontrado ou sem permissão." }
+  if (etapa.funil_id !== lead.funil_id) return { ok: false, erro: "Essa etapa é de outro funil. Atualize a página." }
+  const { data: funil } = await supabase.from("crm_funis").select("*").eq("id", lead.funil_id).maybeSingle()
+  if (funil && funil.permite_ganho === false) {
+    return { ok: false, erro: "Lead só pode ser marcado como Ganho no funil de vendas. Envie o lead para o funil de vendas primeiro." }
+  }
+
+  // Prazo de entrega obrigatório
+  if (!/^d{4}-d{2}-d{2}$/.test(prazoEntrega || "")) return { ok: false, erro: "Defina o prazo de entrega para marcar como Ganho." }
 
   // o cliente pode fechar mais de um orçamento: todos viram "Aprovado" e o valor é a soma
   let valor = valorFechado
@@ -526,15 +549,28 @@ export async function marcarGanho(
     etapa_id: etapaId, status: "ganho", ganho_em: agora, perdido_em: null, etapa_desde: agora,
     motivo_perda_id: null, motivo_perda_obs: null,
     orcamento_ganho_id: ids[0] || null, valor_fechado: valor, atualizado_em: agora,
+    prazo_entrega: prazoEntrega,
   }).eq("id", id).select("id")
   if (error) return { ok: false, erro: error.message }
   if (!data?.length) return { ok: false, erro: "Sem permissão para alterar este lead." }
 
   const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
-  await registrar(supabase, id, "ganho", `Lead GANHO${valor ? ` — ${brl.format(valor)}` : ""}${ids.length ? ` (${ids.length} orçamento${ids.length > 1 ? "s" : ""} aprovado${ids.length > 1 ? "s" : ""})` : ""}`)
+  const [a, m, d] = prazoEntrega.split("-")
+  await registrar(supabase, id, "ganho", `Lead GANHO${valor ? ` — ${brl.format(valor)}` : ""}${ids.length ? ` (${ids.length} orçamento${ids.length > 1 ? "s" : ""} aprovado${ids.length > 1 ? "s" : ""})` : ""} · prazo de entrega ${d}/${m}/${a}`)
+
+  // O lead ganho entra no fluxo de entregas: cria a entrega "a programar" para a logística
+  let aviso: string | undefined
+  try {
+    const ent = await criarEntregaDoGanho(id, prazoEntrega)
+    if (!ent.ok) aviso = `Venda registrada, mas a entrega não foi criada: ${ent.erro} Crie em Entregas → Vendas fechadas.`
+  } catch {
+    aviso = "Venda registrada, mas a entrega não foi criada. Crie em Entregas → Vendas fechadas."
+  }
+
   revalidar(id)
   revalidatePath("/orcamentos")
-  return { ok: true }
+  revalidatePath("/entregas")
+  return { ok: true, dados: { aviso } }
 }
 
 /**
@@ -881,20 +917,28 @@ export async function salvarFunil(f: Partial<CrmFunil> & { nome: string }): Prom
   if (f.membros_veem_todos !== undefined) campos.membros_veem_todos = !!f.membros_veem_todos
   if (f.membros_editam_todos !== undefined) campos.membros_editam_todos = !!f.membros_veem_todos && !!f.membros_editam_todos
   if (f.distribuicao_automatica !== undefined) campos.distribuicao_automatica = !!f.distribuicao_automatica
+  if (f.permite_ganho !== undefined) campos.permite_ganho = !!f.permite_ganho
 
   let id = f.id
   if (id) {
     const { error } = await supabase.from("crm_funis").update(campos).eq("id", id)
     if (error) return { ok: false, erro: error.message }
+    // virou funil de vendas e não tem etapa de Ganho: cria
+    if (f.permite_ganho) {
+      const { data: tem } = await supabase.from("crm_etapas").select("id").eq("funil_id", id).eq("tipo", "ganho").limit(1)
+      if (!tem?.length) {
+        await supabase.from("crm_etapas").insert({ funil_id: id, nome: "Ganho", cor: "#16a34a", ordem: 98, tipo: "ganho", probabilidade: 100 })
+      }
+    }
   } else {
     const { data, error } = await supabase.from("crm_funis").insert({ ordem: 99, ...campos }).select("id").single()
     if (error) return { ok: false, erro: error.message }
     id = data.id as string
-    // Funil novo já nasce com as etapas mínimas
+    // Funil novo já nasce com as etapas mínimas (Ganho só se for funil de vendas)
     await supabase.from("crm_etapas").insert([
       { funil_id: id, nome: "Novo lead", cor: "#64748b", ordem: 0, tipo: "aberta", probabilidade: 5 },
-      { funil_id: id, nome: "Ganho", cor: "#16a34a", ordem: 98, tipo: "ganho", probabilidade: 100 },
-      { funil_id: id, nome: "Perdido", cor: "#dc2626", ordem: 99, tipo: "perdido", probabilidade: 0 },
+      ...(f.permite_ganho ? [{ funil_id: id, nome: "Ganho", cor: "#16a34a", ordem: 98, tipo: "ganho", probabilidade: 100 }] : []),
+      { funil_id: id, nome: f.permite_ganho ? "Perdido" : "Descartado", cor: "#dc2626", ordem: 99, tipo: "perdido", probabilidade: 0 },
     ])
   }
 
@@ -927,6 +971,12 @@ export async function salvarEtapa(e: Partial<CrmEtapa> & { funil_id: string; nom
   const { supabase, erro } = await exigirAdmin()
   if (erro) return { ok: false, erro }
   if (!e.nome?.trim()) return { ok: false, erro: "Informe o nome da etapa." }
+  if (e.tipo === "ganho") {
+    const { data: fun } = await supabase.from("crm_funis").select("*").eq("id", e.funil_id).maybeSingle()
+    if (fun && fun.permite_ganho === false) {
+      return { ok: false, erro: "Etapa de Ganho só existe no funil de vendas. Marque o funil como \"Funil de vendas\" primeiro." }
+    }
+  }
   const campos = {
     funil_id: e.funil_id,
     nome: e.nome.trim(),

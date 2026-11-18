@@ -14,6 +14,7 @@ export interface CrmFunil {
   membros_veem_todos: boolean
   membros_editam_todos: boolean
   distribuicao_automatica: boolean // rodízio entre os usuários do funil ao receber leads
+  permite_ganho: boolean // funil de vendas: só aqui o lead pode ser marcado como Ganho
   usuarios?: string[] // ids com acesso (vazio = todos)
 }
 
@@ -102,6 +103,7 @@ export interface CrmLead {
   perdido_em: string | null
   etapa_desde: string
   proxima_acao_em: string | null
+  prazo_entrega: string | null // data prometida ao cliente (obrigatória para Ganho)
   observacoes: string | null
   ordem: number
   criado_em: string

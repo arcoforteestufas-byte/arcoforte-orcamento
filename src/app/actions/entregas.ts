@@ -274,6 +274,30 @@ export async function dadosEntregaDoLead(leadId: string): Promise<Resultado<Part
   }
 }
 
+/**
+ * Lead marcado como Ganho: cria a entrega "a programar" (uma só por lead),
+ * com a data prometida ao cliente. Se já existir entrega ativa, só ajusta a data se estiver vazia.
+ */
+export async function criarEntregaDoGanho(leadId: string, prazoEntrega: string): Promise<Resultado<{ id: string }>> {
+  const { supabase, user } = await sessao()
+  if (!user) return { ok: false, erro: "Não autenticado" }
+  const { data: existentes, error: eEx } = await supabase.from("ent_entregas")
+    .select("id, chegada_prevista, status").eq("lead_id", leadId).neq("status", "cancelada")
+  if (eEx) return { ok: false, erro: msgErro(eEx.message) }
+  if (existentes?.length) {
+    const sem = existentes.filter(e => !e.chegada_prevista).map(e => e.id)
+    if (sem.length) await supabase.from("ent_entregas").update({ chegada_prevista: prazoEntrega }).in("id", sem)
+    return { ok: true, dados: { id: existentes[0].id } }
+  }
+  const d = await dadosEntregaDoLead(leadId)
+  if (!d.ok) return { ok: false, erro: d.erro }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { aviso, ...dados } = d.dados!
+  const r = await salvarEntrega({ ...dados, destinatario: dados.destinatario || "Cliente", chegada_prevista: prazoEntrega, viagem_id: null })
+  if (!r.ok) return { ok: false, erro: r.erro }
+  return { ok: true, dados: { id: r.dados!.id } }
+}
+
 // =====================================================================
 // ENTREGAS
 // =====================================================================

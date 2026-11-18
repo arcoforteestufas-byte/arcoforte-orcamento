@@ -22,6 +22,7 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
   const [titulo, setTitulo] = useState("")
   const [escolhidos, setEscolhidos] = useState<string[]>([])
   const [valor, setValor] = useState("")
+  const [prazo, setPrazo] = useState("")
   const [salvando, setSalvando] = useState(false)
   // onFechar muda a cada render de quem chama; em ref para não recarregar a janela à toa
   const onFecharRef = useRef(onFechar)
@@ -29,11 +30,12 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
 
   useEffect(() => {
     if (!alvo) return
-    setOrcamentos(null); setEscolhidos([]); setValor("")
+    setOrcamentos(null); setEscolhidos([]); setValor(""); setPrazo("")
     obterFichaLead(alvo.leadId).then(r => {
       if (!r.ok) { toast.error(r.erro); return onFecharRef.current() }
       const orcs = r.dados!.orcamentos.filter(o => o.status !== "Perdido")
       setTitulo(r.dados!.lead.titulo)
+      setPrazo(r.dados!.lead.prazo_entrega || "")
       setOrcamentos(orcs)
       if (orcs.length === 1) setEscolhidos([orcs[0].id])
       else if (!orcs.length) setValor(r.dados!.lead.valor_estimado ? String(r.dados!.lead.valor_estimado).replace(".", ",") : "")
@@ -45,12 +47,14 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
 
   const confirmar = async () => {
     if (!alvo) return
+    if (!prazo) return toast.error("Defina o prazo de entrega.")
     setSalvando(true)
     const v = valor ? Number(valor.replace(/\./g, "").replace(",", ".")) : null
-    const r = await marcarGanho(alvo.leadId, alvo.etapaId, escolhidos, escolhidos.length ? null : v)
+    const r = await marcarGanho(alvo.leadId, alvo.etapaId, escolhidos, escolhidos.length ? null : v, prazo)
     setSalvando(false)
     if (!r.ok) return toast.error(r.erro)
-    toast.success("Venda ganha! 🎉")
+    toast.success("Venda ganha! 🎉 A entrega foi para a logística programar.")
+    if (r.dados?.aviso) toast.warning(r.dados.aviso, { duration: 10000 })
     onFeito()
   }
 
@@ -63,6 +67,11 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
         {!orcamentos ? <p className="text-sm text-muted-foreground py-4">Carregando...</p> : (
           <div className="space-y-3">
             <p className="text-sm"><b>{titulo}</b></p>
+            <div className={`grid gap-1.5 rounded-lg border p-3 ${prazo ? "bg-muted/30" : "border-amber-300 bg-amber-50"}`}>
+              <Label>Prazo de entrega *</Label>
+              <input type="date" className={inputClasse} value={prazo} onChange={e => setPrazo(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Data prometida ao cliente. A venda vai para Entregas como &quot;a programar&quot; com esta data.</p>
+            </div>
             {orcamentos.length > 0 ? (
               <>
                 <div>
@@ -103,7 +112,7 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onFechar}>Cancelar</Button>
-          <Button onClick={confirmar} disabled={salvando || !orcamentos} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={confirmar} disabled={salvando || !orcamentos || !prazo} className="bg-emerald-600 hover:bg-emerald-700">
             {salvando ? "Salvando..." : "Confirmar ganho"}
           </Button>
         </DialogFooter>

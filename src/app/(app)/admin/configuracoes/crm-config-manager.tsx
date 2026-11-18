@@ -230,6 +230,10 @@ function FunilEditor({ funil, funis, usuarios, onSalvar, onExcluir }: {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" className="h-4 w-4 accent-[#d97021]" checked={f.ativo} onChange={e => setF({ ...f, ativo: e.target.checked })} /> Funil ativo
           </label>
+          <label className="flex items-center gap-2 text-sm" title="Só o funil de vendas permite marcar o lead como Ganho (com prazo de entrega); o ganho vai para Entregas">
+            <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={!!f.permite_ganho} onChange={e => setF({ ...f, permite_ganho: e.target.checked })} />
+            Funil de vendas <span className="text-xs text-muted-foreground">(permite Ganho)</span>
+          </label>
         </div>
       </div>
 

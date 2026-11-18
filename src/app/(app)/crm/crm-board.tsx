@@ -134,7 +134,10 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
     if (!lead) return
 
     if (etapa === COLUNA_ENVIAR) { setEnviar(lead); return }
-    if (etapa.tipo === "ganho") { if (lead.etapa_id !== etapa.id) setGanho({ leadId: id, etapaId: etapa.id }); return }
+    if (etapa.tipo === "ganho") {
+      if (!funil?.permite_ganho) { toast.error("Ganho só no funil de vendas. Envie o lead para o funil de vendas."); return }
+      if (lead.etapa_id !== etapa.id) setGanho({ leadId: id, etapaId: etapa.id }); return
+    }
     if (etapa.tipo === "perdido") { if (lead.etapa_id !== etapa.id) setPerdido({ leadId: id, etapaId: etapa.id }); return }
 
     // calcula a nova posição dentro da coluna
@@ -317,7 +320,8 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
       {/* ------------------------------------------------ Quadro */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden pb-2 -mx-1 px-1">
         <div className="flex gap-3 h-full min-w-max">
-          {quadro.etapas.map(etapa => {
+          {/* Ganho só no funil de vendas (a coluna só aparece fora dele se ainda tiver cartões antigos) */}
+          {quadro.etapas.filter(e => e.tipo !== "ganho" || funil?.permite_ganho || (porEtapa[e.id] || []).length > 0).map(etapa => {
             const cards = porEtapa[etapa.id] || []
             const total = cards.reduce((s, l) => s + valorDoLead(l), 0)
             const ativa = colunaAlvo === etapa.id
