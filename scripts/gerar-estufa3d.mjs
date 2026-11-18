@@ -41,6 +41,10 @@ const ts = `// Simulador 3D da estufa (mesmo motor do arcoforte.com/estufa3d.adm
 export const ESTUFA3D_HTML: string = ${JSON.stringify(html)};
 `
 fs.writeFileSync(path.join(raiz, "src/lib/estufa3d/engine-html.ts"), ts)
+fs.writeFileSync(
+  path.join(raiz, "src/lib/estufa3d/logo-data.ts"),
+  `// Arquivo GERADO por scripts/gerar-estufa3d.mjs (logo da fonte do 3D).\nexport const LOGO_ARCOFORTE_WEBP = ${JSON.stringify(logoData)};\n`
+)
 
 // ---------- 2) Site (WordPress) ----------
 const CHAVE = "arcoforte.com"
