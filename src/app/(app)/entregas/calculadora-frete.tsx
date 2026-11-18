@@ -20,6 +20,8 @@ function numeroBR(s: string) {
 }
 
 export type OrcamentoParaFrete = { id: string; rotulo: string; frete?: number | null }
+/** Cidade para onde o frete foi calculado (vira a cidade de entrega da venda) */
+export type DestinoFrete = { cidade: string | null; uf: string | null; ibge: number | null }
 
 /**
  * Calculadora de frete (origem → cidade de destino).
@@ -38,7 +40,7 @@ export function CalculadoraFrete({
   viagemDisponivel?: string | null
   leadId?: string | null
   /** modo formulário: recebe o valor em vez de gravar */
-  onAplicar?: (valor: number, descricao: string) => void
+  onAplicar?: (valor: number, descricao: string, destino: DestinoFrete) => void
   onAplicado?: () => void
   compacto?: boolean
 }) {
@@ -107,10 +109,11 @@ export function CalculadoraFrete({
 
   const aplicar = async () => {
     const v = numeroBR(valorFinal)
-    if (onAplicar) { onAplicar(v, descricao); toast.success(`Frete ${brl.format(v)} colocado no orçamento — lembre de salvar`); return }
+    const destino: DestinoFrete = { cidade: cidade?.nome || null, uf: uf || null, ibge: cidade?.ibge ?? null }
+    if (onAplicar) { onAplicar(v, descricao, destino); toast.success(`Frete ${brl.format(v)} colocado no orçamento — lembre de salvar`); return }
     if (!orcId) return toast.error("Escolha o orçamento.")
     setAplicando(true)
-    const r = await aplicarFreteNoOrcamento(orcId, v, descricao, leadId)
+    const r = await aplicarFreteNoOrcamento(orcId, v, descricao, leadId, destino)
     setAplicando(false)
     if (!r.ok) return toast.error(r.erro)
     toast.success(`Frete ${brl.format(v)} aplicado no orçamento`)

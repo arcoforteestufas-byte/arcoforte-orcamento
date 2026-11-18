@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { enviarLeadParaFunil, marcarGanho, marcarPerdido, obterFichaLead } from "@/app/actions/crm"
-import type { CrmConfig, CrmFunil, CrmItemLista, CrmOrcamentoResumo, CrmUsuario } from "@/lib/crm-types"
+import { hojeISO, type CrmConfig, type CrmFunil, type CrmItemLista, type CrmOrcamentoResumo, type CrmUsuario } from "@/lib/crm-types"
 import { brlCentavos, formatarData, inputClasse } from "./crm-utils"
 
 export type AlvoEtapa = { leadId: string; etapaId: string } | null
@@ -21,8 +21,8 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
   const [orcamentos, setOrcamentos] = useState<CrmOrcamentoResumo[] | null>(null)
   const [titulo, setTitulo] = useState("")
   const [escolhidos, setEscolhidos] = useState<string[]>([])
-  const [valor, setValor] = useState("")
   const [prazo, setPrazo] = useState("")
+  const [tentou, setTentou] = useState(false) // mostra os avisos dos campos depois da 1ª tentativa
   const [salvando, setSalvando] = useState(false)
   // onFechar muda a cada render de quem chama; em ref para não recarregar a janela à toa
   const onFecharRef = useRef(onFechar)
@@ -30,7 +30,7 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
 
   useEffect(() => {
     if (!alvo) return
-    setOrcamentos(null); setEscolhidos([]); setValor(""); setPrazo("")
+    setOrcamentos(null); setEscolhidos([]); setPrazo(""); setTentou(false)
     obterFichaLead(alvo.leadId).then(r => {
       if (!r.ok) { toast.error(r.erro); return onFecharRef.current() }
       const orcs = r.dados!.orcamentos.filter(o => o.status !== "Perdido")
@@ -38,19 +38,25 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
       setPrazo(r.dados!.lead.prazo_entrega || "")
       setOrcamentos(orcs)
       if (orcs.length === 1) setEscolhidos([orcs[0].id])
-      else if (!orcs.length) setValor(r.dados!.lead.valor_estimado ? String(r.dados!.lead.valor_estimado).replace(".", ",") : "")
     })
   }, [alvo])
 
   const alternar = (id: string) => setEscolhidos(a => a.includes(id) ? a.filter(x => x !== id) : [...a, id])
   const soma = (orcamentos || []).filter(o => escolhidos.includes(o.id)).reduce((s, o) => s + (Number(o.valor_total) || 0), 0)
 
+  // validação de cada campo, com a mensagem no lugar certo
+  const hoje = hojeISO()
+  const erroPrazo = !prazo ? "Escolha a data de entrega prometida ao cliente." : prazo < hoje ? "Essa data já passou. Escolha uma data a partir de hoje." : ""
+  const erroOrc = orcamentos && !orcamentos.length
+    ? "Este lead não tem orçamento. Faça o orçamento antes de marcar como Ganho."
+    : !escolhidos.length ? "Marque o orçamento que o cliente fechou." : ""
+
   const confirmar = async () => {
     if (!alvo) return
-    if (!prazo) return toast.error("Defina o prazo de entrega.")
+    setTentou(true)
+    if (erroOrc || erroPrazo) return toast.error(erroOrc || erroPrazo)
     setSalvando(true)
-    const v = valor ? Number(valor.replace(/\./g, "").replace(",", ".")) : null
-    const r = await marcarGanho(alvo.leadId, alvo.etapaId, escolhidos, escolhidos.length ? null : v, prazo)
+    const r = await marcarGanho(alvo.leadId, alvo.etapaId, escolhidos, prazo)
     setSalvando(false)
     if (!r.ok) return toast.error(r.erro)
     toast.success("Venda ganha! 🎉 A entrega foi para a logística programar.")
@@ -65,54 +71,47 @@ export function GanhoDialog({ alvo, onFechar, onFeito }: {
           <DialogTitle className="flex items-center gap-2"><CheckCircle2 className="text-emerald-600" /> Marcar como ganho</DialogTitle>
         </DialogHeader>
         {!orcamentos ? <p className="text-sm text-muted-foreground py-4">Carregando...</p> : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <p className="text-sm"><b>{titulo}</b></p>
-            <div className={`grid gap-1.5 rounded-lg border p-3 ${prazo ? "bg-muted/30" : "border-amber-300 bg-amber-50"}`}>
-              <Label>Prazo de entrega *</Label>
-              <input type="date" className={inputClasse} value={prazo} onChange={e => setPrazo(e.target.value)} />
-              <p className="text-xs text-muted-foreground">Data prometida ao cliente. A venda vai para Entregas como &quot;a programar&quot; com esta data.</p>
-            </div>
-            {orcamentos.length > 0 ? (
-              <>
-                <div>
-                  <Label>Quais orçamentos o cliente fechou?</Label>
-                  <p className="text-xs text-muted-foreground">Marque um ou mais. Pode alterar depois no cartão do lead.</p>
-                </div>
-                <div className="space-y-2">
-                  {orcamentos.map(o => {
-                    const marcado = escolhidos.includes(o.id)
-                    return (
-                      <label key={o.id} className={`flex items-center gap-3 rounded-lg border p-3 text-sm cursor-pointer transition-colors ${marcado ? "border-emerald-600 bg-emerald-50" : "hover:bg-muted/50"}`}>
-                        <input type="checkbox" checked={marcado} onChange={() => alternar(o.id)} className="h-4 w-4 accent-emerald-600" />
-                        <span className="flex-1">{o.numero_pedido || o.id.slice(0, 8).toUpperCase()} · {formatarData(o.criado_em)} · {o.status}</span>
-                        <b>{brlCentavos.format(o.valor_total)}</b>
-                      </label>
-                    )
-                  })}
-                </div>
-                {escolhidos.length > 0 ? (
-                  <div className="flex items-center justify-between rounded-lg bg-emerald-600/10 px-3 py-2 text-sm">
-                    <span>{escolhidos.length} orçamento{escolhidos.length > 1 ? "s" : ""} fechado{escolhidos.length > 1 ? "s" : ""} → status <b>Aprovado</b></span>
-                    <b className="text-emerald-700">{brlCentavos.format(soma)}</b>
-                  </div>
-                ) : (
-                  <p className="text-xs text-amber-700">Nenhum marcado: informe o valor fechado abaixo.</p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">Este lead não tem orçamento ligado.</p>
-            )}
-            {escolhidos.length === 0 && (
-              <div className="grid gap-1.5">
-                <Label>Valor fechado (R$)</Label>
-                <input className={inputClasse} inputMode="decimal" value={valor} onChange={e => setValor(e.target.value)} />
+
+            {/* 1. Orçamento fechado */}
+            <div className="space-y-2">
+              <div>
+                <Label>1. Qual orçamento o cliente fechou? *</Label>
+                <p className="text-xs text-muted-foreground">O valor da venda é a soma dos orçamentos marcados. Pode marcar mais de um.</p>
               </div>
-            )}
+              {orcamentos.map(o => {
+                const marcado = escolhidos.includes(o.id)
+                return (
+                  <label key={o.id} className={`flex items-center gap-3 rounded-lg border p-3 text-sm cursor-pointer transition-colors ${marcado ? "border-emerald-600 bg-emerald-50" : "hover:bg-muted/50"}`}>
+                    <input type="checkbox" checked={marcado} onChange={() => alternar(o.id)} className="h-4 w-4 accent-emerald-600" />
+                    <span className="flex-1">{o.numero_pedido || o.id.slice(0, 8).toUpperCase()} · {formatarData(o.criado_em)} · {o.status}</span>
+                    <b>{brlCentavos.format(o.valor_total)}</b>
+                  </label>
+                )
+              })}
+              {escolhidos.length > 0 && (
+                <div className="flex items-center justify-between rounded-lg bg-emerald-600/10 px-3 py-2 text-sm">
+                  <span>Valor da venda ({escolhidos.length} orçamento{escolhidos.length > 1 ? "s" : ""} → <b>Aprovado</b>)</span>
+                  <b className="text-emerald-700">{brlCentavos.format(soma)}</b>
+                </div>
+              )}
+              {erroOrc && (tentou || !orcamentos.length) && <p className="text-xs font-medium text-red-600">{erroOrc}</p>}
+            </div>
+
+            {/* 2. Prazo de entrega contratual */}
+            <div className={`grid gap-1.5 rounded-lg border p-3 ${tentou && erroPrazo ? "border-red-300 bg-red-50" : prazo ? "bg-muted/30" : "border-amber-300 bg-amber-50"}`}>
+              <Label>2. Prazo de entrega (vai para o contrato) *</Label>
+              <input type="date" className={inputClasse} value={prazo} min={hoje} onChange={e => setPrazo(e.target.value)} />
+              {tentou && erroPrazo
+                ? <p className="text-xs font-medium text-red-600">{erroPrazo}</p>
+                : <p className="text-xs text-muted-foreground">Data prometida ao cliente — atraso gera multa. Depois do ganho, só o administrador altera. A venda vai para Entregas com esta data.</p>}
+            </div>
           </div>
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onFechar}>Cancelar</Button>
-          <Button onClick={confirmar} disabled={salvando || !orcamentos || !prazo} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={confirmar} disabled={salvando || !orcamentos || !orcamentos.length} className="bg-emerald-600 hover:bg-emerald-700">
             {salvando ? "Salvando..." : "Confirmar ganho"}
           </Button>
         </DialogFooter>

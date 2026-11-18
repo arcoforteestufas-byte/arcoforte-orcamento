@@ -160,7 +160,9 @@ export interface VendaFechada {
   valor: number | null
   ganho_em: string | null
   vendedor: string | null
-  entregas: { id: string; status: StatusEntrega; viagem_id: string | null; chegada_prevista: string | null }[]
+  /** prazo de entrega contratual (multa se atrasar) */
+  prazo_entrega: string | null
+  entregas: { id: string; status: StatusEntrega; viagem_id: string | null; chegada_prevista: string | null; entregue_em: string | null }[]
 }
 
 export type CidadeOpcao = { ibge: number; nome: string; uf: string; lat: number; lng: number }

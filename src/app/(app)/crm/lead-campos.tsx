@@ -35,6 +35,7 @@ export function LeadCampos({
   usuarios,
   podeTrocarVendedor,
   autoFocar = false,
+  prazoTravado = false,
 }: {
   valores: LeadFormValores
   onChange: (v: LeadFormValores) => void
@@ -42,6 +43,8 @@ export function LeadCampos({
   usuarios: CrmUsuario[]
   podeTrocarVendedor: boolean
   autoFocar?: boolean
+  /** venda fechada: prazo contratual, só o admin altera */
+  prazoTravado?: boolean
 }) {
   const set = (campo: keyof LeadFormValores) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -101,8 +104,10 @@ export function LeadCampos({
       </div>
       <div className="sm:col-span-3 grid gap-1.5">
         <Label>Prazo de entrega</Label>
-        <input className={inputClasse} type="date" value={valores.prazo_entrega} onChange={set("prazo_entrega")} />
-        <span className="text-[11px] text-muted-foreground">Obrigatório para marcar o lead como Ganho.</span>
+        <input className={inputClasse} type="date" value={valores.prazo_entrega} onChange={set("prazo_entrega")} disabled={prazoTravado} />
+        <span className="text-[11px] text-muted-foreground">
+          {prazoTravado ? "Prazo contratual da venda: só o administrador altera." : "Obrigatório para marcar Ganho. Vai para o contrato."}
+        </span>
       </div>
       {podeTrocarVendedor && (
         <div className="sm:col-span-6 grid gap-1.5">

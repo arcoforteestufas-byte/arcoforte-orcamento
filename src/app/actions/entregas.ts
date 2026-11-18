@@ -220,40 +220,75 @@ export async function proximasViagensPorUf(uf: string | null | undefined) {
 }
 
 /** Dados para criar uma entrega a partir de um lead (ganho) */
+/** Cidade escrita no texto do frete gerado pela calculadora: "... → Ribeirão Preto-SP (~647 km)" */
+function cidadeDoTextoFrete(texto: string | null | undefined): { cidade: string; uf: string } | null {
+  const m = String(texto || "").match(/→\s*(.+?)-([A-Z]{2})\b/)
+  return m ? { cidade: m[1].trim(), uf: m[2] } : null
+}
+
+/**
+ * Dados para a entrega de um lead ganho.
+ * Cidade de entrega (regra única):
+ *   1) a cidade do frete do orçamento fechado;
+ *   2) senão, a cidade do lead;
+ *   3) senão, a cidade do cadastro do cliente.
+ */
 export async function dadosEntregaDoLead(leadId: string): Promise<Resultado<Partial<EntEntrega> & { aviso?: string }>> {
   const { supabase, user } = await sessao()
   if (!user) return { ok: false, erro: "Não autenticado" }
   const { data: lead } = await supabase
     .from("crm_leads")
-    .select("id, titulo, telefone, cidade, uf, cliente_id, orcamento_ganho_id, contato_nome, clientes(nome, telefone, endereco, cidade_uf)")
+    .select("*, clientes(nome, telefone, endereco, cidade_uf)")
     .eq("id", leadId).maybeSingle()
   if (!lead) return { ok: false, erro: "Lead não encontrado ou sem permissão." }
 
-  // orçamento fechado; se não houver, o mais recente do lead
-  let orc: Record<string, any> | null = null
-  if (lead.orcamento_ganho_id) {
-    const { data } = await supabase.from("orcamentos").select("id, numero_pedido, valor_total, endereco_entrega, prazo_entrega").eq("id", lead.orcamento_ganho_id).maybeSingle()
+  // orçamento fechado (aprovado); se não houver, o mais recente do lead
+  type Orc = Record<string, any>
+  const { data: orcsLead } = await supabase.from("orcamentos").select("*")
+    .eq("lead_id", leadId).neq("status", "Perdido").order("criado_em", { ascending: false })
+  const lista = (orcsLead || []) as Orc[]
+  const aprovados = lista.filter(o => o.status === "Aprovado")
+  let orc: Orc | null = aprovados.find(o => o.id === lead.orcamento_ganho_id) || aprovados[0] || null
+  if (!orc && lead.orcamento_ganho_id) {
+    const { data } = await supabase.from("orcamentos").select("*").eq("id", lead.orcamento_ganho_id).maybeSingle()
     orc = data
   }
-  if (!orc) {
-    const { data } = await supabase.from("orcamentos").select("id, numero_pedido, valor_total, endereco_entrega, prazo_entrega")
-      .eq("lead_id", leadId).neq("status", "Perdido").order("criado_em", { ascending: false }).limit(1).maybeSingle()
-    orc = data
-  }
+  if (!orc) orc = lista[0] || null
+  const orcsDaCarga = aprovados.length ? aprovados : orc ? [orc] : []
 
-  // peso da carga = soma(quantidade × peso do produto)
+  // peso da carga = soma(quantidade × peso do produto) dos orçamentos fechados
   let peso: number | null = null
-  if (orc) {
-    const { data: itens } = await supabase.from("orcamento_itens").select("quantidade, produtos(peso_bruto_kg)").eq("orcamento_id", orc.id)
+  if (orcsDaCarga.length) {
+    const { data: itens } = await supabase.from("orcamento_itens").select("quantidade, produtos(peso_bruto_kg)").in("orcamento_id", orcsDaCarga.map(o => o.id))
     const total = (itens || []).reduce((s: number, i: Record<string, any>) => s + (Number(i.quantidade) || 0) * (Number(i.produtos?.peso_bruto_kg) || 0), 0)
     peso = total > 0 ? Math.round(total * 100) / 100 : null
   }
 
+  // cidade de entrega
   const cli = (lead as Record<string, any>).clientes as Record<string, any> | null
   const [cidCli, ufCli] = String(cli?.cidade_uf || "").split(/\s*[/-]\s*/)
-  const uf = lead.uf || (ufCli && ufCli.length === 2 ? ufCli.toUpperCase() : null)
-  const cidade = acharCidade(lead.cidade || cidCli, uf)
+  const ufCliente = ufCli && ufCli.length === 2 ? ufCli.toUpperCase() : null
+  const freteTexto = orcsDaCarga.map(o => cidadeDoTextoFrete(o.tipo_frete)).find(Boolean) || null
+  const orcComCidade = orcsDaCarga.find(o => o.frete_cidade)
+  const candidatos: { cidade: string | null; uf: string | null; ibge?: number | null; origem: string }[] = [
+    { cidade: orcComCidade?.frete_cidade ?? null, uf: orcComCidade?.frete_uf ?? null, ibge: orcComCidade?.frete_cidade_ibge ?? null, origem: "frete do orçamento" },
+    { cidade: freteTexto?.cidade ?? null, uf: freteTexto?.uf ?? null, origem: "frete do orçamento" },
+    { cidade: lead.cidade, uf: lead.uf, origem: "lead" },
+    { cidade: cidCli || null, uf: ufCliente, origem: "cadastro do cliente" },
+  ]
+  let escolhida: { nome: string; uf: string; ibge: number | null; origem: string } | null = null
+  for (const c of candidatos) {
+    if (!c.cidade && !c.ibge) continue
+    const achada = cidadePorIbge(c.ibge) || acharCidade(c.cidade, c.uf)
+    if (achada) { escolhida = { nome: achada.nome, uf: achada.uf, ibge: achada.ibge, origem: c.origem }; break }
+  }
+
   const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+  const pedidos = orcsDaCarga.map(o => `Pedido ${o.numero_pedido || "#" + String(o.id).slice(0, 8).toUpperCase()} — ${brl.format(Number(o.valor_total) || 0)}`)
+  const obs = [
+    escolhida ? `Cidade de entrega: ${escolhida.origem}` : "",
+    orc?.prazo_entrega ? `Prazo no orçamento: ${orc.prazo_entrega}` : "",
+  ].filter(Boolean).join(" · ")
   return {
     ok: true,
     dados: {
@@ -263,13 +298,16 @@ export async function dadosEntregaDoLead(leadId: string): Promise<Resultado<Part
       destinatario: cli?.nome || lead.titulo,
       telefone: lead.telefone || cli?.telefone || null,
       endereco: orc?.endereco_entrega || cli?.endereco || null,
-      cidade: cidade?.nome || lead.cidade || cidCli || null,
-      uf,
-      cidade_ibge: cidade?.ibge ?? null,
+      cidade: escolhida?.nome || null,
+      uf: escolhida?.uf || lead.uf || ufCliente || null,
+      cidade_ibge: escolhida?.ibge ?? null,
       peso_kg: peso,
-      descricao_carga: orc ? `Pedido ${orc.numero_pedido || "#" + String(orc.id).slice(0, 8).toUpperCase()} — ${brl.format(Number(orc.valor_total) || 0)}` : null,
-      observacoes: orc?.prazo_entrega ? `Prazo combinado: ${orc.prazo_entrega}` : null,
-      aviso: orc ? undefined : "Este lead não tem orçamento ligado; preencha a carga manualmente.",
+      chegada_prevista: lead.prazo_entrega || null,
+      descricao_carga: pedidos.length ? pedidos.join(" + ") : null,
+      observacoes: obs || null,
+      aviso: !orc
+        ? "Este lead não tem orçamento ligado; preencha a carga manualmente."
+        : !escolhida ? "Não achei a cidade de entrega (nem no frete, nem no lead, nem no cliente). Escolha a cidade." : undefined,
     },
   }
 }
@@ -781,14 +819,23 @@ export async function calcularFrete(p: {
 }
 
 /** Grava o frete no orçamento (entra no total e na proposta) */
-export async function aplicarFreteNoOrcamento(orcamentoId: string, valor: number, descricao: string, leadId?: string | null): Promise<Resultado> {
+export async function aplicarFreteNoOrcamento(
+  orcamentoId: string, valor: number, descricao: string, leadId?: string | null,
+  destino?: { cidade: string | null; uf: string | null; ibge?: number | null } | null
+): Promise<Resultado> {
   const { supabase, user } = await sessao()
   if (!user) return { ok: false, erro: "Não autenticado" }
   const v = Math.round((Number(valor) || 0) * 100) / 100
   if (v < 0) return { ok: false, erro: "Valor de frete inválido." }
-  const { data, error } = await supabase.from("orcamentos")
-    .update({ frete: v, tipo_frete: descricao?.trim() || null })
-    .eq("id", orcamentoId).select("id, numero_pedido")
+  const base = { frete: v, tipo_frete: descricao?.trim() || null }
+  // cidade do frete = cidade de entrega da venda (usada quando ela vai para Entregas)
+  const cid = destino ? (cidadePorIbge(destino.ibge) || acharCidade(destino.cidade, destino.uf)) : null
+  const comCidade = cid ? { ...base, frete_cidade: cid.nome, frete_uf: cid.uf, frete_cidade_ibge: cid.ibge } : base
+  let { data, error } = await supabase.from("orcamentos").update(comCidade).eq("id", orcamentoId).select("id, numero_pedido")
+  if (error && /frete_cidade|frete_uf/.test(error.message)) {
+    // antes do SQL v8 as colunas da cidade do frete não existem
+    ;({ data, error } = await supabase.from("orcamentos").update(base).eq("id", orcamentoId).select("id, numero_pedido"))
+  }
   if (error) return { ok: false, erro: error.message }
   if (!data?.length) return { ok: false, erro: "Sem permissão para alterar este orçamento (ele é de outro vendedor)." }
   if (leadId) {
@@ -810,20 +857,21 @@ export async function vendasFechadas(): Promise<VendaFechada[]> {
   const { supabase, user } = await sessao()
   if (!user) return []
   const { data: leads, error } = await supabase.from("crm_leads")
-    .select("id, titulo, cidade, uf, valor_fechado, valor_estimado, ganho_em, vendedor_id, clientes(nome)")
+    .select("*, clientes(nome)")
     .eq("status", "ganho").order("ganho_em", { ascending: false, nullsFirst: false }).limit(300)
   if (error || !leads?.length) return []
 
   const ids = leads.map(l => l.id)
   const vendIds = Array.from(new Set(leads.map(l => l.vendedor_id).filter(Boolean)))
   const [entR, usuR] = await Promise.all([
-    supabase.from("ent_entregas").select("id, lead_id, status, viagem_id, chegada_prevista").in("lead_id", ids),
+    supabase.from("ent_entregas").select("id, lead_id, status, viagem_id, chegada_prevista, entregue_em").in("lead_id", ids),
     vendIds.length ? supabase.from("usuarios").select("id, nome").in("id", vendIds) : Promise.resolve({ data: [] as { id: string; nome: string }[] }),
   ])
   const nomes = new Map((usuR.data || []).map(u => [u.id, u.nome]))
   type LinhaLead = {
     id: string; titulo: string; cidade: string | null; uf: string | null; valor_fechado: number | null; valor_estimado: number | null
     ganho_em: string | null; vendedor_id: string | null; clientes: { nome: string } | { nome: string }[] | null
+    prazo_entrega?: string | null
   }
   return (leads as unknown as LinhaLead[]).map(l => ({
     id: l.id, titulo: l.titulo,
@@ -831,8 +879,9 @@ export async function vendasFechadas(): Promise<VendaFechada[]> {
     cidade: l.cidade, uf: l.uf,
     valor: l.valor_fechado != null ? Number(l.valor_fechado) : l.valor_estimado != null ? Number(l.valor_estimado) : null,
     ganho_em: l.ganho_em, vendedor: (l.vendedor_id && nomes.get(l.vendedor_id)) || null,
+    prazo_entrega: l.prazo_entrega ?? null,
     entregas: (entR.data || []).filter(e => e.lead_id === l.id)
-      .map(e => ({ id: e.id, status: e.status, viagem_id: e.viagem_id, chegada_prevista: e.chegada_prevista })),
+      .map(e => ({ id: e.id, status: e.status, viagem_id: e.viagem_id, chegada_prevista: e.chegada_prevista, entregue_em: e.entregue_em })),
   }))
 }
 

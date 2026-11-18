@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Save, Loader2, Calculator } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { CalculadoraFrete } from "../../entregas/calculadora-frete"
+import { CalculadoraFrete, type DestinoFrete } from "../../entregas/calculadora-frete"
 import { CroquiPicker } from "./croqui-picker"
 import { CulturaSelect } from "./cultura-select"
 
@@ -84,6 +84,8 @@ export function OrcamentoComercial({ orcamento, somenteLeitura = false }: { orca
     prazo_entrega: orcamento.prazo_entrega || "",
     numero_pedido: orcamento.numero_pedido || ""
   })
+  // cidade para onde o frete foi calculado (vira a cidade de entrega quando a venda fecha)
+  const [destinoFrete, setDestinoFrete] = useState<DestinoFrete | null>(null)
 
   const handleUsarEnderecoClienteChange = (usar: boolean) => {
     setUsarEnderecoCliente(usar)
@@ -145,9 +147,11 @@ export function OrcamentoComercial({ orcamento, somenteLeitura = false }: { orca
     setIsSaving(true)
     const supabase = createClient()
 
-    const { error } = await supabase
-      .from('orcamentos')
-      .update({
+    const camposCidadeFrete = destinoFrete?.cidade
+      ? { frete_cidade: destinoFrete.cidade, frete_uf: destinoFrete.uf, frete_cidade_ibge: destinoFrete.ibge }
+      : {}
+    const montar = (comCidade: boolean) => ({
+      ...(comCidade ? camposCidadeFrete : {}),
         desconto: formData.desconto,
         frete: formData.frete,
         outras_despesas: formData.outras_despesas,
@@ -159,8 +163,12 @@ export function OrcamentoComercial({ orcamento, somenteLeitura = false }: { orca
         cultura: formData.cultura,
         prazo_entrega: formData.prazo_entrega,
         numero_pedido: formData.numero_pedido || null
-      })
-      .eq('id', orcamento.id)
+    })
+    let { error } = await supabase.from('orcamentos').update(montar(true)).eq('id', orcamento.id)
+    // antes do SQL v8 as colunas da cidade do frete não existem: salva o resto
+    if (error && /frete_cidade|frete_uf/.test(error.message)) {
+      ;({ error } = await supabase.from('orcamentos').update(montar(false)).eq('id', orcamento.id))
+    }
 
     if (error) {
       setIsSaving(false)
@@ -345,9 +353,10 @@ export function OrcamentoComercial({ orcamento, somenteLeitura = false }: { orca
                 </DialogHeader>
                 <CalculadoraFrete
                   orcamentoFixo={orcamento.id}
-                  uf={ufCliente} cidade={cidadeCliente}
-                  onAplicar={(valor, descricao) => {
+                  uf={orcamento.frete_uf || ufCliente} cidade={orcamento.frete_cidade || cidadeCliente}
+                  onAplicar={(valor, descricao, destino) => {
                     setFormData(f => ({ ...f, frete: valor, tipo_frete: descricao }))
+                    setDestinoFrete(destino)
                     setCalcFreteAberto(false)
                   }} />
               </DialogContent>

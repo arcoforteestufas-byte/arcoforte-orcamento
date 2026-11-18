@@ -129,7 +129,7 @@ export function EntregasClient({ painel, vendas = [], novaDoLead, abaInicial }: 
     { r: "Entregues no mês", v: entreguesMes.length, i: CheckCircle2, c: "from-emerald-500 to-emerald-600" },
   ]
 
-  const vendasSemEntrega = vendas.filter(v => !v.entregas.some(e => e.status !== "cancelada")).length
+  const vendasSemEntrega = vendas.filter(v => !v.entregas.some(e => e.status === "entregue")).length // pendentes de entrega
   const programarDoLead = async (leadId: string) => {
     const r = await dadosEntregaDoLead(leadId)
     if (!r.ok) return toast.error(r.erro)
@@ -784,19 +784,41 @@ function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; pa
   const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
   const ativas = (v: VendaFechada) => v.entregas.filter(e => e.status !== "cancelada")
   const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+  // entregue = tem entrega concluída; pendente = ainda não entregue
+  const foiEntregue = (v: VendaFechada) => v.entregas.some(e => e.status === "entregue")
   const lista = vendas.filter(v => {
-    const tem = ativas(v).length > 0
-    if (filtro === "sem" && tem) return false
-    if (filtro === "com" && !tem) return false
+    if (filtro === "sem" && foiEntregue(v)) return false
+    if (filtro === "com" && !foiEntregue(v)) return false
     if (!busca.trim()) return true
     return norm([v.titulo, v.cliente, v.cidade, v.uf, v.vendedor].filter(Boolean).join(" ")).includes(norm(busca))
-  })
+  }).sort((a, b) => filtro === "sem"
+    ? (a.prazo_entrega || "9999").localeCompare(b.prazo_entrega || "9999") // prazo mais próximo primeiro
+    : (b.ganho_em || "").localeCompare(a.ganho_em || ""))
   const qtd = {
-    sem: vendas.filter(v => !ativas(v).length).length,
-    com: vendas.filter(v => ativas(v).length).length,
+    sem: vendas.filter(v => !foiEntregue(v)).length,
+    com: vendas.filter(v => foiEntregue(v)).length,
     todas: vendas.length,
   }
   const viagem = (id: string | null) => painel.viagens.find(x => x.id === id)
+  const hojeStr = hoje()
+  const dias = (de: string, ate: string) => Math.round((new Date(ate + "T12:00:00").getTime() - new Date(de + "T12:00:00").getTime()) / 86400000)
+  /** situação do prazo contratual da venda */
+  const situacaoPrazo = (v: VendaFechada): { texto: string; classe: string } | null => {
+    if (!v.prazo_entrega) return { texto: "sem prazo definido", classe: "bg-muted text-muted-foreground ring-border" }
+    const br = formatarData(v.prazo_entrega)
+    const ent = v.entregas.find(e => e.status === "entregue")
+    if (ent?.entregue_em) {
+      const atraso = dias(v.prazo_entrega, ent.entregue_em.slice(0, 10))
+      return atraso > 0
+        ? { texto: `entregue com ${atraso}d de atraso (prazo ${br})`, classe: "bg-red-50 text-red-700 ring-red-200" }
+        : { texto: `entregue no prazo (${br})`, classe: "bg-emerald-50 text-emerald-700 ring-emerald-200" }
+    }
+    const falta = dias(hojeStr, v.prazo_entrega)
+    if (falta < 0) return { texto: `ATRASADA ${-falta}d · prazo ${br}`, classe: "bg-red-600 text-white ring-red-600" }
+    if (falta === 0) return { texto: `prazo vence HOJE`, classe: "bg-red-600 text-white ring-red-600" }
+    if (falta <= 7) return { texto: `prazo ${br} · faltam ${falta}d`, classe: "bg-amber-100 text-amber-900 ring-amber-300" }
+    return { texto: `prazo ${br} · faltam ${falta}d`, classe: "bg-emerald-50 text-emerald-800 ring-emerald-200" }
+  }
 
   return (
     <div className="rounded-2xl border bg-background shadow-sm">
@@ -807,7 +829,7 @@ function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; pa
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border p-0.5 text-xs">
-            {([["sem", "Sem entrega"], ["com", "Com entrega"], ["todas", "Todas"]] as const).map(([v, r]) => (
+            {([["sem", "Pendentes"], ["com", "Entregues"], ["todas", "Todas"]] as const).map(([v, r]) => (
               <button key={v} onClick={() => setFiltro(v)}
                 className={cn("rounded-md px-2.5 py-1 font-medium", filtro === v ? "bg-[#d97021] text-white" : "text-muted-foreground hover:bg-muted")}>
                 {r} ({qtd[v]})
@@ -828,12 +850,21 @@ function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; pa
         <div className="divide-y">
           {lista.map(v => {
             const ents = ativas(v)
+            const sp = situacaoPrazo(v)
+            // entrega programada para depois do prazo do contrato = risco de multa
+            const depoisDoPrazo = !!v.prazo_entrega && ents.some(e => {
+              if (e.status === "entregue") return false
+              const d = e.chegada_prevista || viagem(e.viagem_id)?.retorno_previsto || viagem(e.viagem_id)?.saida_prevista
+              return !!d && d > v.prazo_entrega!
+            })
             return (
               <div key={v.id} className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link href={`/crm/lead/${v.id}`} className="font-semibold hover:text-[#d97021] hover:underline">{v.titulo}</Link>
                     {v.valor ? <span className="text-sm font-medium text-emerald-700">{brl.format(v.valor)}</span> : null}
+                    {sp && <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset", sp.classe)} title="Prazo de entrega do contrato">{sp.texto}</span>}
+                    {depoisDoPrazo && <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white" title="A data programada passa do prazo do contrato">programada depois do prazo — risco de multa</span>}
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                     {v.cliente && <span className="inline-flex items-center gap-1"><UserRound className="h-3 w-3" />{v.cliente}</span>}

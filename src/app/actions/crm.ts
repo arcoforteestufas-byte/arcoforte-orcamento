@@ -408,6 +408,20 @@ export async function atualizarLead(id: string, dados: Record<string, unknown> &
     campos.score = calcularScore(defs, valores)
   }
 
+  // Prazo de entrega de venda fechada é contratual: só o admin altera, e fica no histórico
+  let prazoAnterior: string | null | undefined
+  if ("prazo_entrega" in campos) {
+    const { data: atual } = await supabase.from("crm_leads").select("*").eq("id", id).maybeSingle()
+    const antes = (atual?.prazo_entrega as string | null | undefined) ?? null
+    if (antes === (campos.prazo_entrega ?? null)) {
+      delete campos.prazo_entrega // não mudou
+    } else if (atual?.status === "ganho") {
+      if (!ehAdmin(user)) return { ok: false, erro: "O prazo de entrega de uma venda fechada é contratual: só o administrador pode alterar." }
+      if (!campos.prazo_entrega) return { ok: false, erro: "Venda fechada precisa ter prazo de entrega." }
+      prazoAnterior = antes
+    }
+  }
+
   let { data, error } = await supabase
     .from("crm_leads")
     .update({ ...campos, atualizado_em: new Date().toISOString() })
@@ -421,6 +435,16 @@ export async function atualizarLead(id: string, dados: Record<string, unknown> &
   }
   if (error) return { ok: false, erro: error.message }
   if (!data?.length) return { ok: false, erro: "Sem permissão para editar este lead." }
+
+  if (prazoAnterior !== undefined && campos.prazo_entrega) {
+    const br = (iso: string | null) => iso ? iso.split("-").reverse().join("/") : "—"
+    await registrar(supabase, id, "sistema", `Prazo de entrega contratual alterado: ${br(prazoAnterior)} → ${br(String(campos.prazo_entrega))}`)
+    // entrega ainda não programada que estava com o prazo antigo acompanha o novo
+    if (prazoAnterior) {
+      await supabase.from("ent_entregas").update({ chegada_prevista: campos.prazo_entrega })
+        .eq("lead_id", id).eq("status", "a_programar").eq("chegada_prevista", prazoAnterior)
+    }
+  }
 
   revalidar(id)
   return { ok: true }
@@ -507,11 +531,17 @@ export async function assumirLead(id: string): Promise<Resultado> {
   return { ok: true }
 }
 
+/**
+ * Marca o lead como Ganho.
+ * - Só no funil de vendas.
+ * - Prazo de entrega obrigatório e não pode ser data passada (vai para o contrato; atraso gera multa).
+ * - Pelo menos um orçamento fechado: o valor fechado é SEMPRE a soma dos orçamentos aprovados.
+ * - A venda entra em Entregas como "a programar", com o prazo como data prevista.
+ */
 export async function marcarGanho(
   id: string,
   etapaId: string,
   orcamentoIds: string[],
-  valorFechado: number | null,
   prazoEntrega: string
 ): Promise<Resultado<{ aviso?: string }>> {
   const { supabase, user } = await sessao()
@@ -529,37 +559,44 @@ export async function marcarGanho(
     return { ok: false, erro: "Lead só pode ser marcado como Ganho no funil de vendas. Envie o lead para o funil de vendas primeiro." }
   }
 
-  // Prazo de entrega obrigatório
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(prazoEntrega || "")) return { ok: false, erro: "Defina o prazo de entrega para marcar como Ganho." }
+  // Orçamento fechado obrigatório (o valor vem dele)
+  const ids = Array.from(new Set((orcamentoIds || []).filter(Boolean)))
+  if (!ids.length) return { ok: false, erro: "Marque qual orçamento o cliente fechou. O valor da venda vem do orçamento." }
+  const { data: orcs, error: eSel } = await supabase.from("orcamentos").select("id, valor_total, lead_id").in("id", ids)
+  if (eSel) return { ok: false, erro: eSel.message }
+  if ((orcs?.length || 0) < ids.length) return { ok: false, erro: "Algum orçamento marcado não foi encontrado ou é de outro vendedor." }
+  if (orcs!.some(o => o.lead_id && o.lead_id !== id)) return { ok: false, erro: "Algum orçamento marcado pertence a outro lead." }
+  const valor = Math.round(orcs!.reduce((s, o) => s + (Number(o.valor_total) || 0), 0) * 100) / 100
 
-  // o cliente pode fechar mais de um orçamento: todos viram "Aprovado" e o valor é a soma
-  let valor = valorFechado
-  const ids = Array.from(new Set(orcamentoIds.filter(Boolean)))
-  if (ids.length) {
-    const { data: orcs, error: eOrc } = await supabase
-      .from("orcamentos").update({ status: "Aprovado", lead_id: id }).in("id", ids)
-      .select("id, valor_total")
-    if (eOrc) return { ok: false, erro: eOrc.message }
-    if ((orcs?.length || 0) < ids.length) return { ok: false, erro: "Sem permissão para aprovar algum desses orçamentos." }
-    if (valor === null) valor = Math.round((orcs || []).reduce((s, o) => s + (Number(o.valor_total) || 0), 0) * 100) / 100
-  }
+  // Prazo de entrega: obrigatório e não pode ser passado
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(prazoEntrega || "")) return { ok: false, erro: "Prazo de entrega: escolha a data prometida ao cliente." }
+  if (prazoEntrega < hojeISO()) return { ok: false, erro: "Prazo de entrega: a data já passou. Escolha uma data a partir de hoje." }
 
+  // 1) fecha o lead (se algo travar aqui, nenhum orçamento é alterado)
   const agora = new Date().toISOString()
   const { data, error } = await supabase.from("crm_leads").update({
     etapa_id: etapaId, status: "ganho", ganho_em: agora, perdido_em: null, etapa_desde: agora,
     motivo_perda_id: null, motivo_perda_obs: null,
-    orcamento_ganho_id: ids[0] || null, valor_fechado: valor, atualizado_em: agora,
+    orcamento_ganho_id: ids[0], valor_fechado: valor, atualizado_em: agora,
     prazo_entrega: prazoEntrega,
   }).eq("id", id).select("id")
   if (error) return { ok: false, erro: error.message }
   if (!data?.length) return { ok: false, erro: "Sem permissão para alterar este lead." }
 
+  // 2) orçamentos fechados viram "Aprovado"
+  let aviso: string | undefined
+  const { data: aprov, error: eOrc } = await supabase
+    .from("orcamentos").update({ status: "Aprovado", lead_id: id }).in("id", ids).select("id")
+  if (eOrc || (aprov?.length || 0) < ids.length) {
+    aviso = "Venda registrada, mas algum orçamento não pôde ser marcado como Aprovado. Marque \"Cliente fechou\" no cartão do lead."
+  }
+
   const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
   const [a, m, d] = prazoEntrega.split("-")
-  await registrar(supabase, id, "ganho", `Lead GANHO${valor ? ` — ${brl.format(valor)}` : ""}${ids.length ? ` (${ids.length} orçamento${ids.length > 1 ? "s" : ""} aprovado${ids.length > 1 ? "s" : ""})` : ""} · prazo de entrega ${d}/${m}/${a}`)
+  await registrar(supabase, id, "ganho",
+    `Lead GANHO — ${brl.format(valor)} (${ids.length} orçamento${ids.length > 1 ? "s" : ""} aprovado${ids.length > 1 ? "s" : ""}) · prazo de entrega contratual ${d}/${m}/${a}`)
 
-  // O lead ganho entra no fluxo de entregas: cria a entrega "a programar" para a logística
-  let aviso: string | undefined
+  // 3) a venda entra no fluxo de entregas
   try {
     const ent = await criarEntregaDoGanho(id, prazoEntrega)
     if (!ent.ok) aviso = `Venda registrada, mas a entrega não foi criada: ${ent.erro} Crie em Entregas → Vendas fechadas.`
@@ -575,7 +612,7 @@ export async function marcarGanho(
 
 /**
  * Lead já ganho: marca/desmarca um orçamento como fechado pelo cliente.
- * O valor fechado do lead passa a ser a soma dos orçamentos aprovados.
+ * O valor fechado do lead é sempre a soma dos orçamentos aprovados (precisa sobrar pelo menos um).
  */
 export async function definirOrcamentoFechado(leadId: string, orcamentoId: string, fechado: boolean): Promise<Resultado> {
   const { supabase, user } = await sessao()
@@ -584,6 +621,12 @@ export async function definirOrcamentoFechado(leadId: string, orcamentoId: strin
   const { data: lead } = await supabase.from("crm_leads").select("id, status, orcamento_ganho_id").eq("id", leadId).maybeSingle()
   if (!lead) return { ok: false, erro: "Lead não encontrado." }
   if (lead.status !== "ganho") return { ok: false, erro: "Marque o lead como Ganho para escolher os orçamentos fechados." }
+
+  if (!fechado) {
+    const { data: outros } = await supabase.from("orcamentos").select("id")
+      .eq("lead_id", leadId).eq("status", "Aprovado").neq("id", orcamentoId).limit(1)
+    if (!outros?.length) return { ok: false, erro: "A venda precisa de pelo menos um orçamento fechado. Marque outro antes de desmarcar este." }
+  }
 
   let novoStatus = "Aprovado"
   if (!fechado) {
@@ -601,14 +644,14 @@ export async function definirOrcamentoFechado(leadId: string, orcamentoId: strin
   const ganhoId = (aprovados || []).some(o => o.id === lead.orcamento_ganho_id) ? lead.orcamento_ganho_id : (aprovados?.[0]?.id || null)
 
   const { data, error } = await supabase.from("crm_leads").update({
-    orcamento_ganho_id: ganhoId, ...(aprovados?.length ? { valor_fechado: soma } : {}), atualizado_em: new Date().toISOString(),
+    orcamento_ganho_id: ganhoId, valor_fechado: soma, atualizado_em: new Date().toISOString(),
   }).eq("id", leadId).select("id")
   if (error) return { ok: false, erro: error.message }
   if (!data?.length) return { ok: false, erro: "Sem permissão para alterar este lead." }
 
   const nome = orc[0].numero_pedido || "#" + orcamentoId.slice(0, 8).toUpperCase()
   const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
-  await registrar(supabase, leadId, "sistema", `Orçamento ${nome} ${fechado ? "marcado como fechado" : "desmarcado"}${aprovados?.length ? ` — valor fechado: ${brl.format(soma)}` : ""}`)
+  await registrar(supabase, leadId, "sistema", `Orçamento ${nome} ${fechado ? "marcado como fechado" : "desmarcado"} — valor fechado: ${brl.format(soma)}`)
   revalidar(leadId)
   revalidatePath("/orcamentos")
   return { ok: true }

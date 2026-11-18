@@ -122,9 +122,31 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
     setPrecisaCliente(true)
   }
 
-  const valor = lead.status === "ganho" && lead.valor_fechado
-    ? Number(lead.valor_fechado)
+  // venda fechada: o valor é sempre a soma dos orçamentos aprovados
+  const aprovados = orcamentos.filter(o => o.status === "Aprovado")
+  const valor = lead.status === "ganho"
+    ? (aprovados.length ? aprovados.reduce((s, o) => s + (Number(o.valor_total) || 0), 0) : Number(lead.valor_fechado) || 0)
     : Number(lead.valor_estimado) || Math.max(0, ...orcamentos.map(o => o.valor_total))
+
+  // prazo de entrega contratual: quanto falta (ou se já foi entregue)
+  const entregue = entregas.find(en => en.status === "entregue")
+  const prazoInfo = (() => {
+    if (!lead.prazo_entrega) return null
+    const br = lead.prazo_entrega.split("-").reverse().join("/")
+    if (entregue?.entregue_em) {
+      const dia = entregue.entregue_em.slice(0, 10)
+      const atraso = Math.round((new Date(dia + "T12:00:00").getTime() - new Date(lead.prazo_entrega + "T12:00:00").getTime()) / 86400000)
+      return atraso > 0
+        ? { texto: `Entregue com ${atraso} dia(s) de atraso (prazo ${br})`, classe: "bg-red-600 text-white" }
+        : { texto: `Entregue no prazo (${br})`, classe: "bg-emerald-600 text-white" }
+    }
+    const falta = Math.round((new Date(lead.prazo_entrega + "T12:00:00").getTime() - new Date(hojeISO() + "T12:00:00").getTime()) / 86400000)
+    if (lead.status !== "ganho") return { texto: `Prazo de entrega: ${br}`, classe: "bg-muted text-foreground" }
+    if (falta < 0) return { texto: `Entrega ATRASADA ${-falta} dia(s) — prazo era ${br}`, classe: "bg-red-600 text-white" }
+    if (falta === 0) return { texto: `Entrega vence HOJE (${br})`, classe: "bg-red-600 text-white" }
+    if (falta <= 7) return { texto: `Entregar até ${br} · faltam ${falta} dia(s)`, classe: "bg-amber-500 text-white" }
+    return { texto: `Entregar até ${br} · faltam ${falta} dias`, classe: "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200" }
+  })()
 
   // Orçamento mais recente (fora os perdidos): sugere usar o valor dele no negócio
   const orcRecente = orcamentos.find(o => o.status !== "Perdido")
@@ -200,6 +222,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: etapa.cor }} />{etapa.nome}
                 </span>}
                 <ScoreBadge score={lead.score} config={quadro.config} />
+                {prazoInfo && <span className={`rounded-full px-2.5 py-0.5 font-medium ${prazoInfo.classe}`} title="Prazo de entrega contratual">{prazoInfo.texto}</span>}
                 {lead.status === "ganho" && <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 font-medium text-white">Ganho</span>}
                 {lead.status === "perdido" && <span className="rounded-full bg-red-600 px-2.5 py-0.5 font-medium text-white">Perdido</span>}
               </div>
@@ -333,7 +356,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
               <div className="space-y-3">
                 {orcamentos.map(o => (
                   <OrcamentoFluxo key={o.id} o={o} podeEditar={podeEditar}
-                    fechado={lead.status === "ganho" && (o.status === "Aprovado" || lead.orcamento_ganho_id === o.id)}
+                    fechado={lead.status === "ganho" && o.status === "Aprovado"}
                     onFechado={lead.status === "ganho" && podeEditar ? async (sim) => {
                       const r = await definirOrcamentoFechado(lead.id, o.id, sim)
                       if (!r.ok) return toast.error(r.erro)
@@ -397,7 +420,8 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
               </Button>
             )}>
             <fieldset disabled={!podeEditar}>
-              <LeadCampos valores={valores} onChange={setValores} origens={quadro.origens} usuarios={quadro.usuarios} podeTrocarVendedor={quadro.isAdmin} />
+              <LeadCampos valores={valores} onChange={setValores} origens={quadro.origens} usuarios={quadro.usuarios} podeTrocarVendedor={quadro.isAdmin}
+                prazoTravado={lead.status === "ganho" && !quadro.isAdmin} />
             </fieldset>
             <div className="mt-4 flex items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>Criado em {dataHora.format(new Date(lead.criado_em))}</span>
