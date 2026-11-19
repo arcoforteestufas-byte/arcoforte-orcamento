@@ -43,7 +43,7 @@
     <div class="tag"><b id="tTit">Espera de arco</b><br><span id="tCod">Código 3018</span> · medidas em cm</div>
     <div class="tg">
       <label><input type="checkbox" id="tPoste" checked> Poste 100 × 50</label>
-      <label><input type="checkbox" id="tCalha" checked> Lateral + perfil duplo 5084</label>
+      <label><input type="checkbox" id="tCalha" checked> Lateral + perfil duplo (molas separadas)</label>
       <label><input type="checkbox" id="tArco" checked> Arco</label>
       <label><input type="checkbox" id="tCotas" checked> Letras das medidas</label>
     </div>
@@ -188,19 +188,23 @@
     // Contexto: poste 100 x 50 (chapa presa na face de 50 mm, lado de dentro), perfil lateral e arco
     var posteH=70, topoP=A-Ua; var po=caixa(10,posteH,5,posteM); po.position.set(E+5,topoP-posteH/2,0); gPoste.add(po);
     var lat=caixa(4,T,A*6,new THREE.MeshStandardMaterial({color:0x5a6064,metalness:.3,roughness:.6})); lat.position.set(-2,A-Rf-Wl,0); gCalha.add(lat);
-    // Perfil de alumínio duplo 5084 (molas juntas): fundo largo, laterais inclinadas para dentro e bordas arredondadas
-    // que seguram as duas molas lado a lado. Preso na face de fora da lateral com parafuso autobrocante.
+    // Perfil de alumínio duplo de molas separadas: fundo largo com dois canais lado a lado,
+    // cada canal com bordas arredondadas e a sua própria mola. Preso na face de fora da lateral com parafuso autobrocante.
     (function(){
       var alu=new THREE.MeshStandardMaterial({color:0xe3e8ea,metalness:.3,roughness:.3,emissive:0x50585b,side:THREE.DoubleSide});
-      var yc=A-Rf-Wl, x0=-4, Lz=A*6, t=.15, wb=Math.min(4.6,T-.3), wo=wb*.68, hP=1.25, rb=.28;
-      // contorno da chapa (u = altura na lateral, v = distância para fora da lateral)
-      var pts=[[-wb/2,0],[wb/2,0],[wo/2,hP],[wo/2-t*1.2,hP-t*.6],[wb/2-t*1.4,t],[-wb/2+t*1.4,t],[-wo/2+t*1.2,hP-t*.6],[-wo/2,hP]];
-      var sh=new THREE.Shape(pts.map(function(p){return new THREE.Vector2(p[0],p[1])}));
-      var g=new THREE.ExtrudeGeometry(sh,{depth:Lz,bevelEnabled:false}); g.translate(0,0,-Lz/2);
-      var m=new THREE.Mesh(g,alu); m.rotation.z=Math.PI/2; m.position.set(x0,yc,0); // u -> y, v -> -x
-      gCalha.add(m);
-      [-1,1].forEach(function(sg){ // bordas arredondadas (bulbo) de cada lado da abertura
-        var b=new THREE.Mesh(new THREE.CylinderGeometry(rb,rb,Lz,14),alu); b.rotation.x=Math.PI/2; b.position.set(x0-hP,yc+sg*(wo/2-rb*.6),0); gCalha.add(b);
+      var yc=A-Rf-Wl, x0=-4, Lz=A*6, t=.15, hP=1.25, rb=.22, wb=2.2, wo=1.45, off=1.25;
+      var base=caixa(t,5,Lz,alu); base.position.set(x0-t/2,yc,0); gCalha.add(base);
+      [-1,1].forEach(function(sc){
+        var c=yc+sc*off;
+        var pts=[[-wb/2,0],[wb/2,0],[wo/2,hP],[wo/2-t*1.1,hP-t*.55],[wb/2-t*1.2,t],[-wb/2+t*1.2,t],[-wo/2+t*1.1,hP-t*.55],[-wo/2,hP]];
+        var sh=new THREE.Shape(pts.map(function(p){return new THREE.Vector2(p[0],p[1])}));
+        var g=new THREE.ExtrudeGeometry(sh,{depth:Lz,bevelEnabled:false}); g.translate(0,0,-Lz/2);
+        var m=new THREE.Mesh(g,alu); m.rotation.z=Math.PI/2; m.position.set(x0,c,0); gCalha.add(m);
+        [-1,1].forEach(function(sg){ var b=new THREE.Mesh(new THREE.CylinderGeometry(rb,rb,Lz,14),alu); b.rotation.x=Math.PI/2; b.position.set(x0-hP,c+sg*(wo/2-rb*.6),0); gCalha.add(b) });
+        // mola em zigue-zague do canal
+        var zp=[],n=Math.round(Lz/3); for(var k=0;k<=n;k++) zp.push(new THREE.Vector3(x0-.75,c+(k%2?.45:-.45),-Lz/2+k*Lz/n));
+        var zm=new THREE.MeshStandardMaterial({color:0x2b3032,metalness:.5,roughness:.5});
+        for(var k=0;k<n;k++) gCalha.add(cil(zp[k],zp[k+1],.1,zm));
       });
       var pm=new THREE.MeshStandardMaterial({color:0xb0b6b8,metalness:.6,roughness:.35});
       [-1,1].forEach(function(sz){ // parafusos autobrocantes no fundo do canal

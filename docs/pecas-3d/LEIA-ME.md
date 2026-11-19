@@ -27,7 +27,8 @@ I 9 (abas) · J 3 (largura das abas) · K 10 (entre as abas) · 10 furos.
 | Espera de arco (chapa no lado de fora do poste) | 3018 | `espera-arco-3018.glb`, `.stl`, imagens `-perspectiva/-fora/-dentro/-montada.png` |
 | Perfil de alumínio duplo, molas juntas (lateral) | 5084 | `perfil-aluminio-5084.glb`, `.stl` (trecho de 1 m), `perfil-5084-corte.png` |
 
-- **visualizador-espera-arco-3018.html**: abre no navegador; mostra a 3018 no poste, com a lateral, o perfil 5084, o parafuso autobrocante e as letras das medidas.
+- **visualizador-espera-arco-3018.html**: abre no navegador; mostra a 3018 no poste, com a lateral, o perfil duplo de molas separadas, o parafuso autobrocante e as letras das medidas.
+- Na estufa 3D, a lateral aparece com perfil duplo de **molas separadas** (dois canais, uma mola em cada). A mudança é só visual: códigos e cálculos do orçamento não mudaram.
 - A 3018 vai na face de fora do poste. O primeiro furo é o da lateral, e a lateral fica do lado de fora da chapa.
 
 ### Medidas 3018 (cm)
