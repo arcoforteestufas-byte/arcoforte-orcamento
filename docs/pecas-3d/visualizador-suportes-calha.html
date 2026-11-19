@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Suportes de calha 3D</title>
+<style>
+  :root{--g:#0b3930;--o:#f8611a;--m:#5d6664;--bg:#f4f6f5;--line:#dde3e1}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#fff;font-family:Roboto,Arial,sans-serif;color:#1f2826}
+  .app{display:grid;grid-template-columns:1fr 360px;height:100vh}
+  .view{position:relative;background:linear-gradient(#cfe0ec,#eef2f0)}
+  canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+  .tag{position:absolute;left:12px;top:12px;background:rgba(11,57,48,.92);color:#fff;padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.35}
+  .tag b{font-size:15px}
+  .mods{display:flex;gap:6px;margin-top:8px}.mods button{background:rgba(255,255,255,.15);color:#fff;padding:6px 10px;font-size:12px;border-radius:7px}.mods button.on{background:var(--o)}
+  .hint{position:absolute;left:12px;bottom:12px;background:rgba(255,255,255,.9);padding:6px 10px;border-radius:8px;font-size:12px;color:var(--m)}
+  .tg{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px}
+  .tg label{background:rgba(255,255,255,.95);padding:6px 10px;border-radius:8px;font-size:12.5px;display:flex;gap:6px;align-items:center;cursor:pointer}
+  .panel{overflow:auto;border-left:1px solid var(--line);padding:16px 16px 24px}
+  h1{font-size:18px;margin:0 0 4px;color:var(--g)}
+  .sub{font-size:13px;color:var(--m);margin:0 0 14px}
+  .grp{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--o);margin:14px 0 6px;text-transform:uppercase}
+  .row{display:grid;grid-template-columns:28px 1fr 74px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #eef1f0}
+  .badge{width:24px;height:24px;border-radius:50%;color:#fff;font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center}
+  .nm{font-size:13px;line-height:1.25}
+  .nm input[type=range]{width:100%;margin-top:4px;accent-color:var(--g)}
+  .val{display:flex;align-items:center;gap:3px;font-size:12px;color:var(--m)}
+  .val input{width:52px;padding:5px 4px;border:1px solid var(--line);border-radius:6px;font-size:13px;text-align:right}
+  .out{margin-top:16px;background:var(--bg);border-radius:10px;padding:12px}
+  .out textarea{width:100%;height:118px;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12.5px;font-family:inherit;resize:vertical}
+  .btns{display:flex;gap:8px;margin-top:8px}
+  button{border:0;border-radius:8px;padding:9px 12px;font-weight:700;font-size:13px;cursor:pointer}
+  .pri{background:var(--o);color:#fff;flex:1}
+  .sec{background:#fff;color:var(--g);border:1px solid var(--line)}
+  @media (max-width:860px){.app{grid-template-columns:1fr;grid-template-rows:55vh auto;height:auto}.panel{border-left:0;border-top:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="view">
+    <canvas id="c"></canvas>
+    <div class="tag"><b id="tTit">Suporte de calha lateral simples</b><br><span id="tCod">Código 3019</span> · medidas em cm<div class="mods"><button type="button" data-m="3019" class="on">3019 · simples</button><button type="button" data-m="3020">3020 · duplo</button></div></div>
+    <div class="tg">
+      <label><input type="checkbox" id="tPoste" checked> Poste 100 × 50</label>
+      <label><input type="checkbox" id="tCalha" checked> Calha</label>
+      <label><input type="checkbox" id="tArco" checked> Arco</label>
+      <label><input type="checkbox" id="tCotas" checked> Letras das medidas</label>
+    </div>
+    <div class="hint">Arraste para girar · role ou use dois dedos para aproximar</div>
+  </div>
+  <div class="panel">
+    <h1>Medidas da peça</h1>
+    <p class="sub">Cada letra aparece no desenho. Ajuste até ficar igual à peça real, ou só me diga o valor certo de cada letra.</p>
+    <div id="campos"></div>
+    <div class="out">
+      <div class="grp" style="margin-top:0">Resumo para me enviar</div>
+      <textarea id="res" readonly></textarea>
+      <div class="btns"><button class="pri" id="copiar">Copiar medidas</button><button class="sec" id="padrao">Voltar ao padrão</button></div>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  // ---------- Medidas (cm / graus) ----------
+  var CAMPOS = [
+    {g:"Berço da calha"},
+    {k:"A", n:"Comprimento do berço (no sentido da calha)", v:15, min:8, max:60, s:.5, cor:"#e53935"},
+    {k:"B", n:"Largura do fundo do berço", v:10, min:4, max:30, s:.5, cor:"#1e6fd9"},
+    {k:"M", n:"Chanfro (parte inclinada entre o fundo e a lateral)", v:4, min:0, max:12, s:.5, cor:"#00897b"},
+    {k:"D", n:"Ângulo do chanfro (graus a partir do fundo)", v:35, min:10, max:80, s:1, u:"°", cor:"#26a69a"},
+    {k:"C", n:"Lateral reta (parte vertical)", v:5.5, min:0, max:20, s:.5, cor:"#8e24aa"},
+    {k:"E", n:"Espessura da chapa", v:.3, min:.1, max:.8, s:.05, u:"cm", cor:"#6d4c41"},
+    {g:"Espera do arco (tubo)"},
+    {k:"F", n:"Diâmetro do tubo", v:4.2, min:2, max:7, s:.1, cor:"#f8611a"},
+    {k:"G", n:"Comprimento do tubo, lado de baixo", v:15, min:5, max:40, s:.5, cor:"#c62828"},
+    {k:"N", n:"Comprimento do tubo, lado de cima", v:11.5, min:3, max:40, s:.5, cor:"#ef6c00"},
+    {k:"H", n:"Inclinação do tubo (calculada pelo F, G e N)", v:50, min:0, max:89, s:1, u:"°", cor:"#3949ab", auto:1},
+    {g:"Abas que abraçam o poste"},
+    {k:"I", n:"Comprimento das abas (descendo)", v:9, min:3, max:30, s:.5, cor:"#2e7d32"},
+    {k:"J", n:"Largura das abas", v:3, min:1.5, max:10, s:.5, cor:"#ad1457"},
+    {k:"K", n:"Espaço entre as abas (lado de 100 mm do poste)", v:10, min:3, max:12, s:.5, cor:"#0277bd"},
+    {k:"L", n:"Deslocamento das abas para fora (0 = no meio)", v:0, min:-10, max:10, s:.5, cor:"#5d4037"}
+  ];
+  var P = {}; CAMPOS.forEach(function(c){ if(c.k) P[c.k]=c.v });
+  var PADRAO = JSON.parse(JSON.stringify(P));
+
+  // ---------- Painel ----------
+  var box = document.getElementById("campos");
+  CAMPOS.forEach(function(c){
+    if(!c.k){ var g=document.createElement("div"); g.className="grp"; g.textContent=c.g; box.appendChild(g); return }
+    var r=document.createElement("div"); r.className="row";
+    r.innerHTML='<span class="badge" style="background:'+c.cor+'">'+c.k+'</span>'+
+      '<div class="nm">'+c.n+(c.falta?' <span style="color:#f8611a;font-weight:700">· falta</span>':'')+'<input type="range"'+(c.auto?' disabled':'')+' min="'+c.min+'" max="'+c.max+'" step="'+c.s+'" data-k="'+c.k+'"></div>'+
+      '<div class="val"><input type="number"'+(c.auto?' disabled':'')+' min="'+c.min+'" max="'+c.max+'" step="'+c.s+'" data-k="'+c.k+'">'+(c.u||"cm")+'</div>';
+    box.appendChild(r);
+  });
+  function sync(){
+    box.querySelectorAll("input[data-k]").forEach(function(i){ if(document.activeElement!==i) i.value=P[i.getAttribute("data-k")] });
+    document.getElementById("res").value = "Suporte de calha "+MODELO+(MODELO==="3020"?" (duplo)":" (simples)")+" · 10 furos\n" + CAMPOS.filter(function(c){return c.k}).map(function(c){
+      return c.k+" = "+String(P[c.k]).replace(".",",")+" "+(c.u||"cm")+"  ("+c.n.split(" (")[0]+")"
+    }).join("\n");
+  }
+  box.addEventListener("input", function(e){
+    var k=e.target.getAttribute("data-k"); if(!k) return;
+    var v=parseFloat(String(e.target.value).replace(",", ".")); if(isNaN(v)) return;
+    P[k]=v; sync(); montar();
+  });
+  document.getElementById("padrao").onclick=function(){ P=JSON.parse(JSON.stringify(PADRAO)); sync(); montar() };
+  document.getElementById("copiar").onclick=function(){
+    var t=document.getElementById("res"); t.select();
+    try{ navigator.clipboard.writeText(t.value).then(ok, function(){ document.execCommand("copy"); ok() }) }catch(x){ document.execCommand("copy"); ok() }
+    function ok(){ var b=document.getElementById("copiar"); b.textContent="Copiado!"; setTimeout(function(){ b.textContent="Copiar medidas" },1500) }
+  };
+
+  // ---------- Cena ----------
+  var cv=document.getElementById("c");
+  var R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+  R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  R.shadowMap.enabled=true;
+  var S=new THREE.Scene();
+  var CAM=new THREE.PerspectiveCamera(38,1,.5,2000);
+  S.add(new THREE.HemisphereLight(0xffffff,0x8a9a92,.75));
+  var sol=new THREE.DirectionalLight(0xffffff,.8); sol.position.set(60,90,70); sol.castShadow=true; S.add(sol);
+  var sol2=new THREE.DirectionalLight(0xffffff,.35); sol2.position.set(-60,30,-50); S.add(sol2);
+
+  var aco=new THREE.MeshStandardMaterial({color:0xd3d9db,metalness:.3,roughness:.42,side:THREE.DoubleSide});
+  var furoM=new THREE.MeshBasicMaterial({color:0x2a2f2e});
+  var posteM=new THREE.MeshStandardMaterial({color:0xaeb6b8,metalness:.25,roughness:.55,transparent:true,opacity:.55});
+  var calhaM=new THREE.MeshStandardMaterial({color:0xe9eef0,metalness:.3,roughness:.3,transparent:true,opacity:.5,side:THREE.DoubleSide});
+  var arcoM=new THREE.MeshStandardMaterial({color:0xb9c2c4,metalness:.3,roughness:.45,transparent:true,opacity:.6,side:THREE.DoubleSide});
+
+  var G=null, gPoste, gCalha, gArco, gCotas;
+  function caixa(w,h,d,m){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m) }
+  function furo(r){ var f=new THREE.Mesh(new THREE.CircleGeometry(r,20),furoM); return f }
+  // furo passante: desenha nas duas faces da chapa (centro c, normal n, espessura e)
+  function furoChapa(c,n,e,r){ [1,-1].forEach(function(sd){ var f=furo(r); f.position.copy(c).addScaledVector(n,sd*(e/2+.03)); f.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n.clone().multiplyScalar(sd)); G.add(f) }) }
+  var MODELO="3019";
+  function cil(a,b,r,m){
+    var d=new THREE.Vector3().subVectors(b,a), L=d.length();
+    var c=new THREE.Mesh(new THREE.CylinderGeometry(r,r,L,28,1,true),m);
+    c.position.copy(a).add(b).multiplyScalar(.5);
+    c.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+    return c;
+  }
+  function rotulo(txt,cor){
+    var c=document.createElement("canvas"); c.width=c.height=96; var x=c.getContext("2d");
+    x.fillStyle=cor; x.beginPath(); x.arc(48,48,44,0,7); x.fill();
+    x.lineWidth=6; x.strokeStyle="#fff"; x.stroke();
+    x.fillStyle="#fff"; x.font="bold 54px Arial"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(txt,48,52);
+    var s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));
+    s.scale.set(2.6,2.6,1); s.renderOrder=10; return s;
+  }
+  function cota(a,b,k,off){
+    var cor=CAMPOS.filter(function(c){return c.k===k})[0].cor;
+    var m=new THREE.LineBasicMaterial({color:cor,depthTest:false});
+    var o=off||new THREE.Vector3();
+    var a2=a.clone().add(o), b2=b.clone().add(o);
+    var gl=new THREE.BufferGeometry().setFromPoints([a,a2,a2,b2,b2,b]);
+    var l=new THREE.LineSegments(gl,m); l.renderOrder=9; gCotas.add(l);
+    var s=rotulo(k,cor); s.position.copy(a2).add(b2).multiplyScalar(.5); gCotas.add(s);
+  }
+  function marca(p,k){ var cor=CAMPOS.filter(function(c){return c.k===k})[0].cor; var s=rotulo(k,cor); s.position.copy(p); gCotas.add(s) }
+
+  function montar(){
+    if(G){ S.remove(G); G.traverse(function(o){ o.geometry&&o.geometry.dispose(); if(o.material&&o.material.map){o.material.map.dispose(); o.material.dispose()} }) }
+    G=new THREE.Group(); gPoste=new THREE.Group(); gCalha=new THREE.Group(); gArco=new THREE.Group(); gCotas=new THREE.Group();
+    var A=P.A,B=P.B,M=P.M,C=P.C,D=P.D*Math.PI/180,E=P.E,F=P.F,GL=P.G,NL=P.N,H=P.H*Math.PI/180,I=P.I,J=P.J,K=P.K,Ld=P.L;
+    var V=function(x,y,z){return new THREE.Vector3(x,y,z)};
+    // Perfil do berço (x = largura, y = altura, z = sentido da calha): fundo reto, chanfro inclinado e lateral reta
+    function chapa(a,b){
+      var d=new THREE.Vector2(b.x-a.x,b.y-a.y), L=d.length(); if(L<.05) return null;
+      var m=caixa(L,E,A,aco); m.position.set((a.x+b.x)/2,(a.y+b.y)/2,0); m.rotation.z=Math.atan2(d.y,d.x); m.castShadow=true; G.add(m); return m;
+    }
+    var pts={};
+    [-1,1].forEach(function(sg){
+      var p0=new THREE.Vector2(sg*B/2,0), p1=new THREE.Vector2(sg*(B/2+M*Math.cos(D)),M*Math.sin(D)), p2=new THREE.Vector2(p1.x,p1.y+C);
+      chapa(p0,p1); chapa(p1,p2); pts[sg]={p0:p0,p1:p1,p2:p2};
+      [-.3,.3].forEach(function(fz){ // furos na lateral reta
+        furoChapa(V(p2.x,p1.y+C*.55,fz*A),V(sg,0,0),E,.45); // lateral reta
+        var mc=V((p0.x+p1.x)/2,(p0.y+p1.y)/2,fz*A); furoChapa(mc,V(sg*Math.sin(D),-Math.cos(D),0),E,.45); // chanfro
+      });
+    });
+    chapa(new THREE.Vector2(-B/2-.01,0),new THREE.Vector2(B/2+.01,0));
+    var xTopo=pts[1].p2.x, yTopo=pts[1].p2.y, xBase=pts[-1].p1.x;
+
+    // Espera do arco: tubo soldado na face de fora da lateral reta (lado de dentro da estufa).
+    // A ponta encostada na chapa é cortada em ângulo: lado de baixo (G) maior que o de cima (N).
+    // A inclinação sai das próprias medidas: tan(H) = F / (G - N).
+    if(GL>NL+.1){ H=Math.atan(F/(GL-NL)); P.H=Math.round(H*180/Math.PI); var hi=box.querySelectorAll('input[data-k="H"]'); hi.forEach(function(x){x.value=P.H}) }
+    var r=F/2, sH=Math.max(.05,Math.sin(H)), dir=V(Math.sin(H),Math.cos(H),0), per=V(Math.cos(H),-Math.sin(H),0), zz=V(0,0,1);
+    var xw=xTopo+E/2, yc=yTopo-.4-r/sH, c0=V(xw,yc,0), t1=(GL+NL)/2;
+    var NS=40, pos=[], idx=[], anel=[];
+    for(var k2=0;k2<=NS;k2++){
+      var th=k2/NS*Math.PI*2, of=per.clone().multiplyScalar(Math.cos(th)*r).addScaledVector(zz,Math.sin(th)*r);
+      var t0=-of.x/dir.x, pa=c0.clone().add(of).addScaledVector(dir,t0), pb=c0.clone().add(of).addScaledVector(dir,t1);
+      pos.push(pa.x,pa.y,pa.z,pb.x,pb.y,pb.z); if(k2<NS) anel.push(pa.clone().add(V(.15,0,0)));
+      if(k2<NS){ var a0=2*k2; idx.push(a0,a0+1,a0+2, a0+1,a0+3,a0+2) }
+    }
+    var tg=new THREE.BufferGeometry(); tg.setAttribute("position",new THREE.Float32BufferAttribute(pos,3)); tg.setIndex(idx); tg.computeVertexNormals();
+    var TG=new THREE.Group(); G.add(TG);
+    var tubo=new THREE.Mesh(tg,aco); tubo.castShadow=true; TG.add(tubo);
+    var fimT=c0.clone().addScaledVector(dir,t1);
+    var tampa=new THREE.Mesh(new THREE.RingGeometry(r-.3,r,32),aco); tampa.position.copy(fimT); tampa.quaternion.setFromUnitVectors(zz,dir); TG.add(tampa);
+    // cordão de solda em volta do encontro do tubo com a chapa
+    var cs=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(anel,true),80,.32,8,true),new THREE.MeshStandardMaterial({color:0xb9c0c2,metalness:.35,roughness:.7,side:THREE.DoubleSide}));
+    cs.castShadow=true; TG.add(cs);
+    // 3020 (duplo): o mesmo tubo espelhado na outra lateral
+    if(MODELO==="3020"){ var TM=TG.clone(); TM.scale.x=-1; G.add(TM) }
+    var base=c0;
+
+    // Abas do poste: duas chapas verticais por baixo do fundo, abraçando o poste
+    [-1,1].forEach(function(sg){
+      // chapa em pé, com a face no sentido da calha (z); as duas ficam uma de cada lado do poste (x)
+      var ab=caixa(E,I,J,aco); ab.position.set(Ld+sg*(K/2+E/2),-I/2,0); ab.castShadow=true; G.add(ab);
+      furoChapa(V(Ld+sg*(K/2+E/2),-I+1.8,0),V(1,0,0),E,.5);
+    });
+
+    // Contexto: poste 100 x 50, calha e arco
+    var posteH=45; /* poste 100 x 50: lado de 100 no sentido da largura da estufa, entre as abas */ var po=caixa(K,posteH,5,posteM); po.position.set(Ld,-posteH/2-.05,0); gPoste.add(po);
+    var sh=new THREE.Shape(), q=pts[1], r2=pts[-1], ins=.5;
+    sh.moveTo(r2.p2.x+ins,r2.p2.y-1); sh.lineTo(r2.p1.x+ins,r2.p1.y+.1); sh.lineTo(r2.p0.x+ins*.5,E+.1); sh.lineTo(q.p0.x-ins*.5,E+.1); sh.lineTo(q.p1.x-ins,q.p1.y+.1); sh.lineTo(q.p2.x-ins,q.p2.y-1);
+    sh.lineTo(q.p2.x-ins-.15,q.p2.y-1); sh.lineTo(q.p1.x-ins-.15,q.p1.y+.25); sh.lineTo(q.p0.x-ins*.5-.1,E+.25); sh.lineTo(r2.p0.x+ins*.5+.1,E+.25); sh.lineTo(r2.p1.x+ins+.15,r2.p1.y+.25); sh.lineTo(r2.p2.x+ins+.15,r2.p2.y-1);
+    var cg=new THREE.ExtrudeGeometry(sh,{depth:A*5,bevelEnabled:false}); cg.translate(0,0,-A*2.5); gCalha.add(new THREE.Mesh(cg,calhaM));
+    // o arco veste a espera inteira: desce até encostar perto da chapa (corte reto, sem bater na lateral)
+    var Ra=F/2+.35, tIni=Ra*Math.cos(H)/Math.max(.05,Math.sin(H))+.3;
+    var ar=c0.clone().addScaledVector(dir,Math.min(tIni,t1-1)), ar2=fimT.clone().addScaledVector(dir,70);
+    // o tubo do arco entra POR FORA da espera (encaixa por cima)
+    gArco.add(cil(ar,ar2,F/2+.35,arcoM)); var bocaA=new THREE.Mesh(new THREE.RingGeometry(F/2+.05,F/2+.35,32),arcoM); bocaA.position.copy(ar); bocaA.quaternion.setFromUnitVectors(V(0,0,1),dir); gArco.add(bocaA);
+    if(MODELO==="3020"){ var gm=new THREE.Group(); gm.add(cil(ar,ar2,F/2+.35,arcoM)); gm.add(bocaA.clone()); gm.scale.x=-1; gArco.add(gm) }
+
+    // Letras das medidas
+    var o=1.8;
+    cota(V(xBase,0,-A/2),V(xBase,0,A/2),"A",V(-o*1.6,0,0));
+    cota(V(-B/2,0,A/2),V(B/2,0,A/2),"B",V(0,-o*1.2,o*1.6));
+    cota(V(pts[-1].p0.x,0,-A/2),V(pts[-1].p1.x,pts[-1].p1.y,-A/2),"M",V(-o*.8,-o*.8,-o));
+    marca(V(pts[-1].p0.x-1.2,1.4,A/2+1.6),"D");
+    cota(V(pts[-1].p1.x,pts[-1].p1.y,-A/2),V(pts[-1].p2.x,pts[-1].p2.y,-A/2),"C",V(-o*1.4,0,-o));
+    marca(V(B/2*.6,E/2,A/2+3),"E");
+    marca(fimT.clone().add(V(0,F/2+1.8,0)),"F");
+    var b0=c0.clone().addScaledVector(per,r), bT=-r*per.x/dir.x, n0=c0.clone().addScaledVector(per,-r), nT=r*per.x/dir.x;
+    cota(b0.clone().addScaledVector(dir,bT),b0.clone().addScaledVector(dir,t1),"G",per.clone().multiplyScalar(2.4));
+    cota(n0.clone().addScaledVector(dir,nT),n0.clone().addScaledVector(dir,t1),"N",per.clone().multiplyScalar(-2.4));
+    marca(c0.clone().addScaledVector(dir,t1*.45).add(V(0,0,r+2.2)),"H");
+    cota(V(Ld+K/2+E,0,J/2),V(Ld+K/2+E,-I,J/2),"I",V(o*1.5,0,o*2.2));
+    cota(V(Ld+K/2+E,-I,-J/2),V(Ld+K/2+E,-I,J/2),"J",V(o*2.2,-o*1.6,0));
+    cota(V(Ld-K/2,-I,J/2),V(Ld+K/2,-I,J/2),"K",V(0,-o*2.4,o*1.6));
+    if(Math.abs(Ld)>.01) cota(V(0,-I-1,0),V(Ld,-I-1,0),"L",V(0,-o*2,0));
+    else marca(V(Ld-6,-I*.45,-K/2-3),"L");
+
+    G.add(gPoste,gCalha,gArco,gCotas);
+    vis(); S.add(G); render();
+  }
+  function vis(){
+    if(!G) return;
+    gPoste.visible=document.getElementById("tPoste").checked;
+    gCalha.visible=document.getElementById("tCalha").checked;
+    gArco.visible=document.getElementById("tArco").checked;
+    gCotas.visible=document.getElementById("tCotas").checked;
+    render();
+  }
+  document.querySelectorAll(".mods button").forEach(function(b){ b.onclick=function(){
+    MODELO=b.getAttribute("data-m");
+    document.querySelectorAll(".mods button").forEach(function(x){ x.classList.toggle("on",x===b) });
+    document.getElementById("tTit").textContent=MODELO==="3020"?"Suporte de calha dupla central":"Suporte de calha lateral simples";
+    document.getElementById("tCod").textContent="Código "+MODELO;
+    sync(); montar();
+  }});
+  ["tPoste","tCalha","tArco","tCotas"].forEach(function(id){ document.getElementById(id).onchange=vis });
+
+  // ---------- Câmera (girar / aproximar) ----------
+  var alvo=new THREE.Vector3(3,3,0), rot={a:.7,b:.32,d:105};
+  function cam(){
+    var b=Math.max(-1.4,Math.min(1.45,rot.b));
+    CAM.position.set(alvo.x+rot.d*Math.cos(b)*Math.sin(rot.a), alvo.y+rot.d*Math.sin(b), alvo.z+rot.d*Math.cos(b)*Math.cos(rot.a));
+    CAM.lookAt(alvo);
+  }
+  function render(){ cam(); R.render(S,CAM) }
+  function tam(){ var w=cv.clientWidth||600,h=cv.clientHeight||400; R.setSize(w,h,false); CAM.aspect=w/h; CAM.updateProjectionMatrix(); render() }
+  window.addEventListener("resize",tam);
+  var pts={}, dist0=0, d0=0;
+  cv.addEventListener("pointerdown",function(e){ cv.setPointerCapture(e.pointerId); pts[e.pointerId]={x:e.clientX,y:e.clientY}; var k=Object.keys(pts); if(k.length===2){ var p=pts[k[0]],q=pts[k[1]]; dist0=Math.hypot(p.x-q.x,p.y-q.y); d0=rot.d } });
+  cv.addEventListener("pointermove",function(e){
+    var p=pts[e.pointerId]; if(!p) return; var k=Object.keys(pts);
+    if(k.length===1){ rot.a-=(e.clientX-p.x)*.008; rot.b+=(e.clientY-p.y)*.008 }
+    p.x=e.clientX; p.y=e.clientY;
+    if(k.length===2){ var a=pts[k[0]],b=pts[k[1]]; var dd=Math.hypot(a.x-b.x,a.y-b.y); if(dist0) rot.d=Math.max(25,Math.min(300,d0*dist0/dd)) }
+    render();
+  });
+  function solta(e){ delete pts[e.pointerId]; dist0=0 }
+  cv.addEventListener("pointerup",solta); cv.addEventListener("pointercancel",solta);
+  cv.addEventListener("wheel",function(e){ e.preventDefault(); rot.d=Math.max(25,Math.min(300,rot.d*(e.deltaY>0?1.1:.9))); render() },{passive:false});
+
+  window.__peca={grupo:function(){return G},partes:function(){return{poste:gPoste,calha:gCalha,arco:gArco,cotas:gCotas}},render:render,cena:S,camera:CAM,renderer:R};
+  sync(); montar(); tam();
+})();
+</script>
+</body>
+</html>
