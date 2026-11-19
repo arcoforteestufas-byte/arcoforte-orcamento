@@ -17,3 +17,21 @@ Medidas reais conferidas pelo Bruno em 19/11/2026. Os modelos `.glb` e `.stl` es
 A 15 (comprimento do berço) · B 10 (fundo) · M 4 (chanfro) · D 35° (ângulo do chanfro) · C 5,5 (lateral reta) ·
 E 0,3 (chapa) · F 4,2 (diâmetro do tubo) · G 15 / N 11,5 (tubo, lado de baixo / de cima) · H 50° (inclinação) ·
 I 9 (abas) · J 3 (largura das abas) · K 10 (entre as abas) · 10 furos.
+
+---
+
+## Espera de arco 3018 (laterais sem calha) e perfil de alumínio duplo 5084
+
+| Peça | Código | Arquivos |
+|---|---|---|
+| Espera de arco (chapa no lado de fora do poste) | 3018 | `espera-arco-3018.glb`, `.stl`, imagens `-perspectiva/-fora/-dentro/-montada.png` |
+| Perfil de alumínio duplo, molas juntas (lateral) | 5084 | `perfil-aluminio-5084.glb`, `.stl` (trecho de 1 m), `perfil-5084-corte.png` |
+
+- **visualizador-espera-arco-3018.html**: abre no navegador; mostra a 3018 no poste, com a lateral, o perfil 5084, o parafuso autobrocante e as letras das medidas.
+- A 3018 vai na face de fora do poste. O primeiro furo é o da lateral, e a lateral fica do lado de fora da chapa.
+
+### Medidas 3018 (cm)
+Chapa: A 15,5 · B 3 · E 0,4 · C 4 · D 35° ·
+Furos: Q 3 · R 1,5 · S 6,5 ·
+Montagem: T 6 · W 1,5 · U 3 ·
+Tubo: F 4,5 · G 16.
