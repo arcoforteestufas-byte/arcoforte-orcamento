@@ -53,6 +53,14 @@ Medidas aproximadas (cm), pela proporção da foto: largura 4,4 · altura 1,3. �
 |---|---|---|
 | Metalon 50 × 30 galvanizado, chapa 1,25 mm, barra de 6 m, com o perfil 5075 no lado de fora | 3034 | `lateral-3034.glb`, `.stl` (trecho de 1 m), imagens `-perspectiva/-corte/-fora.png`, `visualizador-lateral-3034.html` |
 
+## Calha de alumínio (código a definir)
+
+| Peça | Arquivos |
+|---|---|
+| Calha com fundo reto, cantos chanfrados e um canal de mola em cima de cada lado | `calha.glb`, `.stl` (trecho de 1 m), imagens `-perspectiva/-corte/-cima.png`, `visualizador-calha.html` (com as molas) |
+
+Medidas aproximadas (cm), tiradas do berço dos suportes 3019/3020 para encaixar nele: largura em cima 15,8 · fundo 9,2 · altura 7,2 · canais de mola 2,2 × 1,4.
+
 ## Catálogo
 
 - **catalogo-pecas-3d.html**: abre no navegador (precisa de internet para carregar o 3D). Uma ficha por peça, com o modelo para girar, código, onde vai, medidas e arquivos.
