@@ -61,6 +61,14 @@ Medidas aproximadas (cm), pela proporção da foto: largura 4,4 · altura 1,3. �
 
 Medidas (cm) conferidas pelo Bruno em 20/11/2026: A largura em cima 17 · B fundo 10 · C altura total 9 · D altura da parede reta 7,5 · perfil de molas juntas com fundo de 3 (conferido), abertura 2,1 e altura 1,25.
 
+## Encaixe dorsal frontal com chapa (código 3028)
+
+| Peça | Código | Arquivos |
+|---|---|---|
+| Dois tubos galvanizados soldados em ângulo reto, com chapa de fixação por baixo | 3028 | `encaixe-dorsal-3028.glb`, `.stl`, imagens `-perspectiva/-cima/-baixo/-lado.png`, `visualizador-encaixe-dorsal-3028.html` |
+
+Medidas aproximadas (cm), tiradas das fotos: tubos Ø 5,5 · tubo deitado 10 (com furo) · tubo em pé 6,5 · chapa 3,2 × 16 × 0,3 com 2 furos.
+
 ## Catálogo
 
 - **catalogo-pecas-3d.html**: abre no navegador (precisa de internet para carregar o 3D). Uma ficha por peça, com o modelo para girar, código, onde vai, medidas e arquivos.
