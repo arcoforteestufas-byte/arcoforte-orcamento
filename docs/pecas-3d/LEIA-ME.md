@@ -47,6 +47,12 @@ Tubo: F 4,5 · G 16.
 
 Medidas aproximadas (cm), pela proporção da foto: largura 4,4 · altura 1,3. É o perfil que aparece na lateral da estufa 3D.
 
+## Lateral 50 × 30 com perfil duplo de molas separadas (código 3034)
+
+| Peça | Código | Arquivos |
+|---|---|---|
+| Metalon 50 × 30 galvanizado, chapa 1,25 mm, barra de 6 m, com o perfil 5075 no lado de fora | 3034 | `lateral-3034.glb`, `.stl` (trecho de 1 m), imagens `-perspectiva/-corte/-fora.png`, `visualizador-lateral-3034.html` |
+
 ## Catálogo
 
 - **catalogo-pecas-3d.html**: abre no navegador (precisa de internet para carregar o 3D). Uma ficha por peça, com o modelo para girar, código, onde vai, medidas e arquivos.
