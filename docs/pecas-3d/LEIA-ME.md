@@ -79,7 +79,7 @@ Medidas aproximadas (cm), tiradas das fotos: tubos Ø 5,5 · tubo deitado 10 (co
 
 Faz parte do arco frontal: já vem com ele e **não é somado no cálculo da estufa**.
 
-Medidas aproximadas (cm), tiradas das fotos: tubo Ø 5,5 × 10 com furo passante de 1,1 · chapa 2,9 × 5,8 × 0,3 com 1 furo.
+Medidas (cm): tubo Ø 5,7 × 10 (conferido) com furo passante de 1,1 · chapa de 2 mm (conferida), 2,9 × 5,8 (pelas fotos), com 1 furo.
 
 ## Catálogo
 
