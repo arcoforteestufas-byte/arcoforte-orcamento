@@ -14,9 +14,9 @@ export default function CatalogoPecas3DPage() {
             Cada peça da estufa em 3D, com código, onde vai e medidas. Gire com o mouse ou o dedo.
           </p>
         </div>
-        <Link href="/croquis" className={buttonVariants({ variant: "outline", className: "gap-2" })}>
+        <Link href="/produtos" className={buttonVariants({ variant: "outline", className: "gap-2" })}>
           <ArrowLeft className="h-4 w-4" />
-          Voltar ao Croqui 3D
+          Voltar a Produtos
         </Link>
       </div>
       <iframe

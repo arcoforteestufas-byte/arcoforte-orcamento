@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Boxes, Images } from "lucide-react"
+import { Images } from "lucide-react"
 import { createClient } from "@/utils/supabase/server"
 import { buttonVariants } from "@/components/ui/button"
 import { configDoOrcamento, hashDaConfig } from "@/lib/estufa3d/config"
@@ -57,16 +57,10 @@ export default async function CroquisPage({ searchParams }: { searchParams: Prom
             Escolha o orçamento, ajuste a estufa e a posição da câmera e gere o croqui que vai na proposta.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/croquis/catalogo" className={buttonVariants({ variant: "outline", className: "gap-2" })}>
-            <Boxes className="h-4 w-4" />
-            Catálogo de peças 3D
-          </Link>
-          <Link href="/croquis/biblioteca" className={buttonVariants({ variant: "outline", className: "gap-2" })}>
-            <Images className="h-4 w-4" />
-            Biblioteca antiga
-          </Link>
-        </div>
+        <Link href="/croquis/biblioteca" className={buttonVariants({ variant: "outline", className: "gap-2" })}>
+          <Images className="h-4 w-4" />
+          Biblioteca antiga
+        </Link>
       </div>
       <Estufa3DViewer
         opcoes={opcoes}

@@ -1,4 +1,7 @@
+import Link from "next/link"
+import { Boxes } from "lucide-react"
 import { createClient } from "@/utils/supabase/server"
+import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { XlsxUploader } from "@/components/xlsx-uploader"
@@ -17,7 +20,11 @@ export default async function ProdutosPage() {
             Gerenciamento de produtos, matérias-primas e insumos.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/produtos/catalogo-3d" className={buttonVariants({ variant: "outline", className: "gap-2" })}>
+            <Boxes className="h-4 w-4" />
+            Catálogo de peças 3D
+          </Link>
           <XlsxUploader />
         </div>
       </div>
