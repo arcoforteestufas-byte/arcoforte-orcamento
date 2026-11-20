@@ -36,3 +36,17 @@ Chapa: A 15,5 · B 3 · E 0,4 · C 4 · D 35° ·
 Furos: Q 3 · R 1,5 · S 6,5 ·
 Montagem: T 6 · W 1,5 · U 3 ·
 Tubo: F 4,5 · G 16.
+
+---
+
+## Perfil de alumínio duplo, molas separadas (código a definir)
+
+| Peça | Arquivos |
+|---|---|
+| Perfil em U duplo: fundo reto, 3 paredes retas com bordas dobradas, 2 canais (uma mola em cada) | `perfil-duplo-molas-separadas.glb`, `.stl` (trecho de 1 m), `perfil-duplo-molas-separadas-corte.png` |
+
+Medidas aproximadas (cm), pela proporção da foto: largura 4,4 · altura 1,3. É o perfil que aparece na lateral da estufa 3D.
+
+## Catálogo
+
+- **catalogo-pecas-3d.html**: abre no navegador (precisa de internet para carregar o 3D). Uma ficha por peça, com o modelo para girar, código, onde vai, medidas e arquivos.
