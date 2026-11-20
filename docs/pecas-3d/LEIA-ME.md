@@ -59,8 +59,11 @@ Medidas aproximadas (cm), pela proporção da foto: largura 4,4 · altura 1,3. �
 |---|---|
 | Calha com fundo reto, cantos chanfrados e um perfil duplo de molas juntas (tipo 5084) no alto de cada parede, pelo lado de dentro | `calha.glb`, `.stl` (trecho de 1 m), imagens `-perspectiva/-corte/-cima.png`, `visualizador-calha.html` (com as molas) |
 
-Medidas aproximadas (cm), tiradas do berço dos suportes 3019/3020 para encaixar nele: largura em cima 15,8 · fundo 9,2 · altura 7,2 · perfil de molas juntas com fundo 4,6, abertura 3,1 e altura 1,25.
+Medidas aproximadas (cm), tiradas do berço dos suportes 3019/3020 para encaixar nele: largura em cima 15,8 · fundo 9,2 · altura 7,2 · perfil de molas juntas com fundo de 3 (conferido), abertura 2,1 e altura 1,25.
 
 ## Catálogo
 
 - **catalogo-pecas-3d.html**: abre no navegador (precisa de internet para carregar o 3D). Uma ficha por peça, com o modelo para girar, código, onde vai, medidas e arquivos.
+
+
+> 20/11/2026: perfil 5084 (molas juntas) refeito com 3 cm de largura no fundo, conferido pelo Bruno.
