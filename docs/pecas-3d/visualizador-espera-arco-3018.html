@@ -192,8 +192,8 @@
     // cada canal com bordas arredondadas e a sua própria mola. Preso na face de fora da lateral com parafuso autobrocante.
     (function(){
       var alu=new THREE.MeshStandardMaterial({color:0xe3e8ea,metalness:.3,roughness:.3,emissive:0x50585b,side:THREE.DoubleSide});
-      var yc=A-Rf-Wl, x0=-4, Lz=A*6, t=.15, hP=1.25, rb=.22, wb=2.2, wo=1.45, off=1.25;
-      var base=caixa(t,5,Lz,alu); base.position.set(x0-t/2,yc,0); gCalha.add(base);
+      var yc=A-Rf-Wl, x0=-4, Lz=A*6, t=.15, hP=1.25, rb=.22, wb=2.0, wo=1.6, off=1.01;
+      var base=caixa(t,4.2,Lz,alu); base.position.set(x0-t/2,yc,0); gCalha.add(base);
       [-1,1].forEach(function(sc){
         var c=yc+sc*off;
         var pts=[[-wb/2,0],[wb/2,0],[wo/2,hP],[wo/2-t*1.1,hP-t*.55],[wb/2-t*1.2,t],[-wb/2+t*1.2,t],[-wo/2+t*1.1,hP-t*.55],[-wo/2,hP]];
@@ -202,7 +202,7 @@
         var m=new THREE.Mesh(g,alu); m.rotation.z=Math.PI/2; m.position.set(x0,c,0); gCalha.add(m);
         [-1,1].forEach(function(sg){ var b=new THREE.Mesh(new THREE.CylinderGeometry(rb,rb,Lz,14),alu); b.rotation.x=Math.PI/2; b.position.set(x0-hP,c+sg*(wo/2-rb*.6),0); gCalha.add(b) });
         // mola em zigue-zague do canal
-        var zp=[],n=Math.round(Lz/3); for(var k=0;k<=n;k++) zp.push(new THREE.Vector3(x0-.75,c+(k%2?.45:-.45),-Lz/2+k*Lz/n));
+        var zp=[],n=Math.round(Lz/3); for(var k=0;k<=n;k++) zp.push(new THREE.Vector3(x0-.75,c+(k%2?.4:-.4),-Lz/2+k*Lz/n));
         var zm=new THREE.MeshStandardMaterial({color:0x2b3032,metalness:.5,roughness:.5});
         for(var k=0;k<n;k++) gCalha.add(cil(zp[k],zp[k+1],.1,zm));
       });
