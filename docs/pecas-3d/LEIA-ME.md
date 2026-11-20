@@ -85,9 +85,9 @@ Medidas (cm): tubo Ø 5,7 × 10 (conferido) com furo passante de 1,1 · chapa de
 
 | Conjunto | Código | Arquivos |
 |---|---|---|
-| Arco frontal duplo 8 m com o encaixe dorsal 3028 no topo e um encaixe de contravento 3026 em cada lado | 3109 | `arco-frontal-3109.glb`, imagens `-frente/-perspectiva/-topo/-lado.png`, `visualizador-arco-frontal-3109.html` |
+| Arco frontal duplo 8 m com o encaixe dorsal 3028 no topo e uma espera de contravento 3026 de cada lado | 3109 | `arco-frontal-3109.glb`, imagens `-frente/-perspectiva/-topo/-lado.png`, `visualizador-arco-frontal-3109.html` |
 
-O arco vem da estufa 3D (mesmo formato do sistema). A dorsal e os contraventos aparecem só em trecho. Posição dos encaixes suposta: 3028 no topo e 3026 no meio de cada metade do arco (a confirmar).
+O arco vem da estufa 3D (mesmo formato do sistema). A dorsal e os contraventos aparecem só em trecho. O 3026 fica no encontro da trava de arco com o arco, com a chapa para dentro do arco: ela prende a trava de arco e o contravento (conferido).
 
 ## Catálogo
 
