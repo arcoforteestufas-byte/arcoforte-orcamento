@@ -57,9 +57,9 @@ Medidas aproximadas (cm), pela proporção da foto: largura 4,4 · altura 1,3. �
 
 | Peça | Arquivos |
 |---|---|
-| Calha com fundo reto, cantos chanfrados e um canal de mola em cima de cada lado | `calha.glb`, `.stl` (trecho de 1 m), imagens `-perspectiva/-corte/-cima.png`, `visualizador-calha.html` (com as molas) |
+| Calha com fundo reto, cantos chanfrados e um canal de mola no alto de cada parede, aberto para o meio da calha | `calha.glb`, `.stl` (trecho de 1 m), imagens `-perspectiva/-corte/-cima.png`, `visualizador-calha.html` (com as molas) |
 
-Medidas aproximadas (cm), tiradas do berço dos suportes 3019/3020 para encaixar nele: largura em cima 15,8 · fundo 9,2 · altura 7,2 · canais de mola 2,2 × 1,4.
+Medidas aproximadas (cm), tiradas do berço dos suportes 3019/3020 para encaixar nele: largura em cima 15,8 · fundo 9,2 · altura 7,2 · canais de mola com 2,1 entre as abas e abas de 1,3.
 
 ## Catálogo
 
