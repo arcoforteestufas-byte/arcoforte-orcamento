@@ -81,6 +81,14 @@ Faz parte do arco frontal: já vem com ele e **não é somado no cálculo da est
 
 Medidas (cm): tubo Ø 5,7 × 10 (conferido) com furo passante de 1,1 · chapa de 2 mm (conferida), 2,9 × 5,8 (pelas fotos), com 1 furo.
 
+## Arco frontal duplo 8 m montado (código 3109)
+
+| Conjunto | Código | Arquivos |
+|---|---|---|
+| Arco frontal duplo 8 m com o encaixe dorsal 3028 no topo e um encaixe de contravento 3026 em cada lado | 3109 | `arco-frontal-3109.glb`, imagens `-frente/-perspectiva/-topo/-lado.png`, `visualizador-arco-frontal-3109.html` |
+
+O arco vem da estufa 3D (mesmo formato do sistema). A dorsal e os contraventos aparecem só em trecho. Posição dos encaixes suposta: 3028 no topo e 3026 no meio de cada metade do arco (a confirmar).
+
 ## Catálogo
 
 - **catalogo-pecas-3d.html**: abre no navegador (precisa de internet para carregar o 3D). Uma ficha por peça, com o modelo para girar, código, onde vai, medidas e arquivos.
