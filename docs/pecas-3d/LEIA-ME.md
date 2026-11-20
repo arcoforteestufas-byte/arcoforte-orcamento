@@ -67,6 +67,8 @@ Medidas (cm) conferidas pelo Bruno em 20/11/2026: A largura em cima 17 · B fund
 |---|---|---|
 | Dois tubos galvanizados soldados em ângulo reto, com chapa de fixação por baixo | 3028 | `encaixe-dorsal-3028.glb`, `.stl`, imagens `-perspectiva/-cima/-baixo/-lado.png`, `visualizador-encaixe-dorsal-3028.html` |
 
+Faz parte do arco frontal: já vem com ele e **não é somado no cálculo da estufa**.
+
 Medidas aproximadas (cm), tiradas das fotos: tubos Ø 5,5 · tubo deitado 10 (com furo) · tubo em pé 10 (conferido, com furo a 1,5 da chapa) · chapa 3,2 × 16 × 0,3 com 2 furos.
 
 ## Catálogo
