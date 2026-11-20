@@ -81,13 +81,13 @@ Faz parte do arco frontal: já vem com ele e **não é somado no cálculo da est
 
 Medidas (cm): tubo Ø 5,7 × 10 (conferido) com furo passante de 1,1 · chapa de 2 mm (conferida), 2,9 × 5,8 (pelas fotos), com 1 furo.
 
-## Arco frontal duplo 8 m montado (código 3109)
+## Arco frontal duplo 8 m (código 3109)
 
 | Conjunto | Código | Arquivos |
 |---|---|---|
 | Arco frontal duplo 8 m com o encaixe dorsal 3028 no topo e uma espera de contravento 3026 de cada lado | 3109 | `arco-frontal-3109.glb`, imagens `-frente/-perspectiva/-topo/-lado.png`, `visualizador-arco-frontal-3109.html` |
 
-O arco vem da estufa 3D (mesmo formato do sistema). Arco, reforços e contravento em tubo de 2" (conferido). A dorsal e os contraventos aparecem só em trecho. O 3026 fica no encontro da trava de arco com o arco, com a chapa para dentro do arco. A trava de arco, o reforço (diagonal) e o contravento têm a ponta amassada (aba arredondada com furo oblongo) e são parafusados juntos nessa chapa. No arco duplo, a ponta do contravento é dobrada para deitar na chapa e aproveitar o mesmo parafuso (conferido).
+O arco vem da estufa 3D (mesmo formato do sistema), sozinho, como sai da fábrica: arco, trava de arco e reforços em tubo de 2" (conferido), com o 3028 e os dois 3026. Sem dorsal, frontal e contravento. O 3026 fica no encontro da trava de arco com o arco, com a chapa para dentro do arco. A trava de arco, o reforço (diagonal) e o contravento têm a ponta amassada (aba arredondada com furo oblongo) e são parafusados juntos nessa chapa. No arco duplo, a ponta do contravento é dobrada para deitar na chapa e aproveitar o mesmo parafuso (conferido).
 
 ## Catálogo
 
