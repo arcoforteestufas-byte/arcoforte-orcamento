@@ -71,6 +71,16 @@ Faz parte do arco frontal: já vem com ele e **não é somado no cálculo da est
 
 Medidas aproximadas (cm), tiradas das fotos: tubos Ø 5,5 · tubo deitado 10 (com furo) · tubo em pé 10 (conferido, com furo a 1,5 da chapa) · chapa 3,2 × 16 × 0,3 com 2 furos.
 
+## Encaixe de contravento (código 3026)
+
+| Peça | Código | Arquivos |
+|---|---|---|
+| Tubo galvanizado com furo passante e chapa de fixação soldada na lateral | 3026 | `encaixe-contravento-3026.glb`, `.stl`, imagens `-perspectiva/-cima/-ponta.png`, `visualizador-encaixe-contravento-3026.html` |
+
+Faz parte do arco frontal: já vem com ele e **não é somado no cálculo da estufa**.
+
+Medidas aproximadas (cm), tiradas das fotos: tubo Ø 5,5 × 10 com furo passante de 1,1 · chapa 2,9 × 5,8 × 0,3 com 1 furo.
+
 ## Catálogo
 
 - **catalogo-pecas-3d.html**: abre no navegador (precisa de internet para carregar o 3D). Uma ficha por peça, com o modelo para girar, código, onde vai, medidas e arquivos.
