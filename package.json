@@ -1,6 +1,6 @@
 {
   "name": "arcoforte-orcamento",
-  "version": "0.1.136",
+  "version": "0.1.137",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "deploy": "npm version patch --no-git-tag-version && npx vercel --prod",
-    "estufa3d": "node scripts/gerar-estufa3d.mjs"
+    "estufa3d": "node scripts/gerar-estufa3d.mjs",
+    "catalogo3d": "node scripts/gerar-catalogo3d.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.25",
