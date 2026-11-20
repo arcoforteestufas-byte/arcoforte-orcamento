@@ -39,11 +39,11 @@ Tubo: F 4,5 · G 16.
 
 ---
 
-## Perfil de alumínio duplo, molas separadas (código 3034)
+## Perfil de alumínio duplo, molas separadas (código 5075, barra de 6 m)
 
 | Peça | Código | Arquivos |
 |---|---|---|
-| Perfil em U duplo: fundo reto, 3 paredes retas com bordas dobradas, 2 canais (uma mola em cada) | 3034 | `perfil-aluminio-3034.glb`, `.stl` (trecho de 1 m), `perfil-3034-corte.png` |
+| Perfil em U duplo: fundo reto, 3 paredes retas com bordas dobradas, 2 canais (uma mola em cada) | 5075 | `perfil-aluminio-5075.glb`, `.stl` (trecho de 1 m), `perfil-5075-corte.png` |
 
 Medidas aproximadas (cm), pela proporção da foto: largura 4,4 · altura 1,3. É o perfil que aparece na lateral da estufa 3D.
 
