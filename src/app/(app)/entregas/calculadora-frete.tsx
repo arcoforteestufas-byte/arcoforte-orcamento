@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { AlertTriangle, Calculator, CheckCircle2, Info, Loader2, Route, Sparkles, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { aplicarFreteNoOrcamento, calcularFrete, listarVeiculosFrete, pesoDoOrcamento } from "@/app/actions/entregas"
+import { aplicarFreteNoOrcamento, calcularFrete, listarTabelasFrete, listarVeiculosFrete, pesoDoOrcamento } from "@/app/actions/entregas"
 import { formatarDuracao, formatarKm, nomeVeiculo, type CalculoFrete, type VeiculoFrete } from "@/lib/entregas-types"
 import { CidadeSelect } from "./cidade-select"
 
@@ -59,9 +59,12 @@ export function CalculadoraFrete({
   const [veiculos, setVeiculos] = useState<VeiculoFrete[]>([])
   const [veiculoId, setVeiculoId] = useState("")
   const [escolhaManual, setEscolhaManual] = useState(false)
+  // tabela de frete: segue a do veículo até o vendedor escolher outra
+  const [tabelas, setTabelas] = useState<{ id: string; nome: string }[]>([])
+  const [tabelaManual, setTabelaManual] = useState<string | null>(null)
   const seq = useRef(0)
 
-  useEffect(() => { listarVeiculosFrete().then(setVeiculos) }, [])
+  useEffect(() => { listarVeiculosFrete().then(setVeiculos); listarTabelasFrete().then(setTabelas) }, [])
 
   // sugere o menor veículo que comporta o peso (até o usuário escolher outro).
   // Peso é opcional: sem peso, não sugere veículo (usa a tabela geral ou o que o vendedor escolher).
@@ -75,6 +78,9 @@ export function CalculadoraFrete({
     return (cabe[0] || comCap.sort((a, b) => (b.capacidade_kg || 0) - (a.capacidade_kg || 0))[0]).id
   })()
   useEffect(() => { if (!escolhaManual) setVeiculoId(sugerido) }, [sugerido, escolhaManual])
+  // tabela usada: a escolhida pelo vendedor; senão a do veículo; senão a geral
+  const veiculoDaTabela = veiculos.find(v => v.id === veiculoId)?.tabela_frete_id || null
+  const tabelaId = tabelaManual || (veiculoDaTabela && tabelas.some(t => t.id === veiculoDaTabela) ? veiculoDaTabela : "geral")
 
   // peso do orçamento escolhido
   useEffect(() => {
@@ -96,7 +102,7 @@ export function CalculadoraFrete({
     const t = setTimeout(async () => {
       setCalculando(true)
       setErro("")
-      const r = await calcularFrete({ uf, cidade: cidade.nome, cidade_ibge: cidade.ibge, pesoKg: numeroBR(peso), aproveitarViagem: aproveitar, veiculoId: veiculoId || null })
+      const r = await calcularFrete({ uf, cidade: cidade.nome, cidade_ibge: cidade.ibge, pesoKg: numeroBR(peso), aproveitarViagem: aproveitar, veiculoId: veiculoId || null, tabelaId })
       if (n !== seq.current) return
       setCalculando(false)
       if (!r.ok) { setErro(r.erro); setCalc(null); return }
@@ -105,7 +111,7 @@ export function CalculadoraFrete({
       setDescricao(r.dados!.descricao)
     }, 400)
     return () => clearTimeout(t)
-  }, [uf, cidade, peso, aproveitar, veiculoId])
+  }, [uf, cidade, peso, aproveitar, veiculoId, tabelaId])
 
   const aplicar = async () => {
     const v = numeroBR(valorFinal)
@@ -165,6 +171,19 @@ export function CalculadoraFrete({
             {escolhaManual && !!kgInformado && <button type="button" className="justify-self-start text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setEscolhaManual(false)}>voltar para o sugerido pelo peso</button>}
           </div>
         )}
+        {tabelas.length > 0 && (
+          <div className="grid gap-1.5">
+            <Label className="flex items-center gap-1.5">
+              Tabela de frete
+              {!tabelaManual && veiculoDaTabela && <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-medium text-[#a8541a]">a do veículo</span>}
+            </Label>
+            <select className={inp} value={tabelaId} onChange={e => setTabelaManual(e.target.value)}>
+              <option value="geral">Tabela geral</option>
+              {tabelas.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </select>
+            {tabelaManual && <button type="button" className="justify-self-start text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setTabelaManual(null)}>voltar para a tabela do veículo</button>}
+          </div>
+        )}
         {viagemDisponivel && (
           <label className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-sm transition-colors ${aproveitar ? "border-blue-400 bg-blue-50" : "hover:bg-muted/40"}`}>
             <input type="checkbox" className="mt-0.5 accent-blue-600" checked={aproveitar} onChange={e => setAproveitar(e.target.checked)} />
@@ -199,6 +218,12 @@ export function CalculadoraFrete({
               <Route className="h-4 w-4 text-orange-300" />
               <span>{calc.origem} → <b>{calc.destino}</b></span>
             </div>
+            {calc.tabelaUsada?.id && (
+              <div className="flex items-center gap-2 text-xs text-white/75">
+                <Route className="h-3.5 w-3.5 text-orange-300" />
+                <span>Tabela: <b className="text-white/90">{calc.tabelaUsada.nome}</b></span>
+              </div>
+            )}
             {calc.veiculo && (
               <div className="flex items-center gap-2 text-xs text-white/75">
                 <Truck className="h-3.5 w-3.5 text-orange-300" />

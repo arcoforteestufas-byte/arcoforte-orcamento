@@ -9,10 +9,13 @@ import {
   Radio, RefreshCw, Route, Search, Star, Trash2, Trophy, Truck, UserRound, XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { cancelarEntrega, dadosEntregaDoLead, excluirCadastro, programarEntrega, salvarOrigem, salvarTabelaFrete } from "@/app/actions/entregas"
+import {
+  cancelarEntrega, dadosEntregaDoLead, excluirCadastro, excluirTabelaFrete, programarEntrega, salvarOrigem, salvarTabelaFrete, salvarTabelaFreteExtra,
+} from "@/app/actions/entregas"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   NOMES_UF, STATUS_ENTREGA, STATUS_VIAGEM, formatarKm, posicaoRecente,
-  type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora, type EntVeiculo, type EntViagem, type VendaFechada,
+  type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora, type EntVeiculo, type EntViagem, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
 import { cn } from "@/lib/utils"
 import { formatarData, inputClasse } from "../crm/crm-utils"
@@ -739,13 +742,14 @@ function AbaCadastros({ painel }: { painel: EntPainel }) {
       </section>
 
       <TabelaFrete painel={painel} onSalvo={atualizar} />
+      <TabelasFreteExtras painel={painel} onSalvo={atualizar} />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Lista titulo="Veículos" icone={<Truck className="h-4 w-4 text-[#d97021]" />} onNovo={() => setVeic({})}>
           {!painel.veiculos.length && vazio("Nenhum caminhão cadastrado.")}
           {painel.veiculos.map(v => (
             <Linha key={v.id} ativo={v.ativo} cor={v.cor} principal={`${v.placa}${v.descricao ? ` · ${v.descricao}` : ""}`}
-              detalhe={[v.proprio ? "Próprio" : `Terceiro${nomeTr(v.transportadora_id) ? ` · ${nomeTr(v.transportadora_id)}` : ""}`, v.capacidade_kg ? `${Number(v.capacidade_kg).toLocaleString("pt-BR")} kg` : "", v.frete_valor_km != null ? `frete ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v.frete_valor_km))}/km` : "frete: tabela geral"].filter(Boolean).join(" · ")}
+              detalhe={[v.proprio ? "Próprio" : `Terceiro${nomeTr(v.transportadora_id) ? ` · ${nomeTr(v.transportadora_id)}` : ""}`, v.capacidade_kg ? `${Number(v.capacidade_kg).toLocaleString("pt-BR")} kg` : "", v.frete_valor_km != null ? `frete ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v.frete_valor_km))}/km` : `frete: ${painel.tabelasFrete.find(t => t.id === v.tabela_frete_id)?.nome || "tabela geral"}`].filter(Boolean).join(" · ")}
               onEditar={() => setVeic(v)} onExcluir={() => excluir("ent_veiculos", v.id, v.placa)} />
           ))}
         </Lista>
@@ -770,7 +774,7 @@ function AbaCadastros({ painel }: { painel: EntPainel }) {
         </Lista>
       </div>
 
-      <VeiculoDialog item={veic} transportadoras={painel.transportadoras} onFechar={() => setVeic(null)} onSalvo={() => { setVeic(null); atualizar() }} />
+      <VeiculoDialog item={veic} transportadoras={painel.transportadoras} tabelas={painel.tabelasFrete} onFechar={() => setVeic(null)} onSalvo={() => { setVeic(null); atualizar() }} />
       <MotoristaDialog item={mot} transportadoras={painel.transportadoras} onFechar={() => setMot(null)} onSalvo={() => { setMot(null); atualizar() }} />
       <TransportadoraDialog item={trans} onFechar={() => setTrans(null)} onSalvo={() => { setTrans(null); atualizar() }} />
     </div>
@@ -926,6 +930,121 @@ function Linha({ ativo, principal, detalhe, onEditar, onExcluir, cor, avatar }: 
       <button className="text-muted-foreground hover:text-foreground" onClick={onEditar}><Pencil className="h-3.5 w-3.5" /></button>
       <button className="text-muted-foreground hover:text-red-600" onClick={onExcluir}><Trash2 className="h-3.5 w-3.5" /></button>
     </div>
+  )
+}
+
+/** Tabelas de frete extras (além da Tabela geral) */
+function TabelasFreteExtras({ painel, onSalvo }: { painel: EntPainel; onSalvo: () => void }) {
+  const [editando, setEditando] = useState<Partial<EntTabelaFrete> | null>(null)
+  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+  const usoPorTabela = (id: string) => painel.veiculos.filter(v => v.tabela_frete_id === id).map(v => v.placa)
+
+  const excluir = async (t: EntTabelaFrete) => {
+    const uso = usoPorTabela(t.id)
+    if (!confirm(`Excluir a tabela "${t.nome}"?${uso.length ? ` Os veículos ${uso.join(", ")} voltam para a tabela geral.` : ""}`)) return
+    const r = await excluirTabelaFrete(t.id)
+    if (!r.ok) return toast.error(r.erro)
+    toast.success("Tabela excluída")
+    onSalvo()
+  }
+
+  return (
+    <section className="rounded-2xl border bg-background shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold"><Route className="h-4 w-4 text-[#d97021]" /> Outras tabelas de frete</div>
+          <p className="text-xs text-muted-foreground">Ex.: por tipo de caminhão, por região ou por tipo de cliente. O vendedor escolhe a tabela na calculadora; cada veículo pode ter a sua.</p>
+        </div>
+        <Button size="sm" variant="outline" className="gap-1 shrink-0" onClick={() => setEditando({ cobrar_volta: true, ativo: true, desconto_viagem: painel.config.frete_desconto_viagem })}>
+          <Plus className="h-4 w-4" /> Nova tabela
+        </Button>
+      </div>
+      {!painel.tabelasFrete.length ? (
+        <p className="px-4 py-4 text-sm text-muted-foreground">Nenhuma tabela extra. Todos os fretes usam a tabela geral acima.</p>
+      ) : (
+        <div className="divide-y">
+          {painel.tabelasFrete.map(t => {
+            const uso = usoPorTabela(t.id)
+            return (
+              <div key={t.id} className={cn("flex items-center gap-3 px-4 py-2.5 text-sm", !t.ativo && "opacity-50")}>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{t.nome}{t.ativo ? "" : " (inativa)"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {[
+                      `${brl.format(t.valor_km)}/km${t.cobrar_volta ? " (ida e volta)" : " (só ida)"}`,
+                      t.valor_kg ? `${brl.format(t.valor_kg)}/kg` : "",
+                      t.minimo ? `mínimo ${brl.format(t.minimo)}` : "",
+                      t.desconto_viagem ? `${t.desconto_viagem}% aproveitando viagem` : "",
+                      uso.length ? `veículos: ${uso.join(", ")}` : "",
+                    ].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+                <button className="text-muted-foreground hover:text-foreground" title="Editar" onClick={() => setEditando(t)}><Pencil className="h-3.5 w-3.5" /></button>
+                <button className="text-muted-foreground hover:text-red-600" title="Excluir" onClick={() => excluir(t)}><Trash2 className="h-3.5 w-3.5" /></button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      <TabelaFreteDialog key={editando ? editando.id || "nova" : "fechada"} item={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); onSalvo() }} />
+    </section>
+  )
+}
+
+function TabelaFreteDialog({ item, onFechar, onSalvo }: {
+  item: Partial<EntTabelaFrete> | null
+  onFechar: () => void
+  onSalvo: () => void
+}) {
+  const br = (n: number | null | undefined) => (n === null || n === undefined ? "" : String(n).replace(".", ","))
+  // o formulário nasce com os valores da tabela (a janela é recriada a cada abertura, pela "key")
+  const [t, setT] = useState(() => ({
+    nome: item?.nome || "", km: br(item?.valor_km), kg: br(item?.valor_kg), minimo: br(item?.minimo), desconto: br(item?.desconto_viagem),
+    volta: item?.cobrar_volta !== false, obs: item?.observacao || "", ativo: item?.ativo !== false,
+  }))
+  const [salvando, setSalvando] = useState(false)
+  const campo = "flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+
+  const salvar = async () => {
+    setSalvando(true)
+    const r = await salvarTabelaFreteExtra({
+      id: item?.id, nome: t.nome,
+      valor_km: t.km as unknown as number, valor_kg: t.kg as unknown as number, minimo: t.minimo as unknown as number,
+      desconto_viagem: t.desconto as unknown as number, cobrar_volta: t.volta, observacao: t.obs, ativo: t.ativo,
+    })
+    setSalvando(false)
+    if (!r.ok) return toast.error(r.erro)
+    toast.success("Tabela de frete salva")
+    onSalvo()
+  }
+
+  return (
+    <Dialog open={!!item} onOpenChange={o => { if (!o) onFechar() }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader><DialogTitle>{item?.id ? "Editar tabela de frete" : "Nova tabela de frete"}</DialogTitle></DialogHeader>
+        <div className="grid gap-3">
+          <label className="grid gap-1.5 text-sm"><span className="font-medium">Nome *</span>
+            <input className={campo} value={t.nome} onChange={e => setT({ ...t, nome: e.target.value })} placeholder="Ex.: Carreta, Região Norte, Revenda" />
+          </label>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <label className="grid gap-1.5 text-sm"><span className="font-medium">R$ por km</span><input className={campo} inputMode="decimal" value={t.km} onChange={e => setT({ ...t, km: e.target.value })} /></label>
+            <label className="grid gap-1.5 text-sm"><span className="font-medium">R$ por kg</span><input className={campo} inputMode="decimal" value={t.kg} onChange={e => setT({ ...t, kg: e.target.value })} placeholder="0" /></label>
+            <label className="grid gap-1.5 text-sm"><span className="font-medium">Mínimo (R$)</span><input className={campo} inputMode="decimal" value={t.minimo} onChange={e => setT({ ...t, minimo: e.target.value })} placeholder="0" /></label>
+            <label className="grid gap-1.5 text-sm"><span className="font-medium">Desconto (%)</span><input className={campo} inputMode="decimal" value={t.desconto} onChange={e => setT({ ...t, desconto: e.target.value })} placeholder="0" /></label>
+          </div>
+          <p className="-mt-1 text-[11px] text-muted-foreground">Desconto = quando o vendedor marca &quot;aproveitar viagem já programada&quot;.</p>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-[#d97021]" checked={t.volta} onChange={e => setT({ ...t, volta: e.target.checked })} /> Cobrar ida e volta</label>
+          <label className="grid gap-1.5 text-sm"><span className="font-medium">Texto extra no orçamento (opcional)</span>
+            <input className={campo} value={t.obs} onChange={e => setT({ ...t, obs: e.target.value })} placeholder="Ex.: descarga por conta do cliente" />
+          </label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-[#d97021]" checked={t.ativo} onChange={e => setT({ ...t, ativo: e.target.checked })} /> Ativa (aparece na calculadora)</label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onFechar}>Cancelar</Button>
+          <Button className="bg-[#d97021] hover:bg-[#c3631b]" disabled={salvando || !t.nome.trim()} onClick={salvar}>{salvando ? "Salvando..." : "Salvar tabela"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

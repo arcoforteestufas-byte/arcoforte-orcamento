@@ -28,10 +28,26 @@ export interface EntVeiculo {
   frete_valor_km: number | null
   frete_valor_kg: number | null
   frete_minimo: number | null
+  /** tabela de frete que o veículo usa (vazio = tabela geral) */
+  tabela_frete_id?: string | null
+}
+
+/** Tabela de frete extra (a "Tabela geral" fica em EntConfig) */
+export interface EntTabelaFrete {
+  id: string
+  nome: string
+  valor_km: number
+  cobrar_volta: boolean
+  valor_kg: number
+  minimo: number
+  desconto_viagem: number
+  observacao: string | null
+  ativo: boolean
+  ordem: number
 }
 
 /** Veículo como opção na calculadora de frete */
-export type VeiculoFrete = Pick<EntVeiculo, "id" | "placa" | "descricao" | "capacidade_kg" | "frete_valor_km" | "frete_valor_kg" | "frete_minimo" | "proprio">
+export type VeiculoFrete = Pick<EntVeiculo, "id" | "placa" | "descricao" | "capacidade_kg" | "frete_valor_km" | "frete_valor_kg" | "frete_minimo" | "proprio" | "tabela_frete_id">
 
 export function nomeVeiculo(v: Pick<EntVeiculo, "placa" | "descricao">) {
   return v.descricao ? `${v.descricao} (${v.placa})` : v.placa
@@ -140,6 +156,8 @@ export interface CalculoFrete {
   descricao: string          // texto para o campo "Tipo de frete" do orçamento
   tabela: Pick<EntConfig, "frete_valor_km" | "frete_cobrar_volta" | "frete_valor_kg" | "frete_minimo" | "frete_desconto_viagem">
   veiculo: { id: string; nome: string; capacidade_kg: number | null; valorProprio: boolean } | null
+  /** tabela usada no cálculo (id null = tabela geral) */
+  tabelaUsada: { id: string | null; nome: string }
   acimaCapacidade: boolean   // peso maior que a capacidade do veículo escolhido
 }
 
@@ -174,6 +192,7 @@ export interface EntCadastros {
 }
 
 export interface EntPainel extends EntCadastros {
+  tabelasFrete: EntTabelaFrete[]
   viagens: EntViagem[]
   entregas: EntEntrega[]
   usuarios: { id: string; nome: string }[]

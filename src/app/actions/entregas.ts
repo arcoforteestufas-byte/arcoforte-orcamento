@@ -6,7 +6,7 @@ import { acharCidade, cidadePorIbge, cidadesDaUf, rotaPorEstrada } from "@/lib/g
 import {
   CONFIG_ENT_PADRAO,
   type CalculoFrete, type CidadeOpcao, type EntConfig, type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora,
-  type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem, type VeiculoFrete, type VendaFechada,
+  type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem, type VeiculoFrete, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
 
 type Resultado<T = undefined> = { ok: true; dados?: T } | { ok: false; erro: string }
@@ -161,12 +161,12 @@ export async function recalcularRotaViagem(viagemId: string): Promise<Resultado>
 export async function obterPainel(): Promise<EntPainel> {
   const { supabase, user } = await sessao()
   const vazio: EntPainel = {
-    transportadoras: [], veiculos: [], motoristas: [], viagens: [], entregas: [], usuarios: [],
+    transportadoras: [], veiculos: [], motoristas: [], viagens: [], entregas: [], usuarios: [], tabelasFrete: [],
     config: CONFIG_ENT_PADRAO, podeGerenciar: false, userId: "",
   }
   if (!user) return { ...vazio, erro: "Não autenticado" }
 
-  const [tr, ve, mo, vi, en, us, cfg] = await Promise.all([
+  const [tr, ve, mo, vi, en, us, cfg, tf] = await Promise.all([
     supabase.from("ent_transportadoras").select("*").order("nome"),
     supabase.from("ent_veiculos").select("*").order("placa"),
     supabase.from("ent_motoristas").select("*").order("nome"),
@@ -174,6 +174,8 @@ export async function obterPainel(): Promise<EntPainel> {
     supabase.from("ent_entregas").select("*").order("chegada_prevista", { nullsFirst: false }).order("ordem"),
     supabase.from("usuarios").select("id, nome").order("nome"),
     supabase.from("ent_config").select("*").eq("id", 1).maybeSingle(),
+    // tabelas extras (antes do SQL delas, vem erro e a lista fica vazia)
+    supabase.from("ent_tabelas_frete").select("*").order("ordem").order("nome"),
   ])
   const erro = tr.error || vi.error || en.error
   if (erro) {
@@ -187,9 +189,60 @@ export async function obterPainel(): Promise<EntPainel> {
     entregas: ((en.data || []) as EntEntrega[]).map(e => ({ ...e, distancia_estimada: !!e.distancia_estimada })),
     usuarios: us.data || [],
     config: normalizarConfig(cfg.data),
+    tabelasFrete: tf.error ? [] : (tf.data || []).map(normalizarTabela),
     podeGerenciar: podeGerenciar(user),
     userId: user.id,
   }
+}
+
+function normalizarTabela(t: Record<string, unknown>): EntTabelaFrete {
+  return {
+    id: String(t.id), nome: String(t.nome || ""), valor_km: Number(t.valor_km) || 0, cobrar_volta: t.cobrar_volta !== false,
+    valor_kg: Number(t.valor_kg) || 0, minimo: Number(t.minimo) || 0, desconto_viagem: Number(t.desconto_viagem) || 0,
+    observacao: (t.observacao as string) || null, ativo: t.ativo !== false, ordem: Number(t.ordem) || 0,
+  }
+}
+
+/** Tabelas de frete ativas (para escolher na calculadora) */
+export async function listarTabelasFrete(): Promise<EntTabelaFrete[]> {
+  const { supabase, user } = await sessao()
+  if (!user) return []
+  const { data, error } = await supabase.from("ent_tabelas_frete").select("*").eq("ativo", true).order("ordem").order("nome")
+  return error ? [] : (data || []).map(normalizarTabela)
+}
+
+/** Cria ou altera uma tabela de frete extra */
+export async function salvarTabelaFreteExtra(t: Partial<EntTabelaFrete> & { nome: string }): Promise<Resultado<{ id: string }>> {
+  const { supabase, erro } = await exigirGerente()
+  if (erro) return { ok: false, erro }
+  if (!texto(t.nome)) return { ok: false, erro: "Dê um nome para a tabela." }
+  const campos = {
+    nome: texto(t.nome),
+    valor_km: Math.max(0, numero(t.valor_km) ?? 0),
+    cobrar_volta: t.cobrar_volta !== false,
+    valor_kg: Math.max(0, numero(t.valor_kg) ?? 0),
+    minimo: Math.max(0, numero(t.minimo) ?? 0),
+    desconto_viagem: Math.min(100, Math.max(0, numero(t.desconto_viagem) ?? 0)),
+    observacao: texto(t.observacao),
+    ativo: t.ativo !== false,
+    atualizado_em: new Date().toISOString(),
+  }
+  const r = t.id
+    ? await supabase.from("ent_tabelas_frete").update(campos).eq("id", t.id).select("id")
+    : await supabase.from("ent_tabelas_frete").insert(campos).select("id")
+  if (r.error) return { ok: false, erro: /ent_tabelas_frete/.test(r.error.message) ? "Rode a migração 20261127000000_entregas_tabelas_frete.sql para criar tabelas de frete." : msgErro(r.error.message) }
+  if (!r.data?.length) return { ok: false, erro: "Sem permissão para alterar tabelas de frete." }
+  revalidar()
+  return { ok: true, dados: { id: r.data[0].id } }
+}
+
+export async function excluirTabelaFrete(id: string): Promise<Resultado> {
+  const { supabase, erro } = await exigirGerente()
+  if (erro) return { ok: false, erro }
+  const { error } = await supabase.from("ent_tabelas_frete").delete().eq("id", id)
+  if (error) return { ok: false, erro: msgErro(error.message) }
+  revalidar()
+  return { ok: true }
 }
 
 export async function obterPosicoes(viagemId: string, limite = 300) {
@@ -678,6 +731,8 @@ export async function salvarVeiculo(v: Partial<EntVeiculo> & { placa: string }) 
     capacidade_kg: numero(v.capacidade_kg), cor: v.cor || "#d97021", ativo: v.ativo ?? true, observacoes: texto(v.observacoes),
     // frete próprio do veículo (vazio = tabela geral)
     frete_valor_km: numero(v.frete_valor_km), frete_valor_kg: numero(v.frete_valor_kg), frete_minimo: numero(v.frete_minimo),
+    // tabela do veículo (só manda quando o formulário trouxe; antes do SQL a coluna não existe)
+    ...(v.tabela_frete_id !== undefined ? { tabela_frete_id: v.tabela_frete_id || null } : {}),
   })
 }
 
@@ -747,12 +802,15 @@ export async function listarVeiculosFrete(): Promise<VeiculoFrete[]> {
     frete_valor_km: v.frete_valor_km != null ? Number(v.frete_valor_km) : null,
     frete_valor_kg: v.frete_valor_kg != null ? Number(v.frete_valor_kg) : null,
     frete_minimo: v.frete_minimo != null ? Number(v.frete_minimo) : null,
+    tabela_frete_id: v.tabela_frete_id ?? null,
   }))
 }
 
 export async function calcularFrete(p: {
   uf: string | null; cidade: string | null; cidade_ibge?: number | null; pesoKg?: number | null; aproveitarViagem?: boolean
   veiculoId?: string | null
+  /** "" ou ausente = automática (a do veículo, senão a geral); "geral" = tabela geral; id = tabela extra */
+  tabelaId?: string | null
 }): Promise<Resultado<CalculoFrete>> {
   const { supabase, user } = await sessao()
   if (!user) return { ok: false, erro: "Não autenticado" }
@@ -760,11 +818,33 @@ export async function calcularFrete(p: {
   if (!cid) return { ok: false, erro: "Escolha o estado e a cidade de destino." }
   const cfg = await lerConfig(supabase)
 
-  // tarifa: a do veículo escolhido; o que estiver vazio vem da tabela geral
-  let veiculo: CalculoFrete["veiculo"] = null
-  let tarifaKm = cfg.frete_valor_km, tarifaKg = cfg.frete_valor_kg, minimo = cfg.frete_minimo
+  // veículo escolhido
+  let v: EntVeiculo | null = null
   if (p.veiculoId) {
-    const { data: v } = await supabase.from("ent_veiculos").select("*").eq("id", p.veiculoId).maybeSingle()
+    const { data } = await supabase.from("ent_veiculos").select("*").eq("id", p.veiculoId).maybeSingle()
+    v = data as EntVeiculo | null
+  }
+
+  // tabela base: a escolhida; senão a do veículo; senão a geral
+  const idTabela = p.tabelaId === "geral" ? null : (p.tabelaId || v?.tabela_frete_id || null)
+  let tabelaUsada: CalculoFrete["tabelaUsada"] = { id: null, nome: "Tabela geral" }
+  let base = {
+    km: cfg.frete_valor_km, kg: cfg.frete_valor_kg, minimo: cfg.frete_minimo,
+    volta: cfg.frete_cobrar_volta, desconto: cfg.frete_desconto_viagem, obs: cfg.frete_observacao,
+  }
+  if (idTabela) {
+    const { data: t } = await supabase.from("ent_tabelas_frete").select("*").eq("id", idTabela).maybeSingle()
+    if (t) {
+      const n = normalizarTabela(t)
+      base = { km: n.valor_km, kg: n.valor_kg, minimo: n.minimo, volta: n.cobrar_volta, desconto: n.desconto_viagem, obs: n.observacao }
+      tabelaUsada = { id: n.id, nome: n.nome }
+    }
+  }
+
+  // valores próprios do veículo (se preenchidos) valem por cima da tabela
+  let veiculo: CalculoFrete["veiculo"] = null
+  let tarifaKm = base.km, tarifaKg = base.kg, minimo = base.minimo
+  {
     if (v) {
       const proprioKm = v.frete_valor_km != null, proprioKg = v.frete_valor_kg != null, proprioMin = v.frete_minimo != null
       if (proprioKm) tarifaKm = Number(v.frete_valor_km)
@@ -782,12 +862,12 @@ export async function calcularFrete(p: {
   if (!rota) return { ok: false, erro: "Não consegui calcular a distância." }
 
   const kmIda = rota.km
-  const kmCobrados = Math.round(kmIda * (cfg.frete_cobrar_volta ? 2 : 1) * 10) / 10
+  const kmCobrados = Math.round(kmIda * (base.volta ? 2 : 1) * 10) / 10
   const pesoKg = Math.max(0, Number(p.pesoKg) || 0)
   const valorKm = kmCobrados * tarifaKm
   const valorPeso = pesoKg * tarifaKg
   const bruto = valorKm + valorPeso
-  const desconto = p.aproveitarViagem ? bruto * (cfg.frete_desconto_viagem / 100) : 0
+  const desconto = p.aproveitarViagem ? bruto * (base.desconto / 100) : 0
   let valor = bruto - desconto
   const minimoAplicado = minimo > 0 && valor < minimo
   if (minimoAplicado) valor = minimo
@@ -797,9 +877,10 @@ export async function calcularFrete(p: {
   const destino = `${cid.nome}-${cid.uf}`
   const descricao = [
     `Frete CIF ArcoForte: ${origem} → ${destino} (~${Math.round(kmIda).toLocaleString("pt-BR")} km)`,
+    tabelaUsada.id ? `tabela: ${tabelaUsada.nome}` : "",
     veiculo ? `veículo: ${veiculo.nome}` : "",
     p.aproveitarViagem ? "aproveitando viagem programada" : "",
-    cfg.frete_observacao || "",
+    base.obs || "",
   ].filter(Boolean).join(" · ")
 
   return {
@@ -809,10 +890,11 @@ export async function calcularFrete(p: {
       valorKm: Math.round(valorKm * 100) / 100, valorPeso: Math.round(valorPeso * 100) / 100,
       desconto: Math.round(desconto * 100) / 100, minimoAplicado, valor, descricao,
       tabela: {
-        frete_valor_km: tarifaKm, frete_cobrar_volta: cfg.frete_cobrar_volta, frete_valor_kg: tarifaKg,
-        frete_minimo: minimo, frete_desconto_viagem: cfg.frete_desconto_viagem,
+        frete_valor_km: tarifaKm, frete_cobrar_volta: base.volta, frete_valor_kg: tarifaKg,
+        frete_minimo: minimo, frete_desconto_viagem: base.desconto,
       },
       veiculo,
+      tabelaUsada,
       acimaCapacidade: !!veiculo?.capacidade_kg && pesoKg > veiculo.capacidade_kg,
     },
   }

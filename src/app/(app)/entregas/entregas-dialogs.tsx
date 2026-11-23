@@ -423,9 +423,10 @@ export function ViagemDialog({ aberto, inicial, cadastros, entregas, onFechar, o
 // CADASTROS
 // ======================================================================
 
-export function VeiculoDialog({ item, transportadoras, onFechar, onSalvo }: {
+export function VeiculoDialog({ item, transportadoras, tabelas = [], onFechar, onSalvo }: {
   item: Partial<EntVeiculo> | null
   transportadoras: EntTransportadora[]
+  tabelas?: { id: string; nome: string }[]
   onFechar: () => void
   onSalvo: () => void
 }) {
@@ -451,12 +452,20 @@ export function VeiculoDialog({ item, transportadoras, onFechar, onSalvo }: {
           <Campo rotulo="Capacidade (kg)"><input className={inputClasse} inputMode="decimal" value={v.capacidade_kg ?? ""} onChange={x => set("capacidade_kg", x.target.value)} /></Campo>
           <div className="rounded-xl border bg-orange-50/50 p-3 space-y-2">
             <div className="text-xs font-semibold uppercase tracking-wide text-[#a8541a]">Frete deste veículo</div>
+            {tabelas.length > 0 && (
+              <Campo rotulo="Tabela de frete">
+                <select className={inputClasse} value={v.tabela_frete_id || ""} onChange={x => set("tabela_frete_id", x.target.value || null)}>
+                  <option value="">Tabela geral</option>
+                  {tabelas.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                </select>
+              </Campo>
+            )}
             <div className="grid grid-cols-3 gap-2">
               <Campo rotulo="R$ por km"><input className={inputClasse} inputMode="decimal" value={v.frete_valor_km ?? ""} onChange={x => set("frete_valor_km", x.target.value)} placeholder="geral" /></Campo>
               <Campo rotulo="R$ por kg"><input className={inputClasse} inputMode="decimal" value={v.frete_valor_kg ?? ""} onChange={x => set("frete_valor_kg", x.target.value)} placeholder="geral" /></Campo>
               <Campo rotulo="Mínimo (R$)"><input className={inputClasse} inputMode="decimal" value={v.frete_minimo ?? ""} onChange={x => set("frete_minimo", x.target.value)} placeholder="geral" /></Campo>
             </div>
-            <p className="text-[11px] text-muted-foreground">Campo vazio usa a tabela geral de frete. A calculadora sugere o menor veículo que leva o peso do orçamento.</p>
+            <p className="text-[11px] text-muted-foreground">Campo vazio usa a tabela escolhida acima. Valor preenchido aqui vale só para este veículo. A calculadora sugere o menor veículo que leva o peso do orçamento.</p>
           </div>
           {!v.proprio && (
             <Campo rotulo="Transportadora">
