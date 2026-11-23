@@ -418,6 +418,8 @@ function limparItens(v: unknown): EntItemCarga[] {
     return {
       pedido: s(o.pedido, 40), codigo: s(o.codigo, 40), descricao: s(o.descricao, 300) || "", unidade: s(o.unidade, 10),
       quantidade: numero(o.quantidade) || 0, peso_unit_kg: peso && peso > 0 ? peso : null, obs: s(o.obs, 300),
+      cliente: s(o.cliente, 200), importado_por: s(o.importado_por, 120),
+      importado_em: o.importado_em && !Number.isNaN(Date.parse(String(o.importado_em))) ? new Date(String(o.importado_em)).toISOString() : null,
     }
   }).filter(i => i.descricao && i.quantidade > 0)
 }

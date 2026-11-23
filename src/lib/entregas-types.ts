@@ -133,6 +133,11 @@ export interface EntItemCarga {
   /** peso unitário do cadastro de produtos (null = produto sem peso ou não cadastrado) */
   peso_unit_kg: number | null
   obs?: string | null
+  /** cliente do pedido no Sensio */
+  cliente?: string | null
+  /** nome de quem importou o pedido e quando (ISO) */
+  importado_por?: string | null
+  importado_em?: string | null
 }
 
 export interface EntConfig {

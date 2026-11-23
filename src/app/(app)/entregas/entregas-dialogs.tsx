@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { lerPedidoSensio, type PedidoSensio } from "@/lib/pedido-sensio"
+import { createClient } from "@/utils/supabase/client"
 import { Building2, Check, Crosshair, FileSpreadsheet, FileText, Link2, MapPin, Navigation, Package, Route, Search, Truck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -292,6 +293,14 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
   const semPeso = itens.filter(i => !i.peso_unit_kg).length
   const pedidos = Array.from(new Set(itens.map(i => i.pedido).filter(Boolean))) as string[]
   const kg = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 })
+  // um resumo por pedido importado: número, cliente, quem importou e quando
+  const importacoes = Array.from(itens.reduce((m, i) => {
+    const k = i.pedido || ""
+    const atual = m.get(k)
+    m.set(k, { pedido: i.pedido, cliente: atual?.cliente || i.cliente || null, por: atual?.por || i.importado_por || null, em: atual?.em || i.importado_em || null, n: (atual?.n || 0) + 1 })
+    return m
+  }, new Map<string, { pedido: string | null; cliente: string | null; por: string | null; em: string | null; n: number }>()).values())
+  const dataHora = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
 
   /** troca a lista; o peso da entrega acompanha se estava vazio ou era o calculado */
   const aplicar = (novos: EntItemCarga[], extra: Partial<EntEntrega> = {}) => {
@@ -329,11 +338,17 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
         lidos = lerPedidoSensio(linhas)
       }
       // peso: o do PDF do Sensio; se não vier, o do cadastro de produtos
-      const pesos = await pesosPorCodigo(lidos.flatMap(p => p.itens.map(i => i.codigo || "")))
+      const [pesos, { data: { user } }] = await Promise.all([
+        pesosPorCodigo(lidos.flatMap(p => p.itens.map(i => i.codigo || ""))),
+        createClient().auth.getUser(),
+      ])
+      const quem = (user?.user_metadata?.nome as string | undefined) || user?.email?.split("@")[0] || null
+      const quando = new Date().toISOString()
       const numeros = lidos.map(p => p.numero).filter(Boolean)
       const novos: EntItemCarga[] = lidos.flatMap(p => p.itens.map(i => ({
         pedido: p.numero || null, codigo: i.codigo, descricao: i.descricao, unidade: i.unidade, quantidade: i.quantidade,
         peso_unit_kg: i.peso_unit_kg || (i.codigo && pesos[i.codigo]) || null, obs: i.obs,
+        cliente: p.cliente, importado_por: quem, importado_em: quando,
       })))
       // pedido importado de novo substitui o anterior
       const lista = [...itens.filter(i => !i.pedido || !numeros.includes(i.pedido)), ...novos]
@@ -367,6 +382,20 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
         <p className="text-[11px] text-muted-foreground">No Sensio, exporte o pedido em Excel (.xls) ou PDF e importe aqui para saber quais produtos vão nesta entrega.</p>
       ) : (
         <div className="rounded-lg border bg-background">
+          <div className="divide-y border-b bg-muted/30">
+            {importacoes.map(p => (
+              <div key={p.pedido || "-"} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-2 py-1.5 text-xs">
+                <span className="font-semibold">{p.pedido ? `Pedido ${p.pedido}` : "Produtos sem nº de pedido"}</span>
+                {p.cliente && <span className="font-medium text-foreground/80">· {p.cliente}</span>}
+                <span className="text-muted-foreground">· {p.n} produto(s)</span>
+                {(p.por || p.em) && (
+                  <span className="w-full text-[11px] text-muted-foreground">
+                    Importado{p.por ? ` por ${p.por}` : ""}{p.em ? ` em ${dataHora(p.em)}` : ""}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
           <div className={listaInteira ? "" : "max-h-[32rem] overflow-y-auto"}>
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-muted/80 text-[10px] uppercase text-muted-foreground backdrop-blur">
@@ -392,7 +421,7 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t px-2 py-1.5 text-xs">
             <span>
-              {pedidos.length ? `Pedido ${pedidos.join(", ")} · ` : ""}<b>{kg(pesoAtual)} kg</b> calculado
+<b>{kg(pesoAtual)} kg</b> calculado
               {semPeso ? <span className="text-amber-700"> · {semPeso} produto(s) sem peso</span> : null}
             </span>
             <span className="flex items-center gap-3">
