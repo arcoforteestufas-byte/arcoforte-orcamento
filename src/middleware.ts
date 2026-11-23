@@ -37,8 +37,9 @@ export async function middleware(request: NextRequest) {
   const cargoUsuario = user?.user_metadata?.cargo || 'Visualizador'
   const ehVendedor = cargoUsuario === 'Vendedor'
   const ehLogistica = cargoUsuario === 'Logística'
-  // vendedor trabalha pelo CRM, logística pelas Entregas; os demais começam em orçamentos
-  const inicio = ehVendedor ? '/crm' : ehLogistica ? '/entregas?aba=vendas' : '/orcamentos'
+  const ehExpedicao = cargoUsuario === 'Expedição'
+  // vendedor trabalha pelo CRM, logística pelas Entregas, expedição na separação; os demais começam em orçamentos
+  const inicio = ehVendedor ? '/crm' : ehLogistica ? '/entregas?aba=vendas' : ehExpedicao ? '/expedicao' : '/orcamentos'
 
   if (user && isLoginPage) {
     return NextResponse.redirect(new URL(inicio, request.url))
@@ -67,6 +68,15 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+
+  // Expedição: só a separação e conferência
+  if (user && ehExpedicao && !request.nextUrl.pathname.startsWith('/expedicao') && !request.nextUrl.pathname.startsWith('/motorista/')) {
+    return NextResponse.redirect(new URL('/expedicao', request.url))
+  }
+  // Separação: só Expedição, Logística e Administrador
+  if (user && request.nextUrl.pathname.startsWith('/expedicao') && !['Expedição', 'Logística', 'Administrador'].includes(cargoUsuario)) {
+    return NextResponse.redirect(new URL(inicio, request.url))
+  }
 
   // Proteção de rotas Admin
   if (user && (request.nextUrl.pathname.startsWith('/admin') || request.nextUrl.pathname.startsWith('/produtos'))) {

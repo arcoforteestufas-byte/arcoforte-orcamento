@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { resumoPrazos } from "@/app/actions/entregas"
 import type { ResumoPrazos } from "@/lib/entregas-types"
-import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, FileSearch, BookOpen, Kanban, Truck } from "lucide-react"
+import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, FileSearch, BookOpen, Kanban, Truck, ClipboardCheck } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,7 @@ const navigation = [
   { name: "Orçamentos", href: "/orcamentos", icon: FileText, adminOnly: false, escondeVendedor: true, escondeLogistica: true },
   { name: "Propostas", href: "/propostas", icon: FileText, adminOnly: false, escondeVendedor: true, escondeLogistica: true },
   { name: "Entregas", href: "/entregas", icon: Truck, adminOnly: false },
+  { name: "Expedição", href: "/expedicao", icon: ClipboardCheck, adminOnly: false, soExpedicao: true },
   { name: "Croquis", href: "/croquis", icon: FileSearch, adminOnly: false },
   { name: "Clientes", href: "/clientes", icon: Users, adminOnly: false },
   { name: "Produtos", href: "/produtos", icon: Package, adminOnly: true },
@@ -36,8 +37,13 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
 
   const isVendedor = cargo === 'Vendedor'
   const isLogistica = cargo === 'Logística'
-  const filteredNavigation = navigation.filter(item => (!item.adminOnly || isAdministrador)
-    && !(isVendedor && item.escondeVendedor) && !(isLogistica && item.escondeLogistica))
+  const isExpedicao = cargo === 'Expedição'
+  const filteredNavigation = navigation.filter(item => isExpedicao
+    // expedição só trabalha na separação/conferência
+    ? item.href === "/expedicao"
+    : (!item.adminOnly || isAdministrador)
+      && !(isVendedor && item.escondeVendedor) && !(isLogistica && item.escondeLogistica)
+      && !(item.soExpedicao && !isAdministrador && !isLogistica))
 
   // alerta de prazo do contrato no item Entregas (admin e logística), atualizado ao navegar (no máx. a cada 2 min)
   const [resumo, setResumo] = useState<ResumoPrazos | null>(null)

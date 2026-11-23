@@ -12,7 +12,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import {
   alterarStatusViagem, excluirViagem, marcarEntregue, ordenarPorProximidade, programarEntrega, recalcularRotaViagem, reordenarEntregas,
 } from "@/app/actions/entregas"
-import { STATUS_ENTREGA, STATUS_VIAGEM, formatarDuracao, formatarKm, posicaoRecente, type EntEntrega, type EntPainel, type EntViagem } from "@/lib/entregas-types"
+import { STATUS_ENTREGA, STATUS_SEPARACAO, STATUS_VIAGEM, type StatusSeparacao, formatarDuracao, formatarKm, posicaoRecente, type EntEntrega, type EntPainel, type EntViagem } from "@/lib/entregas-types"
 import { cn } from "@/lib/utils"
 import { brlCentavos, formatarData, inputClasse, linkWhatsApp } from "../../../crm/crm-utils"
 import { Mapa, escaparHtml, type PontoMapa } from "../../mapa"
@@ -128,7 +128,12 @@ export function ViagemClient({ painel, viagem, trilha }: {
             <div className="flex flex-wrap gap-2 shrink-0">
               <Button variant="outline" className="gap-1" onClick={() => setEditViagem(true)}><Pencil className="h-4 w-4" /> Editar</Button>
               {viagem.status === "planejada" && (
-                <Button className="gap-1 bg-blue-600 hover:bg-blue-700" onClick={() => executar(alterarStatusViagem(viagem.id, "em_rota"), "Viagem iniciada")}><Play className="h-4 w-4" /> Iniciar viagem</Button>
+                <Button className="gap-1 bg-blue-600 hover:bg-blue-700" onClick={() => {
+                  // aviso: carga não conferida (deixa sair se confirmar)
+                  const semConferir = paradas.filter(p => p.itens?.length && painel.separacoes?.[p.id]?.status !== "conferida")
+                  if (semConferir.length && !confirm(`ATENÇÃO: a carga de ${semConferir.length} entrega(s) ainda não foi conferida:\n\n${semConferir.map(p => `• ${p.destinatario} (${STATUS_SEPARACAO[painel.separacoes?.[p.id]?.status || "pendente"].rotulo.toLowerCase()})`).join("\n")}\n\nIniciar a viagem mesmo assim?`)) return
+                  executar(alterarStatusViagem(viagem.id, "em_rota"), "Viagem iniciada")
+                }}><Play className="h-4 w-4" /> Iniciar viagem</Button>
               )}
               {viagem.status === "em_rota" && (
                 <Button className="gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => {
@@ -194,6 +199,7 @@ export function ViagemClient({ painel, viagem, trilha }: {
             {paradas.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">Nenhuma entrega nesta viagem ainda.</p>}
             <ol className="divide-y">
               {paradas.map((e, i) => <Parada key={e.id} e={e} i={i} total={paradas.length} gerente={gerente} cor={cor} trechoKm={trechoDe(e)} origemNome={origem.nome}
+                sep={e.itens?.length ? (painel.separacoes?.[e.id] || { status: "pendente", divergencia: false }) : null}
                 onSubir={() => mover(i, -1)} onDescer={() => mover(i, 1)} onEditar={() => setEntregaEdit(e)}
                 onEntregue={(v) => executar(marcarEntregue(e.id, v), v ? "Marcada como entregue" : "Desmarcada")}
                 onTirar={() => { if (confirm(`Tirar "${e.destinatario}" desta viagem? Ela volta para "a programar".`)) executar(programarEntrega(e.id, null), "Entrega voltou para a programar") }} />)}
@@ -269,8 +275,9 @@ export function ViagemClient({ painel, viagem, trilha }: {
   )
 }
 
-function Parada({ e, i, total, gerente, cor, trechoKm, origemNome, onSubir, onDescer, onEditar, onEntregue, onTirar }: {
+function Parada({ e, i, total, gerente, cor, trechoKm, origemNome, sep, onSubir, onDescer, onEditar, onEntregue, onTirar }: {
   e: EntEntrega; i: number; total: number; gerente: boolean; cor: string; trechoKm: number | null; origemNome: string
+  sep: { status: StatusSeparacao; divergencia: boolean } | null
   onSubir: () => void; onDescer: () => void; onEditar: () => void; onEntregue: (v: boolean) => void; onTirar: () => void
 }) {
   const st = STATUS_ENTREGA[e.status]
@@ -284,6 +291,12 @@ function Parada({ e, i, total, gerente, cor, trechoKm, origemNome, onSubir, onDe
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold">{e.destinatario}</span>
           <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ${st.classe}`}>{st.rotulo}</span>
+          {sep && !entregue && (
+            <Link href={`/expedicao/${e.id}`} title="Separação e conferência da carga"
+              className={`rounded-full px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset hover:underline ${STATUS_SEPARACAO[sep.status].classe}`}>
+              {sep.status === "conferida" ? "✓ carga conferida" : `carga: ${STATUS_SEPARACAO[sep.status].rotulo.toLowerCase()}`}{sep.divergencia ? " · com falta" : ""}
+            </Link>
+          )}
           {e.lead_id && <Link href={`/crm/lead/${e.lead_id}`} className="text-xs text-[#d97021] hover:underline">lead</Link>}
           {e.orcamento_id && <Link href={`/orcamentos/${e.orcamento_id}`} className="text-xs text-[#d97021] hover:underline">pedido</Link>}
         </div>

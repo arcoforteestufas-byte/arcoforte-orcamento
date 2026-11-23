@@ -178,6 +178,10 @@ export async function obterPainel(): Promise<EntPainel> {
     // tabelas extras (antes do SQL delas, vem erro e a lista fica vazia)
     supabase.from("ent_tabelas_frete").select("*").order("ordem").order("nome"),
   ])
+  // separação/conferência (antes do SQL 20261130 a tabela não existe e fica vazio)
+  const sep = await supabase.from("ent_separacoes").select("entrega_id, status, divergencia")
+  const separacoes: NonNullable<EntPainel["separacoes"]> = {}
+  for (const r of sep.error ? [] : sep.data || []) separacoes[r.entrega_id] = { status: r.status, divergencia: !!r.divergencia }
   const erro = tr.error || vi.error || en.error
   if (erro) {
     return { ...vazio, userId: user.id, podeGerenciar: podeGerenciar(user), erro: msgErro(erro.message) }
@@ -193,6 +197,7 @@ export async function obterPainel(): Promise<EntPainel> {
     tabelasFrete: tf.error ? [] : (tf.data || []).map(normalizarTabela),
     podeGerenciar: podeGerenciar(user),
     userId: user.id,
+    separacoes,
   }
 }
 

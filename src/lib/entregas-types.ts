@@ -307,7 +307,75 @@ export interface EntPainel extends EntCadastros {
   config: EntConfig
   podeGerenciar: boolean
   userId: string
+  /** situação da separação/conferência por entrega (só as que já começaram) */
+  separacoes?: Record<string, { status: StatusSeparacao; divergencia: boolean }>
   erro?: string
+}
+
+// ---------------------------------------------------------------------
+// Separação e conferência da carga (galpão)
+// ---------------------------------------------------------------------
+export type StatusSeparacao = "pendente" | "separando" | "separada" | "conferindo" | "conferida"
+
+export const STATUS_SEPARACAO: Record<StatusSeparacao, { rotulo: string; classe: string }> = {
+  pendente: { rotulo: "A separar", classe: "bg-slate-100 text-slate-700 ring-slate-200" },
+  separando: { rotulo: "Separando", classe: "bg-amber-50 text-amber-800 ring-amber-200" },
+  separada: { rotulo: "Aguardando conferência", classe: "bg-violet-50 text-violet-700 ring-violet-200" },
+  conferindo: { rotulo: "Conferindo", classe: "bg-blue-50 text-blue-700 ring-blue-200" },
+  conferida: { rotulo: "Conferida", classe: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+}
+
+/** Andamento de um produto: quanto foi separado (e por que faltou) e quanto foi conferido */
+export interface SepItem {
+  chave: string
+  separada: number | null
+  motivo: string | null
+  conferida: number | null
+}
+
+export interface Separacao {
+  entrega_id: string
+  status: Exclude<StatusSeparacao, "pendente">
+  itens: SepItem[]
+  divergencia: boolean
+  obs: string | null
+  separado_por: string | null
+  separado_por_nome: string | null
+  separacao_inicio: string
+  separado_em: string | null
+  conferido_por: string | null
+  conferido_por_nome: string | null
+  conferido_em: string | null
+  devolucoes: { em: string; por: string; motivo: string }[]
+}
+
+export const MOTIVOS_FALTA = ["Sem estoque", "Avariado", "Em produção", "Vai em outra entrega", "Outro"] as const
+
+/** Chave de cada produto da entrega (pedido|código|descrição; repetidos ganham #2, #3...) */
+export function chavesDosItens(itens: EntItemCarga[]): string[] {
+  const vistos: Record<string, number> = {}
+  return itens.map(i => {
+    const base = `${i.pedido || ""}|${i.codigo || ""}|${i.descricao}`
+    vistos[base] = (vistos[base] || 0) + 1
+    return vistos[base] > 1 ? `${base}#${vistos[base]}` : base
+  })
+}
+
+/** Entrega na fila da expedição */
+export interface EntregaExpedicao {
+  id: string
+  destinatario: string
+  cidade: string | null
+  uf: string | null
+  status: StatusEntrega
+  chegada_prevista: string | null
+  pedido_erp: string | null
+  descricao_carga: string | null
+  observacoes: string | null
+  peso_kg: number | null
+  itens: EntItemCarga[]
+  viagem: { id: string; titulo: string | null; saida_prevista: string; status: StatusViagem } | null
+  separacao: Separacao | null
 }
 
 export const STATUS_VIAGEM: Record<StatusViagem, { rotulo: string; classe: string }> = {
