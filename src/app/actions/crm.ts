@@ -418,6 +418,9 @@ export async function atualizarLead(id: string, dados: Record<string, unknown> &
     } else if (atual?.status === "ganho") {
       if (!ehAdmin(user)) return { ok: false, erro: "O prazo de entrega de uma venda fechada é contratual: só o administrador pode alterar." }
       if (!campos.prazo_entrega) return { ok: false, erro: "Venda fechada precisa ter prazo de entrega." }
+      // com o registro de alterações (SQL v9), a mudança passa pelo "Alterar prazo", que exige motivo
+      const { error: semTabela } = await supabase.from("crm_prazo_alteracoes").select("id").limit(1)
+      if (!semTabela) return { ok: false, erro: "Use o botão \"Alterar prazo\" no cartão Prazo do contrato: a mudança precisa de motivo registrado." }
       prazoAnterior = antes
     }
   }

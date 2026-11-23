@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
-  Building2, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Maximize2, Package, Pencil, Plus,
+  AlertTriangle, Building2, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Maximize2, Package, Pencil, Plus,
   Radio, RefreshCw, Route, Search, Star, Trash2, Trophy, Truck, UserRound, XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import {
 } from "@/app/actions/entregas"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  NOMES_UF, STATUS_ENTREGA, STATUS_VIAGEM, formatarKm, posicaoRecente,
+  ALERTA_PRAZO_DIAS, NOMES_UF, RISCO_PRAZO, STATUS_ENTREGA, STATUS_VIAGEM, classificarPrazo, formatarKm, posicaoRecente, type RiscoPrazo,
   type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora, type EntVeiculo, type EntViagem, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
 import { cn } from "@/lib/utils"
@@ -27,6 +27,8 @@ import {
 } from "./entregas-dialogs"
 
 type Aba = "vendas" | "rotas" | "mapa" | "agenda" | "programar" | "cadastros"
+/** Filtro da aba Vendas fechadas: situação da entrega ou do prazo do contrato */
+type FiltroVendas = "sem" | "com" | "todas" | "atrasada" | "depois_prazo" | "risco" | "sem_prazo"
 
 const hoje = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date())
 function somarDias(iso: string, dias: number) {
@@ -91,6 +93,7 @@ export function EntregasClient({ painel, vendas = [], novaDoLead, abaInicial }: 
   const [aba, setAba] = useState<Aba>(abas.find(a => a === abaInicial) || (painel.podeGerenciar ? "mapa" : "rotas"))
   const [entregaEdit, setEntregaEdit] = useState<EntregaInicial | null>(novaDoLead)
   const [viagemEdit, setViagemEdit] = useState<Partial<EntViagem> | null>(null)
+  const [filtroVendas, setFiltroVendas] = useState<FiltroVendas>("sem")
 
   // abriu vindo do lead: limpa o ?lead= da barra para não reabrir ao atualizar
   useEffect(() => {
@@ -133,6 +136,14 @@ export function EntregasClient({ painel, vendas = [], novaDoLead, abaInicial }: 
   ]
 
   const vendasSemEntrega = vendas.filter(v => !v.entregas.some(e => e.status === "entregue")).length // pendentes de entrega
+  // situação do prazo do contrato de cada venda (mesma regra do alerta do menu)
+  const previstaDe = (e: VendaFechada["entregas"][number]) =>
+    e.chegada_prevista || viagemDe(e.viagem_id)?.retorno_previsto || viagemDe(e.viagem_id)?.saida_prevista || null
+  const riscos = new Map(vendas.map(v => [v.id, classificarPrazo(v.prazo_entrega, v.entregas, previstaDe, h)]))
+  const contaRisco = (r: RiscoPrazo) => vendas.filter(v => riscos.get(v.id)?.risco === r).length
+  const alertaPrazo = { atrasada: contaRisco("atrasada"), depois_prazo: contaRisco("depois_prazo"), risco: contaRisco("risco") }
+  const totalAlerta = alertaPrazo.atrasada + alertaPrazo.depois_prazo + alertaPrazo.risco
+  const verRisco = (f: FiltroVendas) => { setFiltroVendas(f); setAba("vendas") }
   const programarDoLead = async (leadId: string) => {
     const r = await dadosEntregaDoLead(leadId)
     if (!r.ok) return toast.error(r.erro)
@@ -188,6 +199,24 @@ export function EntregasClient({ painel, vendas = [], novaDoLead, abaInicial }: 
         </div>
       </div>
 
+      {totalAlerta > 0 && (
+        <div className={cn("flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center",
+          alertaPrazo.atrasada || alertaPrazo.depois_prazo ? "border-red-300 bg-red-50 text-red-900" : "border-amber-300 bg-amber-50 text-amber-900")}>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <AlertTriangle className="h-5 w-5 shrink-0" /> Prazo do contrato: risco de multa
+          </div>
+          <div className="flex flex-wrap gap-1.5 sm:ml-2">
+            {(["atrasada", "depois_prazo", "risco"] as const).filter(r => alertaPrazo[r]).map(r => (
+              <button key={r} onClick={() => verRisco(r)} title={RISCO_PRAZO[r].dica}
+                className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset hover:opacity-80", RISCO_PRAZO[r].classe)}>
+                {alertaPrazo[r]} {RISCO_PRAZO[r].rotulo.toLowerCase()}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => verRisco("sem")} className="text-xs font-medium underline sm:ml-auto">Ver vendas</button>
+        </div>
+      )}
+
       <div className="flex gap-1 overflow-x-auto rounded-xl border bg-background p-1 shadow-sm w-fit max-w-full">
         {listaAbas.map(([v, r, I]) => (
           <button key={v} onClick={() => setAba(v)}
@@ -197,7 +226,7 @@ export function EntregasClient({ painel, vendas = [], novaDoLead, abaInicial }: 
         ))}
       </div>
 
-      {aba === "vendas" && <AbaVendas vendas={vendas} painel={painel} onProgramar={programarDoLead} />}
+      {aba === "vendas" && <AbaVendas vendas={vendas} painel={painel} riscos={riscos} filtro={filtroVendas} setFiltro={setFiltroVendas} onProgramar={programarDoLead} />}
       {aba === "rotas" && <AbaRotas painel={painel} dataDaEntrega={dataDaEntrega} onSolicitar={setEntregaEdit} />}
       {aba === "mapa" && <AbaMapa painel={painel} dataDaEntrega={dataDaEntrega} onEditar={setEntregaEdit} />}
       {aba === "agenda" && <AbaAgenda painel={painel} />}
@@ -782,9 +811,16 @@ function AbaCadastros({ painel }: { painel: EntPainel }) {
 }
 
 /** Leads ganhos: o que foi vendido e se a entrega já foi programada */
-function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; painel: EntPainel; onProgramar: (leadId: string) => void }) {
-  const [filtro, setFiltro] = useState<"sem" | "com" | "todas">("sem")
+function AbaVendas({ vendas, painel, riscos, filtro, setFiltro, onProgramar }: {
+  vendas: VendaFechada[]
+  painel: EntPainel
+  riscos: Map<string, { risco: RiscoPrazo; dias: number | null }>
+  filtro: FiltroVendas
+  setFiltro: (f: FiltroVendas) => void
+  onProgramar: (leadId: string) => void
+}) {
   const [busca, setBusca] = useState("")
+  const riscoDe = (v: VendaFechada) => riscos.get(v.id)?.risco || "ok"
   const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
   const ativas = (v: VendaFechada) => v.entregas.filter(e => e.status !== "cancelada")
   const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
@@ -793,9 +829,10 @@ function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; pa
   const lista = vendas.filter(v => {
     if (filtro === "sem" && foiEntregue(v)) return false
     if (filtro === "com" && !foiEntregue(v)) return false
+    if (filtro !== "sem" && filtro !== "com" && filtro !== "todas" && riscoDe(v) !== filtro) return false
     if (!busca.trim()) return true
     return norm([v.titulo, v.cliente, v.cidade, v.uf, v.vendedor].filter(Boolean).join(" ")).includes(norm(busca))
-  }).sort((a, b) => filtro === "sem"
+  }).sort((a, b) => filtro !== "com" && filtro !== "todas"
     ? (a.prazo_entrega || "9999").localeCompare(b.prazo_entrega || "9999") // prazo mais próximo primeiro
     : (b.ganho_em || "").localeCompare(a.ganho_em || ""))
   const qtd = {
@@ -803,28 +840,58 @@ function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; pa
     com: vendas.filter(v => foiEntregue(v)).length,
     todas: vendas.length,
   }
+  const qtdRisco = (r: RiscoPrazo) => vendas.filter(v => riscoDe(v) === r).length
   const viagem = (id: string | null) => painel.viagens.find(x => x.id === id)
-  const hojeStr = hoje()
-  const dias = (de: string, ate: string) => Math.round((new Date(ate + "T12:00:00").getTime() - new Date(de + "T12:00:00").getTime()) / 86400000)
-  /** situação do prazo contratual da venda */
-  const situacaoPrazo = (v: VendaFechada): { texto: string; classe: string } | null => {
-    if (!v.prazo_entrega) return { texto: "sem prazo definido", classe: "bg-muted text-muted-foreground ring-border" }
-    const br = formatarData(v.prazo_entrega)
-    const ent = v.entregas.find(e => e.status === "entregue")
-    if (ent?.entregue_em) {
-      const atraso = dias(v.prazo_entrega, ent.entregue_em.slice(0, 10))
-      return atraso > 0
-        ? { texto: `entregue com ${atraso}d de atraso (prazo ${br})`, classe: "bg-red-50 text-red-700 ring-red-200" }
-        : { texto: `entregue no prazo (${br})`, classe: "bg-emerald-50 text-emerald-700 ring-emerald-200" }
+  /** etiqueta do prazo contratual da venda */
+  const situacaoPrazo = (v: VendaFechada): { texto: string; classe: string } => {
+    const { risco, dias } = riscos.get(v.id) || { risco: "ok" as RiscoPrazo, dias: null }
+    const br = v.prazo_entrega ? formatarData(v.prazo_entrega) : ""
+    const classe = RISCO_PRAZO[risco].classe
+    switch (risco) {
+      case "sem_prazo": return { texto: "sem prazo definido", classe }
+      case "entregue_prazo": return { texto: br ? `entregue no prazo (${br})` : "entregue", classe }
+      case "entregue_atraso": return { texto: `entregue com ${dias}d de atraso (prazo ${br})`, classe }
+      case "atrasada": return { texto: `ATRASADA ${-(dias || 0)}d · prazo ${br}`, classe }
+      default: return { texto: dias === 0 ? `prazo vence HOJE (${br})` : `prazo ${br} · faltam ${dias}d`, classe: risco === "ok" ? classe : RISCO_PRAZO.risco.classe }
     }
-    const falta = dias(hojeStr, v.prazo_entrega)
-    if (falta < 0) return { texto: `ATRASADA ${-falta}d · prazo ${br}`, classe: "bg-red-600 text-white ring-red-600" }
-    if (falta === 0) return { texto: `prazo vence HOJE`, classe: "bg-red-600 text-white ring-red-600" }
-    if (falta <= 7) return { texto: `prazo ${br} · faltam ${falta}d`, classe: "bg-amber-100 text-amber-900 ring-amber-300" }
-    return { texto: `prazo ${br} · faltam ${falta}d`, classe: "bg-emerald-50 text-emerald-800 ring-emerald-200" }
   }
+  /** texto para mandar no WhatsApp da equipe com as vendas que precisam de atenção */
+  const copiarAlerta = () => {
+    const linhas = vendas.filter(v => ["atrasada", "depois_prazo", "risco", "sem_prazo"].includes(riscoDe(v)))
+      .sort((a, b) => (a.prazo_entrega || "9999").localeCompare(b.prazo_entrega || "9999"))
+      .map(v => `• ${v.cliente || v.titulo}${v.cidade ? ` (${v.cidade}${v.uf ? "-" + v.uf : ""})` : ""}: ${situacaoPrazo(v).texto}${riscoDe(v) === "depois_prazo" ? " — viagem marcada DEPOIS do prazo" : ""}`)
+    if (!linhas.length) return toast.success("Nenhuma venda com prazo em risco")
+    navigator.clipboard.writeText(`⚠️ Entregas com prazo do contrato em risco (${formatarData(hoje())})\n\n${linhas.join("\n")}`)
+    toast.success("Lista copiada — cole no WhatsApp")
+  }
+  const cartoesRisco = ["atrasada", "depois_prazo", "risco", "sem_prazo"] as const
 
   return (
+    <div className="space-y-4">
+    {/* Painel de risco do prazo do contrato */}
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {cartoesRisco.map(r => {
+        const n = qtdRisco(r)
+        const ativo = filtro === r
+        const cor = r === "atrasada" ? "text-red-600" : r === "depois_prazo" ? "text-red-500" : r === "risco" ? "text-amber-600" : "text-slate-500"
+        return (
+          <button key={r} onClick={() => setFiltro(ativo ? "sem" : r)} title={RISCO_PRAZO[r].dica}
+            className={cn("rounded-xl border bg-background p-3 text-left shadow-sm transition-colors hover:bg-muted/50",
+              ativo && "ring-2 ring-[#d97021]", n > 0 && (r === "atrasada" || r === "depois_prazo") && "border-red-300")}>
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{RISCO_PRAZO[r].rotulo}</div>
+            <div className={cn("text-2xl font-bold", n ? cor : "text-muted-foreground/50")}>{n}</div>
+            <div className="text-[11px] leading-tight text-muted-foreground">
+              {r === "risco" ? `até ${ALERTA_PRAZO_DIAS} dias e sem viagem` : r === "depois_prazo" ? "viagem chega depois do prazo" : r === "atrasada" ? "prazo já passou" : "lead ganho sem data"}
+            </div>
+          </button>
+        )
+      })}
+      <div className="col-span-2 flex flex-col justify-between gap-2 rounded-xl border bg-background p-3 shadow-sm lg:col-span-1">
+        <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">No prazo</div>
+        <div className="text-2xl font-bold text-emerald-600">{qtdRisco("ok")}</div>
+        <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={copiarAlerta}><Copy className="h-3 w-3" /> Copiar alerta p/ WhatsApp</Button>
+      </div>
+    </div>
     <div className="rounded-2xl border bg-background shadow-sm">
       <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -832,6 +899,11 @@ function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; pa
           <p className="text-xs text-muted-foreground">Leads ganhos no CRM. Abra o lead para ver tudo (cliente, orçamentos, itens e histórico) e programe a entrega.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {filtro in RISCO_PRAZO && (
+            <button onClick={() => setFiltro("sem")} className="inline-flex items-center gap-1 rounded-full bg-[#d97021] px-2.5 py-1 text-xs font-medium text-white">
+              {RISCO_PRAZO[filtro as RiscoPrazo].rotulo} <XCircle className="h-3.5 w-3.5" />
+            </button>
+          )}
           <div className="flex rounded-lg border p-0.5 text-xs">
             {([["sem", "Pendentes"], ["com", "Entregues"], ["todas", "Todas"]] as const).map(([v, r]) => (
               <button key={v} onClick={() => setFiltro(v)}
@@ -856,11 +928,8 @@ function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; pa
             const ents = ativas(v)
             const sp = situacaoPrazo(v)
             // entrega programada para depois do prazo do contrato = risco de multa
-            const depoisDoPrazo = !!v.prazo_entrega && ents.some(e => {
-              if (e.status === "entregue") return false
-              const d = e.chegada_prevista || viagem(e.viagem_id)?.retorno_previsto || viagem(e.viagem_id)?.saida_prevista
-              return !!d && d > v.prazo_entrega!
-            })
+            const depoisDoPrazo = riscoDe(v) === "depois_prazo"
+            const semViagemPertoDoPrazo = riscoDe(v) === "risco"
             return (
               <div key={v.id} className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
                 <div className="min-w-0 flex-1">
@@ -869,6 +938,7 @@ function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; pa
                     {v.valor ? <span className="text-sm font-medium text-emerald-700">{brl.format(v.valor)}</span> : null}
                     {sp && <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset", sp.classe)} title="Prazo de entrega do contrato">{sp.texto}</span>}
                     {depoisDoPrazo && <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white" title="A data programada passa do prazo do contrato">programada depois do prazo — risco de multa</span>}
+                    {semViagemPertoDoPrazo && <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-semibold text-white" title={RISCO_PRAZO.risco.dica}>sem viagem marcada</span>}
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                     {v.cliente && <span className="inline-flex items-center gap-1"><UserRound className="h-3 w-3" />{v.cliente}</span>}
@@ -904,6 +974,7 @@ function AbaVendas({ vendas, painel, onProgramar }: { vendas: VendaFechada[]; pa
           })}
         </div>
       )}
+    </div>
     </div>
   )
 }

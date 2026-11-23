@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { obterFichaLead, obterQuadro } from "@/app/actions/crm"
 import { entregasDoLead, proximasViagensPorUf } from "@/app/actions/entregas"
+import { historicoPrazo } from "@/app/actions/prazo-contratual"
 import { LeadPagina } from "./lead-pagina"
 
 export const dynamic = "force-dynamic"
@@ -26,11 +27,12 @@ export default async function LeadPage({
     )
   }
 
-  const [quadro, fretes, entregas] = await Promise.all([
+  const [quadro, fretes, entregas, historicoPrazos] = await Promise.all([
     obterQuadro(ficha.dados!.lead.funil_id, { semLeads: true }),
     // viagens programadas para o estado do lead (se o módulo de entregas ainda não existir, vem vazio)
     proximasViagensPorUf(ficha.dados!.lead.uf).catch(() => []),
     entregasDoLead(id).catch(() => []),
+    ficha.dados!.lead.status === "ganho" ? historicoPrazo(id).catch(() => []) : Promise.resolve([]),
   ])
-  return <LeadPagina ficha={ficha.dados!} quadro={quadro} orcamentoSalvoId={salvo || null} fretes={fretes} entregas={entregas} />
+  return <LeadPagina ficha={ficha.dados!} quadro={quadro} orcamentoSalvoId={salvo || null} fretes={fretes} entregas={entregas} historicoPrazos={historicoPrazos} />
 }

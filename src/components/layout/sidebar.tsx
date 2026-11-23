@@ -3,6 +3,9 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
+import { resumoPrazos } from "@/app/actions/entregas"
+import type { ResumoPrazos } from "@/lib/entregas-types"
 import { Tractor, Home, Users, Package, Settings, LogOut, FileText, Search, FileSearch, BookOpen, Kanban, Truck } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -35,6 +38,18 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
   const isLogistica = cargo === 'Logística'
   const filteredNavigation = navigation.filter(item => (!item.adminOnly || isAdministrador)
     && !(isVendedor && item.escondeVendedor) && !(isLogistica && item.escondeLogistica))
+
+  // alerta de prazo do contrato no item Entregas (admin e logística), atualizado ao navegar (no máx. a cada 2 min)
+  const [resumo, setResumo] = useState<ResumoPrazos | null>(null)
+  const ultimaBusca = useRef(0)
+  const veAlerta = isAdministrador || isLogistica
+  useEffect(() => {
+    if (!veAlerta || Date.now() - ultimaBusca.current < 120000) return
+    ultimaBusca.current = Date.now()
+    resumoPrazos().then(setResumo).catch(() => {})
+  }, [veAlerta, pathname])
+  const alerta = resumo ? resumo.atrasada + resumo.depois_prazo + resumo.risco : 0
+  const alertaGrave = !!resumo && resumo.atrasada + resumo.depois_prazo > 0
 
   return (
     <div className="flex h-full w-72 flex-col border-r border-slate-200 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-40">
@@ -79,6 +94,13 @@ export function Sidebar({ user, onClose }: { user?: SupabaseUser | null, onClose
               >
                 <item.icon className={cn("h-4 w-4", isActive ? "text-primary-foreground" : "text-slate-400")} />
                 {item.name}
+                {item.href === "/entregas" && alerta > 0 && (
+                  <span title="Vendas com prazo do contrato atrasado ou em risco"
+                    className={cn("ml-auto min-w-5 rounded-full px-1.5 text-center text-[11px] font-bold leading-5",
+                      alertaGrave ? "bg-red-600 text-white" : "bg-amber-400 text-amber-950")}>
+                    {alerta}
+                  </span>
+                )}
               </Link>
             )
           })}

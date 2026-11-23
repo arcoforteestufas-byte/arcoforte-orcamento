@@ -183,6 +183,80 @@ export interface VendaFechada {
   entregas: { id: string; status: StatusEntrega; viagem_id: string | null; chegada_prevista: string | null; entregue_em: string | null }[]
 }
 
+// ---------------------------------------------------------------------
+// Prazo de entrega contratual (multa se atrasar)
+// ---------------------------------------------------------------------
+
+/** Faltando esta quantidade de dias (ou menos) sem viagem marcada, a venda entra em risco */
+export const ALERTA_PRAZO_DIAS = 7
+
+export type RiscoPrazo = "atrasada" | "depois_prazo" | "risco" | "sem_prazo" | "ok" | "entregue_prazo" | "entregue_atraso"
+
+export const RISCO_PRAZO: Record<RiscoPrazo, { rotulo: string; dica: string; classe: string; pendente: boolean }> = {
+  atrasada: { rotulo: "Atrasadas", dica: "O prazo do contrato já passou e não foi entregue", classe: "bg-red-600 text-white ring-red-600", pendente: true },
+  depois_prazo: { rotulo: "Marcadas depois do prazo", dica: "A viagem programada chega depois do prazo do contrato", classe: "bg-red-50 text-red-700 ring-red-300", pendente: true },
+  risco: { rotulo: "Em risco", dica: `Faltam ${ALERTA_PRAZO_DIAS} dias ou menos e ainda não tem viagem marcada`, classe: "bg-amber-100 text-amber-900 ring-amber-300", pendente: true },
+  sem_prazo: { rotulo: "Sem prazo", dica: "Venda fechada sem prazo de entrega no lead", classe: "bg-slate-100 text-slate-700 ring-slate-300", pendente: true },
+  ok: { rotulo: "No prazo", dica: "Ainda com folga ou viagem marcada antes do prazo", classe: "bg-emerald-50 text-emerald-800 ring-emerald-200", pendente: true },
+  entregue_prazo: { rotulo: "Entregue no prazo", dica: "", classe: "bg-emerald-50 text-emerald-700 ring-emerald-200", pendente: false },
+  entregue_atraso: { rotulo: "Entregue com atraso", dica: "", classe: "bg-red-50 text-red-700 ring-red-200", pendente: false },
+}
+
+export function diasEntre(de: string, ate: string) {
+  return Math.round((new Date(ate.slice(0, 10) + "T12:00:00").getTime() - new Date(de.slice(0, 10) + "T12:00:00").getTime()) / 86400000)
+}
+
+/**
+ * Situação do prazo contratual de uma venda.
+ * `dataPrevista(e)` devolve quando a entrega chega (chegada prevista ou datas da viagem).
+ */
+export function classificarPrazo<E extends { status: StatusEntrega; viagem_id: string | null; entregue_em: string | null }>(
+  prazo: string | null,
+  entregas: E[],
+  dataPrevista: (e: E) => string | null | undefined,
+  hoje: string,
+): { risco: RiscoPrazo; dias: number | null } {
+  const entregue = entregas.find(e => e.status === "entregue")
+  if (entregue) {
+    if (!prazo || !entregue.entregue_em) return { risco: "entregue_prazo", dias: null }
+    const atraso = diasEntre(prazo, entregue.entregue_em)
+    return { risco: atraso > 0 ? "entregue_atraso" : "entregue_prazo", dias: atraso }
+  }
+  if (!prazo) return { risco: "sem_prazo", dias: null }
+  const falta = diasEntre(hoje, prazo)
+  if (falta < 0) return { risco: "atrasada", dias: falta }
+  const ativas = entregas.filter(e => e.status !== "cancelada")
+  const comViagem = ativas.filter(e => e.viagem_id)
+  if (comViagem.some(e => { const d = dataPrevista(e); return !!d && d.slice(0, 10) > prazo })) return { risco: "depois_prazo", dias: falta }
+  if (falta <= ALERTA_PRAZO_DIAS && !comViagem.length) return { risco: "risco", dias: falta }
+  return { risco: "ok", dias: falta }
+}
+
+/** Contagem para os alertas (menu e painel) */
+export interface ResumoPrazos {
+  atrasada: number
+  depois_prazo: number
+  risco: number
+  sem_prazo: number
+  /** vendas mais urgentes, para a lista do alerta */
+  urgentes: { id: string; titulo: string; cliente: string | null; cidade: string | null; uf: string | null; prazo: string | null; risco: RiscoPrazo; dias: number | null }[]
+}
+
+/** Alteração do prazo contratual (pedido do cliente ou da empresa) */
+export interface PrazoAlteracao {
+  id: string
+  lead_id: string
+  prazo_anterior: string | null
+  prazo_novo: string
+  pedido_por: "cliente" | "empresa"
+  motivo: string
+  anexo_nome: string | null
+  tem_anexo: boolean
+  criado_por: string | null
+  criado_por_nome: string | null
+  criado_em: string
+}
+
 export type CidadeOpcao = { ibge: number; nome: string; uf: string; lat: number; lng: number }
 
 export interface EntCadastros {

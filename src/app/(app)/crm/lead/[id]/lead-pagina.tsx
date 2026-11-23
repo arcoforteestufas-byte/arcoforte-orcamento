@@ -21,7 +21,8 @@ import { CamposQualificacao, ScoreBadge } from "../../crm-score"
 import { EnviarFunilDialog, GanhoDialog, PerdidoDialog, type AlvoEtapa } from "../../crm-dialogs"
 import { ClienteDoLead, type ModoCliente } from "../../cliente-do-lead"
 import { CalculadoraFrete } from "../../../entregas/calculadora-frete"
-import { STATUS_ENTREGA, formatarKm, posicaoRecente, type EntregaDoLead } from "@/lib/entregas-types"
+import { STATUS_ENTREGA, formatarKm, posicaoRecente, type EntregaDoLead, type PrazoAlteracao } from "@/lib/entregas-types"
+import { PrazoContrato } from "../../prazo-contrato"
 import { brlCentavos, dataHora, diasDesde, formatarData, iniciais, inputClasse, linkWhatsApp, validarDataOpcional } from "../../crm-utils"
 
 const ROTULO_ATIVIDADE: Record<string, string> = {
@@ -56,8 +57,9 @@ function Cartao({ titulo, icone, acoes, children, className = "" }: {
 
 type FreteProximo = { id: string; titulo: string | null; saida_prevista: string; cidades: string[] }
 
-export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = [], entregas = [] }: {
+export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = [], entregas = [], historicoPrazos = [] }: {
   ficha: CrmFichaLead; quadro: CrmQuadro; orcamentoSalvoId?: string | null; fretes?: FreteProximo[]; entregas?: EntregaDoLead[]
+  historicoPrazos?: PrazoAlteracao[]
 }) {
   const router = useRouter()
   const { lead, cliente, orcamentos, atividades, tarefas, podeEditar } = ficha
@@ -421,7 +423,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
             )}>
             <fieldset disabled={!podeEditar}>
               <LeadCampos valores={valores} onChange={setValores} origens={quadro.origens} usuarios={quadro.usuarios} podeTrocarVendedor={quadro.isAdmin}
-                prazoTravado={lead.status === "ganho" && !quadro.isAdmin} />
+                prazoTravado={lead.status === "ganho"} />
             </fieldset>
             <div className="mt-4 flex items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>Criado em {dataHora.format(new Date(lead.criado_em))}</span>
@@ -442,6 +444,10 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
 
         {/* ------------------------------------------------ Coluna lateral */}
         <div className="space-y-5">
+          {lead.status === "ganho" && (
+            <PrazoContrato leadId={lead.id} prazo={lead.prazo_entrega} situacao={prazoInfo} isAdmin={quadro.isAdmin}
+              historico={historicoPrazos} onMudou={atualizar} />
+          )}
           <Cartao titulo="Cliente" icone={<UserRound className="h-4 w-4 text-[#d97021]" />}>
             <ClienteDoLead lead={lead} cliente={cliente} podeEditar={podeEditar} modo={modoCliente} setModo={setModoCliente}
               onMudou={atualizar}

@@ -106,7 +106,7 @@ export function LeadCampos({
         <Label>Prazo de entrega</Label>
         <input className={inputClasse} type="date" value={valores.prazo_entrega} onChange={set("prazo_entrega")} disabled={prazoTravado} />
         <span className="text-[11px] text-muted-foreground">
-          {prazoTravado ? "Prazo contratual da venda: só o administrador altera." : "Obrigatório para marcar Ganho. Vai para o contrato."}
+          {prazoTravado ? "Prazo do contrato: para mudar, use \"Alterar prazo\" no cartão Prazo do contrato (só administrador)." : "Obrigatório para marcar Ganho. Vai para o contrato."}
         </span>
       </div>
       {podeTrocarVendedor && (

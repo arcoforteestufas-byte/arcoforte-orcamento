@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { acharCidade, cidadePorIbge, cidadesDaUf, rotaPorEstrada } from "@/lib/geo/geo-server"
 import {
-  CONFIG_ENT_PADRAO,
+  CONFIG_ENT_PADRAO, classificarPrazo,
+  type ResumoPrazos, type RiscoPrazo,
   type CalculoFrete, type CidadeOpcao, type EntConfig, type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora,
   type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem, type VeiculoFrete, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
@@ -965,6 +966,36 @@ export async function vendasFechadas(): Promise<VendaFechada[]> {
     entregas: (entR.data || []).filter(e => e.lead_id === l.id)
       .map(e => ({ id: e.id, status: e.status, viagem_id: e.viagem_id, chegada_prevista: e.chegada_prevista, entregue_em: e.entregue_em })),
   }))
+}
+
+/**
+ * Alerta de prazo contratual: quantas vendas estão atrasadas, marcadas depois do prazo,
+ * em risco (perto do prazo sem viagem) ou sem prazo. Só para Administrador e Logística.
+ */
+export async function resumoPrazos(): Promise<ResumoPrazos | null> {
+  const { supabase, user } = await sessao()
+  if (!user || !podeGerenciar(user)) return null
+  const vendas = await vendasFechadas()
+  const vIds = Array.from(new Set(vendas.flatMap(v => v.entregas.map(e => e.viagem_id)).filter(Boolean))) as string[]
+  const { data: viagens } = vIds.length
+    ? await supabase.from("ent_viagens").select("id, saida_prevista, retorno_previsto").in("id", vIds)
+    : { data: [] as { id: string; saida_prevista: string | null; retorno_previsto: string | null }[] }
+  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date())
+  const resumo: ResumoPrazos = { atrasada: 0, depois_prazo: 0, risco: 0, sem_prazo: 0, urgentes: [] }
+  const ordem: RiscoPrazo[] = ["atrasada", "depois_prazo", "risco", "sem_prazo"]
+  for (const v of vendas) {
+    const prevista = (e: VendaFechada["entregas"][number]) => {
+      const vi = (viagens || []).find(x => x.id === e.viagem_id)
+      return e.chegada_prevista || vi?.retorno_previsto || vi?.saida_prevista || null
+    }
+    const { risco, dias } = classificarPrazo(v.prazo_entrega, v.entregas, prevista, hoje)
+    if (risco === "atrasada" || risco === "depois_prazo" || risco === "risco" || risco === "sem_prazo") {
+      resumo[risco]++
+      resumo.urgentes.push({ id: v.id, titulo: v.titulo, cliente: v.cliente, cidade: v.cidade, uf: v.uf, prazo: v.prazo_entrega, risco, dias })
+    }
+  }
+  resumo.urgentes.sort((a, b) => ordem.indexOf(a.risco) - ordem.indexOf(b.risco) || (a.prazo || "9999").localeCompare(b.prazo || "9999"))
+  return resumo
 }
 
 /** Entregas ligadas a um lead, com viagem, caminhão e motorista */
