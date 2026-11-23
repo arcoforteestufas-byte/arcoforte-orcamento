@@ -1437,7 +1437,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
             </CardTitle>
             <CardDescription className="text-slate-500">Preencha os demais parâmetros técnicos.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6 grid-cols-1 md:grid-cols-2 p-6">
+          <CardContent className="grid gap-6 grid-cols-1 md:grid-cols-2 p-6 [&>*]:min-w-0">
             {parametrosDef
               .filter(p => !['n_modulos', 'largura_modulo', 'n_vaos', 'pe_direito', 'vao', 'portas_abrir', 'portas_correr', 'portas_correr_pequena', 'portas_correr_grande'].includes(p.nome_tecnico))
               .sort((a, b) => {
@@ -2182,12 +2182,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                 const permite100x50 = Number(paramsForm['pe_direito']) !== 2
                 return (
                   <div key="tipo_poste" className="grid gap-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="uppercase text-xs font-semibold text-slate-600">{param.rotulo}</Label>
-                      <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-800 border-amber-300 font-semibold">
-                        Padrão Ativo
-                      </Badge>
-                    </div>
+                    <Label className="uppercase text-xs font-semibold text-slate-600">{param.rotulo}</Label>
                     <Select 
                       value={paramsForm['tipo_poste']?.toString() || '100X50 GALVANIZADO'}
                       onValueChange={(val) => handleParamChange('tipo_poste', val)}
@@ -2195,10 +2190,10 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       <SelectTrigger id="campo-tipo-poste" className="w-full bg-white">
                         <SelectValue placeholder="Selecione...">
                           {paramsForm['tipo_poste'] === '75X40 GALVANIZADO'
-                            ? (permite75x40 ? '75x40 Galvanizado' : '75x40 Galvanizado (não existe para pé-direito 5 m)')
+                            ? (permite75x40 ? '75x40 Galvanizado' : '75x40 (não existe no PD 5 m)')
                             : paramsForm['tipo_poste'] === 'EUCALIPTO'
-                              ? 'Eucalipto Tratado (Aguardando aprovação de regras)'
-                              : '100x50 Galvanizado (Padrão Homologado ArcoForte)'}
+                              ? 'Eucalipto Tratado'
+                              : '100x50 Galvanizado (padrão)'}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -2226,7 +2221,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground leading-tight">
-                      * Postes 100x50 Galvanizados são o padrão. Em todos os pés-direitos, menos o de 5 m, é possível usar 75x40 Galvanizado nos postes de canto, laterais e de divisa modular. Eucalipto aguarda aprovação de regras.
+                      Postes de canto, laterais e de divisa. O 100x50 é o padrão; o 75x40 vale em todos os pés-direitos, menos o de 5 m.
                     </p>
                   </div>
                 )
