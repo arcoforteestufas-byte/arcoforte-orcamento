@@ -48,13 +48,17 @@ type LinhaEntrega = {
 }
 
 /** Fila do galpão: entregas ainda não saídas que têm produtos importados */
-export async function filaExpedicao(): Promise<{ entregas: EntregaExpedicao[]; erro?: string }> {
+export async function filaExpedicao(ids?: string[]): Promise<{ entregas: EntregaExpedicao[]; erro?: string }> {
   const { supabase, erro } = await sessao()
   if (erro) return { entregas: [], erro }
-  const [en, sep] = await Promise.all([
-    supabase.from("ent_entregas").select(CAMPOS_ENTREGA).in("status", ["a_programar", "programada", "em_rota"]).limit(500),
-    supabase.from("ent_separacoes").select("*"),
-  ])
+  let qEnt = supabase.from("ent_entregas").select(CAMPOS_ENTREGA).in("status", ["a_programar", "programada", "em_rota"])
+  let qSep = supabase.from("ent_separacoes").select("*")
+  if (ids) {
+    if (!ids.length) return { entregas: [] }
+    qEnt = qEnt.in("id", ids.slice(0, 50))
+    qSep = qSep.in("entrega_id", ids.slice(0, 50))
+  }
+  const [en, sep] = await Promise.all([qEnt.limit(500), qSep])
   if (en.error) return { entregas: [], erro: en.error.message }
   if (sep.error) return { entregas: [], erro: erroTabela(sep.error.message) }
   const linhas = ((en.data || []) as LinhaEntrega[]).filter(e => (e.itens || []).length)
@@ -279,4 +283,57 @@ export async function reabrirSeparacao(id: string): Promise<Resultado> {
   if (error) return { ok: false, erro: erroTabela(error.message) }
   revalidar(id)
   return { ok: true }
+}
+
+// ---------------------------------------------------------------------
+// Separação em lote: várias entregas separadas juntas (produtos somados)
+// ---------------------------------------------------------------------
+
+/** Começa a separação de várias entregas de uma vez */
+export async function iniciarSeparacaoLote(ids: string[]): Promise<Resultado<{ erros: { id: string; erro: string }[] }>> {
+  const erros: { id: string; erro: string }[] = []
+  for (const id of ids.slice(0, 50)) {
+    const r = await iniciarSeparacao(id)
+    if (!r.ok) erros.push({ id, erro: r.erro })
+  }
+  return { ok: true, dados: { erros } }
+}
+
+/** Marca vários produtos (de várias entregas) numa vez só — uma gravação por entrega */
+export async function marcarSeparacaoLote(marcas: { entregaId: string; chave: string; separada: number | null; motivo: string | null }[]): Promise<Resultado<Record<string, SepItem[]>>> {
+  const { supabase, user, nome, erro } = await sessao()
+  if (erro || !user) return { ok: false, erro: erro || "" }
+  const porEntrega = new Map<string, typeof marcas>()
+  for (const m of marcas.slice(0, 2000)) porEntrega.set(m.entregaId, [...(porEntrega.get(m.entregaId) || []), m])
+  const resultado: Record<string, SepItem[]> = {}
+  for (const [id, lista] of porEntrega) {
+    const c = await carregar(supabase, id)
+    if (c.erro) return { ok: false, erro: c.erro }
+    if (c.sep?.status !== "separando") return { ok: false, erro: "Uma das entregas não está mais em separação. Atualize a página." }
+    const validas = new Set(chavesDosItens(c.itens))
+    const itens = new Map(c.sep.itens.map(i => [i.chave, i]))
+    for (const m of lista) {
+      if (!validas.has(m.chave)) return { ok: false, erro: "Os produtos de uma das entregas mudaram. Atualize a página." }
+      const atual = itens.get(m.chave) || { chave: m.chave, separada: null, motivo: null, conferida: null }
+      itens.set(m.chave, { ...atual, separada: numeroOk(m.separada), motivo: String(m.motivo || "").trim().slice(0, 200) || null })
+    }
+    const nova = Array.from(itens.values())
+    const { error } = await supabase.from("ent_separacoes").update({
+      itens: nova, separado_por: user.id, separado_por_nome: nome, atualizado_em: new Date().toISOString(),
+    }).eq("entrega_id", id).eq("status", "separando")
+    if (error) return { ok: false, erro: erroTabela(error.message) }
+    resultado[id] = nova
+  }
+  return { ok: true, dados: resultado }
+}
+
+/** Finaliza a separação de várias entregas; devolve o que não deu para finalizar */
+export async function finalizarSeparacaoLote(ids: string[], obs: string): Promise<Resultado<{ erros: { id: string; erro: string }[] }>> {
+  const erros: { id: string; erro: string }[] = []
+  for (const id of ids.slice(0, 50)) {
+    const r = await finalizarSeparacao(id, obs)
+    if (!r.ok) erros.push({ id, erro: r.erro })
+  }
+  revalidar()
+  return { ok: true, dados: { erros } }
 }

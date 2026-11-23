@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ClipboardCheck, PackageCheck, RefreshCw, Truck } from "lucide-react"
+import { AlertTriangle, ClipboardCheck, Layers, PackageCheck, RefreshCw, Truck } from "lucide-react"
 import { STATUS_SEPARACAO, chavesDosItens, type EntregaExpedicao, type StatusSeparacao } from "@/lib/entregas-types"
 
 function dataBr(iso: string | null | undefined) {
@@ -50,6 +50,12 @@ export function ExpedicaoClient({ entregas, erro }: { entregas: EntregaExpedicao
   const [filtro, setFiltro] = useState<Filtro>(() => (["separando", "conferindo", "separada", "pendente"] as Filtro[]).find(f => contagem[f]) || "todas")
   const lista = filtro === "todas" ? entregas : entregas.filter(e => statusSep(e) === filtro)
   const [amanha] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10))
+  // separação em lote: só entregas que ainda não terminaram a separação
+  const [selecionadas, setSelecionadas] = useState<string[]>([])
+  const podeLote = (e: EntregaExpedicao) => statusSep(e) === "pendente" || statusSep(e) === "separando"
+  const selValidas = selecionadas.filter(id => entregas.some(e => e.id === id && podeLote(e)))
+  const alternar = (id: string) => setSelecionadas(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
+  const selecionaveisNaLista = lista.filter(podeLote)
 
   // atualiza sozinho a cada minuto (outra pessoa pode ter mexido)
   useEffect(() => {
@@ -88,6 +94,18 @@ export function ExpedicaoClient({ entregas, erro }: { entregas: EntregaExpedicao
               {entregas.length ? "Nada nesta etapa." : "Nenhuma entrega com produtos para separar. Os produtos entram ao importar o pedido do Sensio na entrega."}
             </div>
           ) : (
+            <>
+            {selecionaveisNaLista.length > 1 && (
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>Marque as entregas para separar os produtos delas juntos.</span>
+                <button className="font-medium text-[#d97021] hover:underline" onClick={() => {
+                  const todas = selecionaveisNaLista.every(e => selValidas.includes(e.id))
+                  setSelecionadas(todas ? selValidas.filter(id => !selecionaveisNaLista.some(e => e.id === id)) : Array.from(new Set([...selValidas, ...selecionaveisNaLista.map(e => e.id)])))
+                }}>
+                  {selecionaveisNaLista.every(e => selValidas.includes(e.id)) ? "desmarcar todas" : "marcar todas"}
+                </button>
+              </div>
+            )}
             <ul className="space-y-2">
               {lista.map(e => {
                 const st = statusSep(e)
@@ -95,8 +113,14 @@ export function ExpedicaoClient({ entregas, erro }: { entregas: EntregaExpedicao
                 const saida = e.viagem?.saida_prevista
                 const urgente = st !== "conferida" && !!saida && saida.slice(0, 10) <= amanha
                 return (
-                  <li key={e.id}>
-                    <Link href={`/expedicao/${e.id}`} className="block rounded-xl border bg-background p-4 shadow-sm transition hover:border-[#d97021]/60 hover:shadow">
+                  <li key={e.id} className="flex items-stretch gap-2">
+                    {podeLote(e) ? (
+                      <label className={`flex w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl border ${selValidas.includes(e.id) ? "border-[#d97021] bg-[#d97021]/10" : "bg-background"}`}
+                        title="Separar junto com outras">
+                        <input type="checkbox" className="h-5 w-5 accent-[#d97021]" checked={selValidas.includes(e.id)} onChange={() => alternar(e.id)} />
+                      </label>
+                    ) : selecionaveisNaLista.length > 0 && <span className="w-11 shrink-0" />}
+                    <Link href={`/expedicao/${e.id}`} className="block min-w-0 flex-1 rounded-xl border bg-background p-4 shadow-sm transition hover:border-[#d97021]/60 hover:shadow">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="font-semibold">{e.destinatario}</div>
@@ -127,9 +151,25 @@ export function ExpedicaoClient({ entregas, erro }: { entregas: EntregaExpedicao
                 )
               })}
             </ul>
+            </>
           )}
         </>
       )}
+
+      {selValidas.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur md:left-72">
+          <div className="mx-auto flex max-w-4xl items-center gap-2">
+            <button className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setSelecionadas([])}>Limpar</button>
+            <Link href={`/expedicao/lote?ids=${selValidas.join(",")}`}
+              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-[#d97021] text-base font-semibold text-white hover:bg-[#c3631b]">
+              <Layers className="h-5 w-5" />
+              {selValidas.length === 1 ? "Separar 1 entrega" : `Separar ${selValidas.length} entregas juntas`}
+              <span className="text-sm font-normal opacity-90">· {entregas.filter(e => selValidas.includes(e.id)).reduce((s, e) => s + e.itens.length, 0)} itens</span>
+            </Link>
+          </div>
+        </div>
+      )}
+      {selValidas.length > 0 && <div className="h-20" />}
     </div>
   )
 }
