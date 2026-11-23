@@ -14,7 +14,7 @@ import {
 } from "@/app/actions/entregas"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  ALERTA_PRAZO_DIAS, NOMES_UF, RISCO_PRAZO, STATUS_ENTREGA, STATUS_VIAGEM, classificarPrazo, formatarKm, posicaoRecente, type RiscoPrazo,
+  ALERTA_PRAZO_DIAS, NOMES_UF, RISCO_PRAZO, agruparPorLocal, STATUS_ENTREGA, STATUS_VIAGEM, classificarPrazo, formatarKm, posicaoRecente, type RiscoPrazo,
   type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora, type EntVeiculo, type EntViagem, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
 import { cn } from "@/lib/utils"
@@ -671,62 +671,123 @@ function AbaProgramar({ painel, entregas, onEditar }: {
   onEditar: (e: EntregaInicial) => void
 }) {
   const router = useRouter()
+  const [agrupar, setAgrupar] = useState(true)
   const viagens = painel.viagens.filter(v => v.status === "planejada" || v.status === "em_rota").sort((a, b) => a.saida_prevista.localeCompare(b.saida_prevista))
   const nome = (id: string | null) => painel.usuarios.find(u => u.id === id)?.nome || "—"
 
   if (!entregas.length) {
     return <div className="rounded-2xl border-2 border-dashed p-10 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-2 h-8 w-8 opacity-40" /> Nenhuma entrega esperando programação.</div>
   }
-  return (
-    <div className="rounded-2xl border bg-background shadow-sm divide-y">
-      {entregas.map(e => (
-        <div key={e.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">{e.destinatario}</span>
-              {e.uf && <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold">{e.cidade} - {e.uf}</span>}
-              {e.distancia_km != null && <span className="text-xs text-muted-foreground">{formatarKm(e.distancia_km)}</span>}
-            </div>
-            <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-              {e.chegada_prevista && <span>Desejada: {formatarData(e.chegada_prevista)}</span>}
-              {e.peso_kg ? <span>{Number(e.peso_kg).toLocaleString("pt-BR")} kg</span> : null}
-              {e.descricao_carga && <span>{e.descricao_carga}</span>}
-              <span>Solicitada por {nome(e.solicitado_por)} em {formatarData(e.criado_em)}</span>
-              {e.lead_id && <Link href={`/crm/lead/${e.lead_id}`} className="text-[#d97021] hover:underline">ver lead</Link>}
-            </div>
-            {e.observacoes && <div className="mt-1 text-xs text-muted-foreground italic">{e.observacoes}</div>}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {painel.podeGerenciar && (
-              <select className={cn(inputClasse, "w-64")} defaultValue="" onChange={async ev => {
-                const vid = ev.target.value
-                if (!vid) return
-                const r = await programarEntrega(e.id, vid)
-                if (!r.ok) { ev.target.value = ""; return toast.error(r.erro) }
-                toast.success("Entrega colocada na viagem")
-                router.refresh()
-              }}>
-                <option value="">Colocar na viagem...</option>
-                {viagens.map(v => {
-                  const ve = painel.veiculos.find(x => x.id === v.veiculo_id)
-                  return <option key={v.id} value={v.id}>{formatarData(v.saida_prevista)} · {v.titulo || "Viagem"}{ve ? ` · ${ve.placa}` : ""}</option>
-                })}
-              </select>
-            )}
-            {(painel.podeGerenciar || e.solicitado_por === painel.userId) && (
-              <Button size="icon" variant="ghost" title="Editar" onClick={() => onEditar(e)}><Pencil className="h-4 w-4" /></Button>
-            )}
-            {painel.podeGerenciar && (
-              <Button size="icon" variant="ghost" className="text-red-600" title="Cancelar entrega" onClick={async () => {
-                if (!confirm(`Cancelar a entrega de "${e.destinatario}"?`)) return
-                const r = await cancelarEntrega(e.id)
-                if (!r.ok) return toast.error(r.erro)
-                router.refresh()
-              }}><XCircle className="h-4 w-4" /></Button>
-            )}
-          </div>
+
+
+  const linha = (e: EntEntrega) => (
+    <div key={e.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium">{e.destinatario}</span>
+          {e.uf && <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold">{e.cidade} - {e.uf}</span>}
+          {e.distancia_km != null && <span className="text-xs text-muted-foreground">{formatarKm(e.distancia_km)}</span>}
         </div>
-      ))}
+        <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+          {e.chegada_prevista && <span>Desejada: {formatarData(e.chegada_prevista)}</span>}
+          {e.peso_kg ? <span>{Number(e.peso_kg).toLocaleString("pt-BR")} kg</span> : null}
+          {e.descricao_carga && <span>{e.descricao_carga}</span>}
+          <span>Solicitada por {nome(e.solicitado_por)} em {formatarData(e.criado_em)}</span>
+          {e.lead_id && <Link href={`/crm/lead/${e.lead_id}`} className="text-[#d97021] hover:underline">ver lead</Link>}
+        </div>
+        {e.observacoes && <div className="mt-1 text-xs text-muted-foreground italic">{e.observacoes}</div>}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {painel.podeGerenciar && (
+          <select className={cn(inputClasse, "w-64")} defaultValue="" onChange={async ev => {
+            const vid = ev.target.value
+            if (!vid) return
+            const r = await programarEntrega(e.id, vid)
+            if (!r.ok) { ev.target.value = ""; return toast.error(r.erro) }
+            toast.success("Entrega colocada na viagem")
+            router.refresh()
+          }}>
+            <option value="">Colocar na viagem...</option>
+            {viagens.map(v => {
+              const ve = painel.veiculos.find(x => x.id === v.veiculo_id)
+              return <option key={v.id} value={v.id}>{formatarData(v.saida_prevista)} · {v.titulo || "Viagem"}{ve ? ` · ${ve.placa}` : ""}</option>
+            })}
+          </select>
+        )}
+        {(painel.podeGerenciar || e.solicitado_por === painel.userId) && (
+          <Button size="icon" variant="ghost" title="Editar" onClick={() => onEditar(e)}><Pencil className="h-4 w-4" /></Button>
+        )}
+        {painel.podeGerenciar && (
+          <Button size="icon" variant="ghost" className="text-red-600" title="Cancelar entrega" onClick={async () => {
+            if (!confirm(`Cancelar a entrega de "${e.destinatario}"?`)) return
+            const r = await cancelarEntrega(e.id)
+            if (!r.ok) return toast.error(r.erro)
+            router.refresh()
+          }}><XCircle className="h-4 w-4" /></Button>
+        )}
+      </div>
+    </div>
+
+  )
+
+  // coloca todas as entregas de um grupo (cidade/estado) na mesma viagem
+  const programarGrupo = async (grupo: EntEntrega[], vid: string, nomeGrupo: string) => {
+    if (!vid) return
+    if (!confirm(`Colocar as ${grupo.length} entrega(s) de ${nomeGrupo} nesta viagem?`)) return
+    let ok = 0
+    for (const e of grupo) {
+      const r = await programarEntrega(e.id, vid)
+      if (r.ok) ok++
+      else toast.error(`${e.destinatario}: ${r.erro}`)
+    }
+    if (ok) toast.success(`${ok} entrega(s) colocada(s) na viagem`)
+    router.refresh()
+  }
+
+  const cabecalho = (nivel: 1 | 2 | 3, titulo: string, grupo: EntEntrega[]) => {
+    const peso = grupo.reduce((s, e) => s + (Number(e.peso_kg) || 0), 0)
+    return (
+      <div className={cn("flex flex-wrap items-center gap-2", nivel === 1 ? "rounded-lg bg-[#d97021]/10 px-3 py-2" : "px-1")}>
+        <span className={nivel === 1 ? "text-base font-bold" : "text-sm font-semibold"}>{titulo}</span>
+        <span className="text-xs text-muted-foreground">{grupo.length} entrega(s){peso > 0 ? ` · ${peso.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} kg` : ""}</span>
+        {painel.podeGerenciar && nivel > 1 && grupo.length > 1 && (
+          <select className={cn(inputClasse, "ml-auto h-8 w-56 text-xs")} value="" onChange={ev => programarGrupo(grupo, ev.target.value, titulo)}>
+            <option value="">Colocar todas na viagem...</option>
+            {viagens.map(v => {
+              const ve = painel.veiculos.find(x => x.id === v.veiculo_id)
+              return <option key={v.id} value={v.id}>{formatarData(v.saida_prevista)} · {v.titulo || "Viagem"}{ve ? ` · ${ve.placa}` : ""}</option>
+            })}
+          </select>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <label className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+        <input type="checkbox" className="accent-[#d97021]" checked={agrupar} onChange={x => setAgrupar(x.target.checked)} /> Agrupar por região, estado e cidade
+      </label>
+      {!agrupar ? (
+        <div className="rounded-2xl border bg-background shadow-sm divide-y">{entregas.map(linha)}</div>
+      ) : (
+        agruparPorLocal(entregas, e => ({ uf: e.uf, cidade: e.cidade })).map(r => (
+          <section key={r.regiao} className="space-y-2">
+            {cabecalho(1, r.regiao, r.itens)}
+            {r.estados.map(es => (
+              <div key={es.uf} className="space-y-2 border-l-2 border-[#d97021]/20 pl-3">
+                {r.estados.length > 1 || es.cidades.length > 1 ? cabecalho(2, es.uf === "—" ? "Sem estado" : `${NOMES_UF[es.uf] || es.uf} (${es.uf})`, es.itens) : null}
+                {es.cidades.map(c => (
+                  <div key={c.cidade} className="space-y-1.5">
+                    {cabecalho(3, `${c.cidade}${es.uf !== "—" ? ` - ${es.uf}` : ""}`, c.itens)}
+                    <div className="rounded-2xl border bg-background shadow-sm divide-y">{c.itens.map(linha)}</div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </section>
+        ))
+      )}
     </div>
   )
 }

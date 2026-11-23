@@ -415,3 +415,48 @@ export function formatarDuracao(min: number | null | undefined) {
   const h = Math.floor(min / 60), m = min % 60
   return h ? `${h} h${m ? ` ${m} min` : ""}` : `${m} min`
 }
+
+// ---------------------------------------------------------------------
+// Agrupamento por região do Brasil → estado → cidade
+// ---------------------------------------------------------------------
+export const REGIAO_UF: Record<string, string> = {
+  DF: "Centro-Oeste", GO: "Centro-Oeste", MT: "Centro-Oeste", MS: "Centro-Oeste",
+  ES: "Sudeste", MG: "Sudeste", RJ: "Sudeste", SP: "Sudeste",
+  PR: "Sul", RS: "Sul", SC: "Sul",
+  AL: "Nordeste", BA: "Nordeste", CE: "Nordeste", MA: "Nordeste", PB: "Nordeste", PE: "Nordeste", PI: "Nordeste", RN: "Nordeste", SE: "Nordeste",
+  AC: "Norte", AP: "Norte", AM: "Norte", PA: "Norte", RO: "Norte", RR: "Norte", TO: "Norte",
+}
+// a partir de Goiás: as regiões mais perto primeiro
+const ORDEM_REGIOES = ["Centro-Oeste", "Sudeste", "Sul", "Nordeste", "Norte", "Sem estado"]
+
+export interface GrupoRegiao<T> {
+  regiao: string
+  itens: T[]
+  estados: { uf: string; itens: T[]; cidades: { cidade: string; itens: T[] }[] }[]
+}
+
+/** Agrupa por região → estado → cidade (mantém a ordem original dentro de cada cidade) */
+export function agruparPorLocal<T>(lista: T[], local: (t: T) => { uf: string | null; cidade: string | null }): GrupoRegiao<T>[] {
+  const regioes = new Map<string, Map<string, Map<string, T[]>>>()
+  for (const t of lista) {
+    const { uf, cidade } = local(t)
+    const u = (uf || "").toUpperCase()
+    const r = REGIAO_UF[u] || "Sem estado"
+    const c = (cidade || "").trim() || "Sem cidade"
+    if (!regioes.has(r)) regioes.set(r, new Map())
+    const est = regioes.get(r)!
+    if (!est.has(u || "—")) est.set(u || "—", new Map())
+    const cid = est.get(u || "—")!
+    cid.set(c, [...(cid.get(c) || []), t])
+  }
+  const alfa = (a: string, b: string) => a.localeCompare(b, "pt-BR")
+  return Array.from(regioes.entries())
+    .sort(([a], [b]) => ORDEM_REGIOES.indexOf(a) - ORDEM_REGIOES.indexOf(b))
+    .map(([regiao, est]) => {
+      const estados = Array.from(est.entries()).sort(([a], [b]) => alfa(a, b)).map(([uf, cid]) => {
+        const cidades = Array.from(cid.entries()).sort(([a], [b]) => alfa(a, b)).map(([cidade, itens]) => ({ cidade, itens }))
+        return { uf, cidades, itens: cidades.flatMap(c => c.itens) }
+      })
+      return { regiao, estados, itens: estados.flatMap(e => e.itens) }
+    })
+}
