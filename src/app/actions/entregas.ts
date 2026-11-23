@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server"
 import { acharCidade, cidadePorIbge, cidadesDaUf, rotaPorEstrada } from "@/lib/geo/geo-server"
 import {
   CONFIG_ENT_PADRAO, classificarPrazo,
-  type ResumoPrazos, type RiscoPrazo,
+  type ResumoPrazos, type RiscoPrazo, type PedidoDoLeadOpcao,
   type CalculoFrete, type CidadeOpcao, type EntConfig, type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora,
   type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem, type VeiculoFrete, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
@@ -367,6 +367,49 @@ export async function dadosEntregaDoLead(leadId: string): Promise<Resultado<Part
 }
 
 /**
+ * Leads (vendas fechadas primeiro) com os pedidos (orçamentos) de cada um,
+ * para ligar uma entrega avulsa ao pedido do lead. Cada um vê os leads que o CRM permite.
+ */
+export async function leadsComPedidos(): Promise<PedidoDoLeadOpcao[]> {
+  const { supabase, user } = await sessao()
+  if (!user) return []
+  const { data: leads } = await supabase.from("crm_leads")
+    .select("id, titulo, status, cidade, uf, ganho_em, atualizado_em, clientes(nome)")
+    .neq("status", "perdido").order("atualizado_em", { ascending: false }).limit(300)
+  if (!leads?.length) return []
+  const ids = leads.map(l => l.id)
+  const [{ data: orcs }, { data: ents }] = await Promise.all([
+    supabase.from("orcamentos").select("id, lead_id, numero_pedido, valor_total, status, criado_em")
+      .in("lead_id", ids).neq("status", "Perdido").order("criado_em", { ascending: false }),
+    supabase.from("ent_entregas").select("id, lead_id").in("lead_id", ids).neq("status", "cancelada"),
+  ])
+  type L = { id: string; titulo: string; status: string; cidade: string | null; uf: string | null; ganho_em: string | null; clientes: { nome: string } | { nome: string }[] | null }
+  return (leads as unknown as L[]).map(l => ({
+    id: l.id, titulo: l.titulo, ganho: l.status === "ganho",
+    cliente: (Array.isArray(l.clientes) ? l.clientes[0]?.nome : l.clientes?.nome) ?? null,
+    cidade: l.cidade, uf: l.uf,
+    entregasAtivas: (ents || []).filter(e => e.lead_id === l.id).map(e => e.id),
+    pedidos: (orcs || []).filter(o => o.lead_id === l.id).map(o => ({
+      id: o.id, numero: o.numero_pedido || "#" + String(o.id).slice(0, 8).toUpperCase(),
+      valor: Number(o.valor_total) || 0, status: o.status as string,
+    })),
+  })).sort((a, b) => Number(b.ganho) - Number(a.ganho))
+}
+
+/** Peso de um pedido (soma de quantidade × peso do produto); null se os produtos não têm peso */
+export async function pesoDoPedido(orcamentoId: string): Promise<number | null> {
+  const { supabase, user } = await sessao()
+  if (!user) return null
+  const { data: itens } = await supabase.from("orcamento_itens").select("quantidade, produtos(peso_bruto_kg)").eq("orcamento_id", orcamentoId)
+  type I = { quantidade: number | null; produtos: { peso_bruto_kg: number | null } | { peso_bruto_kg: number | null }[] | null }
+  const total = ((itens || []) as unknown as I[]).reduce((s, i) => {
+    const p = Array.isArray(i.produtos) ? i.produtos[0] : i.produtos
+    return s + (Number(i.quantidade) || 0) * (Number(p?.peso_bruto_kg) || 0)
+  }, 0)
+  return total > 0 ? Math.round(total * 100) / 100 : null
+}
+
+/**
  * Lead marcado como Ganho: cria a entrega "a programar" (uma só por lead),
  * com a data prometida ao cliente. Se já existir entrega ativa, só ajusta a data se estiver vazia.
  */
@@ -467,9 +510,11 @@ export async function salvarEntrega(
 
   // viagem anterior (para recalcular a rota de onde a entrega saiu)
   let viagemAnterior: string | null = null
+  let leadAnterior: string | null = null
   if (e.id) {
-    const { data: atual } = await supabase.from("ent_entregas").select("viagem_id").eq("id", e.id).maybeSingle()
+    const { data: atual } = await supabase.from("ent_entregas").select("viagem_id, lead_id").eq("id", e.id).maybeSingle()
     viagemAnterior = atual?.viagem_id ?? null
+    leadAnterior = atual?.lead_id ?? null
   }
   if (campos.viagem_id && campos.viagem_id !== viagemAnterior) {
     const { data: ult } = await supabase.from("ent_entregas").select("ordem").eq("viagem_id", campos.viagem_id).order("ordem", { ascending: false }).limit(1).maybeSingle()
@@ -491,6 +536,15 @@ export async function salvarEntrega(
     })
     revalidatePath(`/crm/lead/${campos.lead_id}`)
   }
+  // entrega avulsa que passou a ser do pedido de um lead
+  if (e.id && campos.lead_id && campos.lead_id !== leadAnterior) {
+    await supabase.from("crm_lead_atividades").insert({
+      lead_id: campos.lead_id, tipo: "sistema",
+      descricao: `Entrega ligada ao lead${campos.descricao_carga ? `: ${campos.descricao_carga}` : ""}`,
+    })
+    revalidatePath(`/crm/lead/${campos.lead_id}`)
+  }
+  if (leadAnterior && "lead_id" in campos && campos.lead_id !== leadAnterior) revalidatePath(`/crm/lead/${leadAnterior}`)
   if (gerente) {
     await recalcularRota(supabase, r.data[0].viagem_id)
     if (viagemAnterior && viagemAnterior !== r.data[0].viagem_id) await recalcularRota(supabase, viagemAnterior)

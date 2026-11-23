@@ -257,6 +257,19 @@ export interface PrazoAlteracao {
   criado_em: string
 }
 
+/** Lead com os pedidos dele, para ligar uma entrega avulsa ao pedido */
+export interface PedidoDoLeadOpcao {
+  id: string
+  titulo: string
+  ganho: boolean
+  cliente: string | null
+  cidade: string | null
+  uf: string | null
+  /** entregas não canceladas já ligadas a este lead */
+  entregasAtivas: string[]
+  pedidos: { id: string; numero: string; valor: number; status: string }[]
+}
+
 export type CidadeOpcao = { ibge: number; nome: string; uf: string; lat: number; lng: number }
 
 export interface EntCadastros {

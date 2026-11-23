@@ -2,18 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Building2, Check, Crosshair, MapPin, Navigation, Package, Route, Search, Truck, X } from "lucide-react"
+import { Building2, Check, Crosshair, FileText, Link2, MapPin, Navigation, Package, Route, Search, Truck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { listarClientesParaLead } from "@/app/actions/crm"
 import {
-  distanciaDaOrigem, geocodificar, salvarEntrega, salvarMotorista, salvarTransportadora, salvarVeiculo, salvarViagem,
+  dadosEntregaDoLead, distanciaDaOrigem, geocodificar, leadsComPedidos, pesoDoPedido, salvarEntrega, salvarMotorista, salvarTransportadora, salvarVeiculo, salvarViagem,
 } from "@/app/actions/entregas"
 import {
   STATUS_ENTREGA, formatarDuracao, formatarKm,
-  type EntCadastros, type EntConfig, type EntEntrega, type EntMotorista, type EntTransportadora, type EntVeiculo, type EntViagem,
+  type EntCadastros, type EntConfig, type EntEntrega, type PedidoDoLeadOpcao, type EntMotorista, type EntTransportadora, type EntVeiculo, type EntViagem,
 } from "@/lib/entregas-types"
 import { formatarData, inputClasse } from "../crm/crm-utils"
 import { Mapa } from "./mapa"
@@ -169,6 +169,11 @@ export function EntregaDialog({ aberto, inicial, viagens, podeGerenciar, config,
               </Campo>
             </Secao>
 
+            <PedidoDoLead key={aberto ? "aberto" : "fechado"} entrega={e} aberto={aberto} onLigar={(campos, aviso) => {
+              setE(x => ({ ...x, ...campos }))
+              if (aviso) toast.message(aviso)
+            }} />
+
             <Secao titulo="Destino" icone={<Navigation className="h-3.5 w-3.5" />}>
               <Campo rotulo="Estado e cidade *">
                 <CidadeSelect uf={e.uf} cidade={e.cidade} onChange={(c, uf) => {
@@ -249,6 +254,127 @@ export function EntregaDialog({ aberto, inicial, viagens, podeGerenciar, config,
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * Pedido do lead: liga a entrega (inclusive a avulsa) a um lead e a um pedido (orçamento).
+ * Ao ligar, preenche só os campos que estão vazios (cliente, destino, peso, data, carga).
+ */
+function PedidoDoLead({ entrega: e, aberto, onLigar }: {
+  entrega: EntregaInicial
+  aberto: boolean
+  onLigar: (campos: Partial<EntEntrega>, aviso?: string) => void
+}) {
+  const [leads, setLeads] = useState<PedidoDoLeadOpcao[] | null>(null)
+  const [busca, setBusca] = useState<string | null>(null)
+  const [ligando, setLigando] = useState(false)
+
+  // carrega a lista quando precisa (entrega já ligada ou ao abrir a busca)
+  useEffect(() => {
+    if (aberto && !leads && (e.lead_id || busca !== null)) leadsComPedidos().then(setLeads)
+  }, [aberto, leads, e.lead_id, busca])
+
+  const lead = leads?.find(l => l.id === e.lead_id) || null
+  const filtrados = useMemo(() => {
+    const t = (busca || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim()
+    return (leads || []).filter(l => !t || [l.titulo, l.cliente, l.cidade, l.uf, ...l.pedidos.map(p => p.numero)].filter(Boolean)
+      .join(" ").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().includes(t)).slice(0, 12)
+  }, [leads, busca])
+  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+  const rotuloPedido = (p: PedidoDoLeadOpcao["pedidos"][number]) => `Pedido ${p.numero} — ${brl.format(p.valor)}`
+
+  const ligar = async (l: PedidoDoLeadOpcao) => {
+    setLigando(true)
+    const r = await dadosEntregaDoLead(l.id)
+    setLigando(false)
+    if (!r.ok) return toast.error(r.erro)
+    const d = r.dados!
+    const vazio = (k: keyof EntEntrega) => e[k] === null || e[k] === undefined || e[k] === ""
+    const campos: Partial<EntEntrega> = { lead_id: l.id, orcamento_id: d.orcamento_id ?? null }
+    if (vazio("cliente_id")) campos.cliente_id = d.cliente_id ?? null
+    for (const k of ["destinatario", "telefone", "endereco", "peso_kg", "chegada_prevista", "descricao_carga"] as const) {
+      if (vazio(k) && d[k] != null) (campos as Record<string, unknown>)[k] = d[k]
+    }
+    if (vazio("cidade") && d.cidade) { campos.cidade = d.cidade; campos.uf = d.uf ?? null; campos.cidade_ibge = d.cidade_ibge ?? null }
+    const outras = l.entregasAtivas.filter(id => id !== e.id).length
+    setBusca(null)
+    onLigar(campos, outras
+      ? `Atenção: este lead já tem ${outras} entrega(s) cadastrada(s). Confira para não duplicar.`
+      : "Entrega ligada ao lead. Os campos vazios foram preenchidos com os dados do pedido.")
+  }
+
+  const trocarPedido = async (orcamentoId: string) => {
+    const campos: Partial<EntEntrega> = { orcamento_id: orcamentoId || null }
+    const p = lead?.pedidos.find(x => x.id === orcamentoId)
+    if (p) {
+      // carga e peso acompanham o pedido escolhido
+      campos.descricao_carga = rotuloPedido(p)
+      const peso = await pesoDoPedido(p.id)
+      if (peso) campos.peso_kg = peso
+    }
+    onLigar(campos)
+  }
+
+  return (
+    <Secao titulo="Pedido do lead" icone={<FileText className="h-3.5 w-3.5" />}>
+      {e.lead_id ? (
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-2 rounded-lg border bg-background p-2.5 text-sm">
+            <div className="min-w-0">
+              <div className="font-medium truncate">{lead?.titulo || (leads ? "Lead ligado" : "Carregando...")}</div>
+              <div className="text-xs text-muted-foreground">
+                {[lead?.cliente, [lead?.cidade, lead?.uf].filter(Boolean).join(" - "), lead?.ganho ? "venda fechada" : lead ? "em negociação" : ""].filter(Boolean).join(" · ")}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 text-xs">
+              <a href={`/crm/lead/${e.lead_id}`} target="_blank" rel="noopener" className="text-[#d97021] hover:underline">abrir lead</a>
+              <button type="button" className="text-muted-foreground hover:text-red-600" title="Desligar do lead"
+                onClick={() => onLigar({ lead_id: null, orcamento_id: null })}>
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+          {lead && (
+            <Campo rotulo="Pedido">
+              {lead.pedidos.length ? (
+                <select className={inputClasse} value={e.orcamento_id || ""} onChange={x => trocarPedido(x.target.value)}>
+                  <option value="">Sem pedido definido</option>
+                  {lead.pedidos.map(p => <option key={p.id} value={p.id}>{rotuloPedido(p)}{p.status === "Aprovado" ? " · fechado" : ` · ${p.status}`}</option>)}
+                </select>
+              ) : <p className="text-xs text-muted-foreground">Este lead ainda não tem orçamento.</p>}
+            </Campo>
+          )}
+        </div>
+      ) : busca === null ? (
+        <Button type="button" variant="outline" className="w-full gap-1" onClick={() => setBusca("")}>
+          <Link2 className="h-4 w-4" /> Ligar ao pedido de um lead
+        </Button>
+      ) : (
+        <div className="rounded-lg border bg-background p-2 space-y-2">
+          <div className="flex gap-2">
+            <input autoFocus className={inputClasse} placeholder="Buscar lead, cliente, cidade ou nº do pedido..." value={busca} onChange={x => setBusca(x.target.value)} />
+            <Button type="button" variant="ghost" size="icon" onClick={() => setBusca(null)}><X className="h-4 w-4" /></Button>
+          </div>
+          <div className="max-h-56 overflow-y-auto divide-y rounded border">
+            {!leads ? <p className="p-2 text-xs text-muted-foreground">Carregando...</p>
+              : !filtrados.length ? <p className="p-2 text-xs text-muted-foreground">Nenhum lead encontrado.</p>
+              : filtrados.map(l => (
+                <button key={l.id} type="button" disabled={ligando} className="block w-full px-2 py-1.5 text-left text-sm hover:bg-orange-50 disabled:opacity-50" onClick={() => ligar(l)}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium truncate">{l.titulo}</span>
+                    {l.ganho && <span className="rounded-full bg-emerald-50 px-1.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">ganho</span>}
+                    {l.entregasAtivas.length > 0 && <span className="rounded-full bg-amber-50 px-1.5 text-[10px] text-amber-800 ring-1 ring-inset ring-amber-200">já tem entrega</span>}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {[l.cliente, [l.cidade, l.uf].filter(Boolean).join(" - "), l.pedidos.length ? `${l.pedidos.length} pedido(s): ${l.pedidos.map(p => p.numero).join(", ")}` : "sem pedido"].filter(Boolean).join(" · ")}
+                  </div>
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
+    </Secao>
   )
 }
 
