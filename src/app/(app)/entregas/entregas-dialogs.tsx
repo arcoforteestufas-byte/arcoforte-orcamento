@@ -286,6 +286,7 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
   onChange: (campos: Partial<EntEntrega>) => void
 }) {
   const [lendo, setLendo] = useState(false)
+  const [listaInteira, setListaInteira] = useState(false)
   const itens = e.itens || []
   const pesoAtual = pesoDosItens(itens)
   const semPeso = itens.filter(i => !i.peso_unit_kg).length
@@ -366,7 +367,7 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
         <p className="text-[11px] text-muted-foreground">No Sensio, exporte o pedido em Excel (.xls) ou PDF e importe aqui para saber quais produtos vão nesta entrega.</p>
       ) : (
         <div className="rounded-lg border bg-background">
-          <div className="max-h-64 overflow-y-auto">
+          <div className={listaInteira ? "" : "max-h-[32rem] overflow-y-auto"}>
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-muted/80 text-[10px] uppercase text-muted-foreground backdrop-blur">
                 <tr><th className="px-2 py-1 text-left">Cód.</th><th className="px-2 py-1 text-left">Produto</th><th className="px-2 py-1 text-right">Qtd</th><th className="px-2 py-1 text-right">Peso</th><th /></tr>
@@ -394,7 +395,14 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
               {pedidos.length ? `Pedido ${pedidos.join(", ")} · ` : ""}<b>{kg(pesoAtual)} kg</b> calculado
               {semPeso ? <span className="text-amber-700"> · {semPeso} produto(s) sem peso</span> : null}
             </span>
-            <button type="button" className="text-muted-foreground hover:text-red-600" onClick={() => { if (confirm("Tirar todos os produtos desta entrega?")) aplicar([]) }}>limpar</button>
+            <span className="flex items-center gap-3">
+              {itens.length > 12 && (
+                <button type="button" className="font-medium text-primary hover:underline" onClick={() => setListaInteira(v => !v)}>
+                  {listaInteira ? "recolher lista" : `ver lista inteira (${itens.length})`}
+                </button>
+              )}
+              <button type="button" className="text-muted-foreground hover:text-red-600" onClick={() => { if (confirm("Tirar todos os produtos desta entrega?")) aplicar([]) }}>limpar</button>
+            </span>
           </div>
         </div>
       )}
