@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { lerPedidoSensio } from "@/lib/pedido-sensio"
+import { lerPedidoSensio, type PedidoSensio } from "@/lib/pedido-sensio"
 import { Building2, Check, Crosshair, FileSpreadsheet, FileText, Link2, MapPin, Navigation, Package, Route, Search, Truck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -312,15 +312,27 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
   const importar = async (arquivo: File) => {
     setLendo(true)
     try {
-      const XLSX = await import("xlsx")
-      const wb = XLSX.read(await arquivo.arrayBuffer())
-      const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "" }) as unknown[][]
-      const lidos = lerPedidoSensio(linhas)
+      let lidos: PedidoSensio[]
+      if (/\.pdf$/i.test(arquivo.name) || arquivo.type === "application/pdf") {
+        // PDF: lido no servidor
+        const fd = new FormData()
+        fd.append("file", arquivo)
+        const resp = await fetch("/api/entregas/pedido-pdf", { method: "POST", body: fd })
+        const json = await resp.json().catch(() => ({ erro: "Não consegui ler o PDF." }))
+        if (!resp.ok || !json.pedidos) throw new Error(json.erro || "Não consegui ler o PDF.")
+        lidos = json.pedidos
+      } else {
+        const XLSX = await import("xlsx")
+        const wb = XLSX.read(await arquivo.arrayBuffer())
+        const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "" }) as unknown[][]
+        lidos = lerPedidoSensio(linhas)
+      }
+      // peso: o do PDF do Sensio; se não vier, o do cadastro de produtos
       const pesos = await pesosPorCodigo(lidos.flatMap(p => p.itens.map(i => i.codigo || "")))
       const numeros = lidos.map(p => p.numero).filter(Boolean)
       const novos: EntItemCarga[] = lidos.flatMap(p => p.itens.map(i => ({
         pedido: p.numero || null, codigo: i.codigo, descricao: i.descricao, unidade: i.unidade, quantidade: i.quantidade,
-        peso_unit_kg: (i.codigo && pesos[i.codigo]) || null, obs: i.obs,
+        peso_unit_kg: i.peso_unit_kg || (i.codigo && pesos[i.codigo]) || null, obs: i.obs,
       })))
       // pedido importado de novo substitui o anterior
       const lista = [...itens.filter(i => !i.pedido || !numeros.includes(i.pedido)), ...novos]
@@ -332,7 +344,7 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
       aplicar(lista, extra)
       const sem = novos.filter(i => !i.peso_unit_kg).length
       toast.success(`${novos.length} produto(s) do pedido ${numeros.join(", ") || "importado"}`
-        + (sem ? ` · ${sem} sem peso no cadastro de produtos` : ""))
+        + (sem ? ` · ${sem} sem peso (nem no pedido, nem no cadastro)` : ""))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não consegui ler o arquivo.")
     } finally {
@@ -345,13 +357,13 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
       <div className="flex items-center justify-between gap-2">
         <Label>Produtos da entrega {itens.length ? `(${itens.length})` : ""}</Label>
         <label className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border bg-background px-2.5 text-xs font-medium hover:bg-muted ${lendo ? "pointer-events-none opacity-50" : ""}`}>
-          <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" /> {lendo ? "Lendo..." : itens.length ? "Importar outro pedido" : "Importar pedido do Sensio"}
-          <input type="file" className="hidden" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" /> {lendo ? "Lendo..." : itens.length ? "Importar outro pedido" : "Importar pedido do Sensio (Excel ou PDF)"}
+          <input type="file" className="hidden" accept=".xls,.xlsx,.csv,.pdf,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={x => { const f = x.target.files?.[0]; x.target.value = ""; if (f) importar(f) }} />
         </label>
       </div>
       {!itens.length ? (
-        <p className="text-[11px] text-muted-foreground">No Sensio, exporte o pedido em Excel (.xls) e importe aqui para saber quais produtos vão nesta entrega.</p>
+        <p className="text-[11px] text-muted-foreground">No Sensio, exporte o pedido em Excel (.xls) ou PDF e importe aqui para saber quais produtos vão nesta entrega.</p>
       ) : (
         <div className="rounded-lg border bg-background">
           <div className="max-h-64 overflow-y-auto">
@@ -368,7 +380,7 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
                       <QtdInput key={`${idx}-${i.codigo}-${i.quantidade}`} valor={i.quantidade}
                         onSalvar={q => aplicar(itens.map((y, j) => j === idx ? { ...y, quantidade: q } : y))} /> <span className="text-muted-foreground">{i.unidade || ""}</span>
                     </td>
-                    <td className="px-2 py-1 text-right whitespace-nowrap">{i.peso_unit_kg ? `${kg(i.peso_unit_kg * i.quantidade)} kg` : <span className="text-amber-600" title="Produto sem peso no cadastro">—</span>}</td>
+                    <td className="px-2 py-1 text-right whitespace-nowrap">{i.peso_unit_kg ? `${kg(i.peso_unit_kg * i.quantidade)} kg` : <span className="text-amber-600" title="Sem peso no pedido e no cadastro de produtos">—</span>}</td>
                     <td className="px-1 py-1 text-right">
                       <button type="button" className="text-muted-foreground hover:text-red-600" title="Tirar desta entrega" onClick={() => aplicar(itens.filter((_, j) => j !== idx))}><X className="h-3.5 w-3.5" /></button>
                     </td>
