@@ -117,6 +117,22 @@ export interface EntEntrega {
   cidade_ibge: number | null
   distancia_km: number | null
   distancia_estimada: boolean
+  /** produtos que vão na entrega (importados do pedido do Sensio) — SQL 20261129 */
+  itens?: EntItemCarga[]
+  /** número(s) do pedido no Sensio */
+  pedido_erp?: string | null
+}
+
+/** Produto que vai na entrega */
+export interface EntItemCarga {
+  pedido: string | null
+  codigo: string | null
+  descricao: string
+  unidade: string | null
+  quantidade: number
+  /** peso unitário do cadastro de produtos (null = produto sem peso ou não cadastrado) */
+  peso_unit_kg: number | null
+  obs?: string | null
 }
 
 export interface EntConfig {

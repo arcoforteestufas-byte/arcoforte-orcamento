@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server"
 import { acharCidade, cidadePorIbge, cidadesDaUf, rotaPorEstrada } from "@/lib/geo/geo-server"
 import {
   CONFIG_ENT_PADRAO, classificarPrazo,
-  type ResumoPrazos, type RiscoPrazo, type PedidoDoLeadOpcao,
+  type ResumoPrazos, type RiscoPrazo, type PedidoDoLeadOpcao, type EntItemCarga,
   type CalculoFrete, type CidadeOpcao, type EntConfig, type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora,
   type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem, type VeiculoFrete, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
@@ -396,6 +396,32 @@ export async function leadsComPedidos(): Promise<PedidoDoLeadOpcao[]> {
   })).sort((a, b) => Number(b.ganho) - Number(a.ganho))
 }
 
+/** Peso unitário (kg) de cada produto pelo código — só leitura da tabela produtos */
+export async function pesosPorCodigo(codigos: string[]): Promise<Record<string, number | null>> {
+  const { supabase, user } = await sessao()
+  if (!user) return {}
+  const lista = Array.from(new Set(codigos.map(c => String(c).trim()).filter(Boolean))).slice(0, 1000)
+  if (!lista.length) return {}
+  const { data } = await supabase.from("produtos").select("codigo, peso_bruto_kg").in("codigo", lista)
+  const r: Record<string, number | null> = {}
+  for (const p of data || []) r[String(p.codigo).trim()] = p.peso_bruto_kg != null && Number(p.peso_bruto_kg) > 0 ? Number(p.peso_bruto_kg) : null
+  return r
+}
+
+/** Limpa a lista de produtos da entrega vinda do navegador */
+function limparItens(v: unknown): EntItemCarga[] {
+  if (!Array.isArray(v)) return []
+  return v.slice(0, 500).map(i => {
+    const o = (i || {}) as Record<string, unknown>
+    const s = (x: unknown, max = 200) => { const t = String(x ?? "").trim().slice(0, max); return t || null }
+    const peso = numero(o.peso_unit_kg)
+    return {
+      pedido: s(o.pedido, 40), codigo: s(o.codigo, 40), descricao: s(o.descricao, 300) || "", unidade: s(o.unidade, 10),
+      quantidade: numero(o.quantidade) || 0, peso_unit_kg: peso && peso > 0 ? peso : null, obs: s(o.obs, 300),
+    }
+  }).filter(i => i.descricao && i.quantidade > 0)
+}
+
 /** Peso de um pedido (soma de quantidade × peso do produto); null se os produtos não têm peso */
 export async function pesoDoPedido(orcamentoId: string): Promise<number | null> {
   const { supabase, user } = await sessao()
@@ -521,10 +547,24 @@ export async function salvarEntrega(
     campos.ordem = (ult?.ordem ?? -1) + 1
   }
 
+  // produtos que vão na entrega (pedido do Sensio)
+  if ("itens" in e) campos.itens = limparItens(e.itens)
+  if ("pedido_erp" in e) campos.pedido_erp = texto(e.pedido_erp)
+
   campos.atualizado_em = new Date().toISOString()
-  const r = e.id
-    ? await supabase.from("ent_entregas").update(campos).eq("id", e.id).select("id, viagem_id")
-    : await supabase.from("ent_entregas").insert({ ...campos, solicitado_por: user.id }).select("id, viagem_id")
+  const gravar = () => e.id
+    ? supabase.from("ent_entregas").update(campos).eq("id", e.id).select("id, viagem_id")
+    : supabase.from("ent_entregas").insert({ ...campos, solicitado_por: user.id }).select("id, viagem_id")
+  let r = await gravar()
+  // antes do SQL 20261129 as colunas itens/pedido_erp não existem
+  if (r.error && /itens|pedido_erp/.test(r.error.message) && ("itens" in campos || "pedido_erp" in campos)) {
+    if ((campos.itens as EntItemCarga[] | undefined)?.length) {
+      return { ok: false, erro: "Para guardar os produtos do pedido, rode a migração 20261129000000_entregas_itens_pedido.sql no Supabase." }
+    }
+    delete campos.itens
+    delete campos.pedido_erp
+    r = await gravar()
+  }
   if (r.error) return { ok: false, erro: msgErro(r.error.message) }
   if (!r.data?.length) return { ok: false, erro: "Sem permissão para alterar esta entrega." }
 

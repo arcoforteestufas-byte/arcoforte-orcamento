@@ -2,18 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Building2, Check, Crosshair, FileText, Link2, MapPin, Navigation, Package, Route, Search, Truck, X } from "lucide-react"
+import { lerPedidoSensio } from "@/lib/pedido-sensio"
+import { Building2, Check, Crosshair, FileSpreadsheet, FileText, Link2, MapPin, Navigation, Package, Route, Search, Truck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { listarClientesParaLead } from "@/app/actions/crm"
 import {
-  dadosEntregaDoLead, distanciaDaOrigem, geocodificar, leadsComPedidos, pesoDoPedido, salvarEntrega, salvarMotorista, salvarTransportadora, salvarVeiculo, salvarViagem,
+  dadosEntregaDoLead, distanciaDaOrigem, geocodificar, leadsComPedidos, pesoDoPedido, pesosPorCodigo, salvarEntrega, salvarMotorista, salvarTransportadora, salvarVeiculo, salvarViagem,
 } from "@/app/actions/entregas"
 import {
   STATUS_ENTREGA, formatarDuracao, formatarKm,
-  type EntCadastros, type EntConfig, type EntEntrega, type PedidoDoLeadOpcao, type EntMotorista, type EntTransportadora, type EntVeiculo, type EntViagem,
+  type EntCadastros, type EntConfig, type EntEntrega, type EntItemCarga, type PedidoDoLeadOpcao, type EntMotorista, type EntTransportadora, type EntVeiculo, type EntViagem,
 } from "@/lib/entregas-types"
 import { formatarData, inputClasse } from "../crm/crm-utils"
 import { Mapa } from "./mapa"
@@ -206,6 +207,7 @@ export function EntregaDialog({ aberto, inicial, viagens, podeGerenciar, config,
             </Secao>
 
             <Secao titulo="Carga e data" icone={<Package className="h-3.5 w-3.5" />}>
+              <ProdutosDaEntrega entrega={e} onChange={campos => setE(x => ({ ...x, ...campos }))} />
               <div className="grid grid-cols-2 gap-2">
                 <Campo rotulo="Chegada prevista">
                   <input className={inputClasse} type="date" value={e.chegada_prevista || ""} onChange={x => set("chegada_prevista", x.target.value)} />
@@ -254,6 +256,137 @@ export function EntregaDialog({ aberto, inicial, viagens, podeGerenciar, config,
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** Quantidade editável (aceita vírgula); grava ao sair do campo ou com Enter */
+function QtdInput({ valor, onSalvar }: { valor: number; onSalvar: (q: number) => void }) {
+  const [t, setT] = useState(String(valor).replace(".", ","))
+  const gravar = () => {
+    const q = Number(t.replace(/\./g, "").replace(",", "."))
+    if (Number.isFinite(q) && q > 0 && q !== valor) onSalvar(q)
+    else setT(String(valor).replace(".", ","))
+  }
+  return (
+    <input className="h-6 w-16 rounded border px-1 text-right" inputMode="decimal" value={t} title="Mude se esta entrega levar só parte do pedido"
+      onChange={x => setT(x.target.value)} onBlur={gravar} onKeyDown={x => { if (x.key === "Enter") { x.preventDefault(); gravar() } }} />
+  )
+}
+
+const pesoDosItens = (itens: EntItemCarga[] | undefined) =>
+  Math.round((itens || []).reduce((s, i) => s + (i.peso_unit_kg || 0) * (Number(i.quantidade) || 0), 0) * 100) / 100
+
+/**
+ * Produtos da entrega: importa o pedido exportado do Sensio (.xls/.xlsx).
+ * Dá para importar mais de um pedido, mudar a quantidade (entrega parcial) e tirar itens.
+ * O peso de cada produto vem do cadastro de produtos (pelo código).
+ */
+function ProdutosDaEntrega({ entrega: e, onChange }: {
+  entrega: EntregaInicial
+  onChange: (campos: Partial<EntEntrega>) => void
+}) {
+  const [lendo, setLendo] = useState(false)
+  const itens = e.itens || []
+  const pesoAtual = pesoDosItens(itens)
+  const semPeso = itens.filter(i => !i.peso_unit_kg).length
+  const pedidos = Array.from(new Set(itens.map(i => i.pedido).filter(Boolean))) as string[]
+  const kg = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 })
+
+  /** troca a lista; o peso da entrega acompanha se estava vazio ou era o calculado */
+  const aplicar = (novos: EntItemCarga[], extra: Partial<EntEntrega> = {}) => {
+    const campos: Partial<EntEntrega> = { ...extra, itens: novos }
+    const pesoCampo = e.peso_kg === null || e.peso_kg === undefined || String(e.peso_kg) === "" ? null : Number(String(e.peso_kg).replace(",", "."))
+    if (pesoCampo === null || Math.abs(pesoCampo - pesoAtual) < 0.01) {
+      const p = pesoDosItens(novos)
+      campos.peso_kg = p > 0 ? p : null
+    }
+    const nums = Array.from(new Set(novos.map(i => i.pedido).filter(Boolean)))
+    campos.pedido_erp = nums.length ? nums.join(", ") : null
+    // "O que vai" acompanha os pedidos se estava vazio ou era o texto automático
+    if (!e.descricao_carga || /^Pedido Sensio/.test(e.descricao_carga)) {
+      campos.descricao_carga = nums.length ? `Pedido Sensio ${nums.join(" + ")} · ${novos.length} produto(s)` : (novos.length ? `${novos.length} produto(s)` : null)
+    }
+    onChange(campos)
+  }
+
+  const importar = async (arquivo: File) => {
+    setLendo(true)
+    try {
+      const XLSX = await import("xlsx")
+      const wb = XLSX.read(await arquivo.arrayBuffer())
+      const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "" }) as unknown[][]
+      const lidos = lerPedidoSensio(linhas)
+      const pesos = await pesosPorCodigo(lidos.flatMap(p => p.itens.map(i => i.codigo || "")))
+      const numeros = lidos.map(p => p.numero).filter(Boolean)
+      const novos: EntItemCarga[] = lidos.flatMap(p => p.itens.map(i => ({
+        pedido: p.numero || null, codigo: i.codigo, descricao: i.descricao, unidade: i.unidade, quantidade: i.quantidade,
+        peso_unit_kg: (i.codigo && pesos[i.codigo]) || null, obs: i.obs,
+      })))
+      // pedido importado de novo substitui o anterior
+      const lista = [...itens.filter(i => !i.pedido || !numeros.includes(i.pedido)), ...novos]
+      const p0 = lidos[0]
+      const extra: Partial<EntEntrega> = {}
+      if (!e.destinatario?.trim() && p0.cliente) extra.destinatario = p0.cliente
+      if (!e.endereco && p0.endereco) extra.endereco = p0.endereco
+      if (!e.uf && !e.cidade && p0.uf) extra.uf = p0.uf
+      aplicar(lista, extra)
+      const sem = novos.filter(i => !i.peso_unit_kg).length
+      toast.success(`${novos.length} produto(s) do pedido ${numeros.join(", ") || "importado"}`
+        + (sem ? ` · ${sem} sem peso no cadastro de produtos` : ""))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não consegui ler o arquivo.")
+    } finally {
+      setLendo(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <Label>Produtos da entrega {itens.length ? `(${itens.length})` : ""}</Label>
+        <label className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border bg-background px-2.5 text-xs font-medium hover:bg-muted ${lendo ? "pointer-events-none opacity-50" : ""}`}>
+          <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" /> {lendo ? "Lendo..." : itens.length ? "Importar outro pedido" : "Importar pedido do Sensio"}
+          <input type="file" className="hidden" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={x => { const f = x.target.files?.[0]; x.target.value = ""; if (f) importar(f) }} />
+        </label>
+      </div>
+      {!itens.length ? (
+        <p className="text-[11px] text-muted-foreground">No Sensio, exporte o pedido em Excel (.xls) e importe aqui para saber quais produtos vão nesta entrega.</p>
+      ) : (
+        <div className="rounded-lg border bg-background">
+          <div className="max-h-64 overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-muted/80 text-[10px] uppercase text-muted-foreground backdrop-blur">
+                <tr><th className="px-2 py-1 text-left">Cód.</th><th className="px-2 py-1 text-left">Produto</th><th className="px-2 py-1 text-right">Qtd</th><th className="px-2 py-1 text-right">Peso</th><th /></tr>
+              </thead>
+              <tbody className="divide-y">
+                {itens.map((i, idx) => (
+                  <tr key={idx}>
+                    <td className="px-2 py-1 font-mono text-muted-foreground">{i.codigo || "—"}</td>
+                    <td className="px-2 py-1">{i.descricao}{pedidos.length > 1 && i.pedido ? <span className="text-muted-foreground"> · ped. {i.pedido}</span> : null}</td>
+                    <td className="px-2 py-1 text-right whitespace-nowrap">
+                      <QtdInput key={`${idx}-${i.codigo}-${i.quantidade}`} valor={i.quantidade}
+                        onSalvar={q => aplicar(itens.map((y, j) => j === idx ? { ...y, quantidade: q } : y))} /> <span className="text-muted-foreground">{i.unidade || ""}</span>
+                    </td>
+                    <td className="px-2 py-1 text-right whitespace-nowrap">{i.peso_unit_kg ? `${kg(i.peso_unit_kg * i.quantidade)} kg` : <span className="text-amber-600" title="Produto sem peso no cadastro">—</span>}</td>
+                    <td className="px-1 py-1 text-right">
+                      <button type="button" className="text-muted-foreground hover:text-red-600" title="Tirar desta entrega" onClick={() => aplicar(itens.filter((_, j) => j !== idx))}><X className="h-3.5 w-3.5" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t px-2 py-1.5 text-xs">
+            <span>
+              {pedidos.length ? `Pedido ${pedidos.join(", ")} · ` : ""}<b>{kg(pesoAtual)} kg</b> calculado
+              {semPeso ? <span className="text-amber-700"> · {semPeso} produto(s) sem peso</span> : null}
+            </span>
+            <button type="button" className="text-muted-foreground hover:text-red-600" onClick={() => { if (confirm("Tirar todos os produtos desta entrega?")) aplicar([]) }}>limpar</button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

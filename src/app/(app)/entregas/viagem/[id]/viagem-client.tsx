@@ -85,7 +85,10 @@ export function ViagemClient({ painel, viagem, trilha }: {
     ...paradas.map((e, i) => {
       const local = [e.endereco, [e.cidade, e.uf].filter(Boolean).join("/")].filter(Boolean).join(", ")
       const mapa = e.lat != null ? `https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}` : ""
-      return `\n${i + 1}. *${e.destinatario}*${e.telefone ? ` (${e.telefone})` : ""}\n${local}${e.chegada_prevista ? `\nChegada: ${formatarData(e.chegada_prevista)}` : ""}${e.descricao_carga ? `\nCarga: ${e.descricao_carga}` : ""}${mapa ? `\n${mapa}` : ""}`
+      const produtos = e.itens?.length
+        ? `\nProdutos:\n${e.itens.map(it => `- ${String(it.quantidade).replace(".", ",")} ${it.unidade || ""} ${it.descricao}`.replace(/\s+/g, " ")).join("\n")}`
+        : ""
+      return `\n${i + 1}. *${e.destinatario}*${e.telefone ? ` (${e.telefone})` : ""}\n${local}${e.chegada_prevista ? `\nChegada: ${formatarData(e.chegada_prevista)}` : ""}${e.descricao_carga ? `\nCarga: ${e.descricao_carga}` : ""}${produtos}${mapa ? `\n${mapa}` : ""}`
     }),
     `\nAbra este link durante a viagem (mostra o roteiro e envia sua localização):\n${linkMotorista}`,
   ].join("\n")
@@ -294,6 +297,22 @@ function Parada({ e, i, total, gerente, cor, trechoKm, origemNome, onSubir, onDe
           {e.descricao_carga && <span>{e.descricao_carga}</span>}
           {e.lat == null && <span className="text-amber-700">sem local no mapa</span>}
         </div>
+        {!!e.itens?.length && (
+          <details className="mt-1 text-xs">
+            <summary className="cursor-pointer select-none font-medium text-[#d97021]">
+              {e.itens.length} produto(s){e.pedido_erp ? ` · pedido ${e.pedido_erp}` : ""}
+            </summary>
+            <ul className="mt-1 divide-y rounded border bg-background">
+              {e.itens.map((it, k) => (
+                <li key={k} className="flex gap-2 px-2 py-1">
+                  <span className="w-16 shrink-0 text-right font-medium">{String(it.quantidade).replace(".", ",")} {it.unidade || ""}</span>
+                  <span className="min-w-0 flex-1">{it.descricao}</span>
+                  {it.codigo && <span className="shrink-0 font-mono text-muted-foreground">{it.codigo}</span>}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
         {e.obs_motorista && <div className="mt-1 rounded bg-blue-50 px-2 py-1 text-xs text-blue-800">Motorista: {e.obs_motorista}</div>}
       </div>
       {gerente && (

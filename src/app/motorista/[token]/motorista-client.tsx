@@ -18,6 +18,8 @@ export type Roteiro = {
     cidade: string | null; uf: string | null; lat: number | null; lng: number | null
     chegada_prevista: string | null; status: string; entregue_em: string | null
     descricao_carga: string | null; peso_kg: number | null; observacoes: string | null
+    itens?: { codigo: string | null; descricao: string; unidade: string | null; quantidade: number }[] | null
+    pedido_erp?: string | null
   }[]
 }
 
@@ -155,6 +157,21 @@ export function MotoristaClient({ token, inicial }: { token: string; inicial: Ro
                   <div className="text-sm text-slate-600">{[e.endereco, [e.cidade, e.uf].filter(Boolean).join(" - ")].filter(Boolean).join(", ")}</div>
                   {e.chegada_prevista && <div className="text-sm text-slate-500">Chegada prevista: {data(e.chegada_prevista)}</div>}
                   {e.descricao_carga && <div className="text-sm text-slate-500">Carga: {e.descricao_carga}</div>}
+                  {!!e.itens?.length && (
+                    <details className="mt-1 text-sm">
+                      <summary className="cursor-pointer select-none font-medium text-[#d97021]">
+                        Conferir {e.itens.length} produto(s){e.pedido_erp ? ` · pedido ${e.pedido_erp}` : ""}
+                      </summary>
+                      <ul className="mt-1 divide-y rounded border bg-white">
+                        {e.itens.map((it, k) => (
+                          <li key={k} className="flex gap-2 px-2 py-1.5">
+                            <span className="w-16 shrink-0 text-right font-semibold">{String(it.quantidade).replace(".", ",")} {it.unidade || ""}</span>
+                            <span className="min-w-0 flex-1">{it.descricao}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                   {e.observacoes && <div className="mt-1 rounded bg-amber-50 p-2 text-sm text-amber-900">{e.observacoes}</div>}
                   {feita && e.entregue_em && <div className="mt-1 text-sm text-emerald-700">Entregue em {new Date(e.entregue_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</div>}
                 </div>
