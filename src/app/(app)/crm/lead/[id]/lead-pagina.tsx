@@ -23,6 +23,7 @@ import { ClienteDoLead, type ModoCliente } from "../../cliente-do-lead"
 import { CalculadoraFrete } from "../../../entregas/calculadora-frete"
 import { STATUS_ENTREGA, formatarKm, posicaoRecente, type EntregaDoLead, type PrazoAlteracao } from "@/lib/entregas-types"
 import { PrazoContrato } from "../../prazo-contrato"
+import { EntregasNaRegiao } from "../../entregas-na-regiao"
 import { brlCentavos, dataHora, diasDesde, formatarData, iniciais, inputClasse, linkWhatsApp, validarDataOpcional } from "../../crm-utils"
 
 const ROTULO_ATIVIDADE: Record<string, string> = {
@@ -374,6 +375,10 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
                 ))}
               </div>
             )}
+          </Cartao>
+
+          <Cartao titulo="Entregas na região" icone={<MapPin className="h-4 w-4 text-[#d97021]" />}>
+            <EntregasNaRegiao leadId={lead.id} cidade={lead.cidade} uf={lead.uf} />
           </Cartao>
 
           <Cartao titulo="Entrega e frete" icone={<Truck className="h-4 w-4 text-[#d97021]" />}

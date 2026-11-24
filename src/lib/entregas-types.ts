@@ -460,3 +460,25 @@ export function agruparPorLocal<T>(lista: T[], local: (t: T) => { uf: string | n
       return { regiao, estados, itens: estados.flatMap(e => e.itens) }
     })
 }
+
+/** Entrega em aberto perto da cidade de um lead (cartão "Entregas na região" do CRM) */
+export interface EntregaNaRegiao {
+  id: string
+  destinatario: string
+  cidade: string | null
+  uf: string | null
+  lat: number
+  lng: number
+  /** distância em linha reta até a cidade do lead (km) */
+  distancia_km: number
+  status: StatusEntrega
+  chegada_prevista: string | null
+  viagem: { id: string; titulo: string | null; saida_prevista: string; status: StatusViagem } | null
+  veiculo: string | null
+}
+
+export interface RegiaoDoLead {
+  /** cidade do lead com coordenadas (null = cidade não encontrada na base do IBGE) */
+  centro: { nome: string; uf: string; lat: number; lng: number } | null
+  itens: EntregaNaRegiao[]
+}

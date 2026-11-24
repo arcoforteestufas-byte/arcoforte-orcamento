@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
-import { acharCidade, cidadePorIbge, cidadesDaUf, rotaPorEstrada } from "@/lib/geo/geo-server"
+import { acharCidade, cidadePorIbge, cidadesDaUf, linhaReta, rotaPorEstrada } from "@/lib/geo/geo-server"
 import {
   CONFIG_ENT_PADRAO, classificarPrazo,
   type ResumoPrazos, type RiscoPrazo, type PedidoDoLeadOpcao, type EntItemCarga,
   type CalculoFrete, type CidadeOpcao, type EntConfig, type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora,
-  type EntVeiculo, type EntViagem, type EntregaDoLead, type StatusViagem, type VeiculoFrete, type VendaFechada, type EntTabelaFrete,
+  type EntVeiculo, type EntViagem, type EntregaDoLead, type EntregaNaRegiao, type RegiaoDoLead, type StatusEntrega, type StatusViagem, type VeiculoFrete, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
 
 type Resultado<T = undefined> = { ok: true; dados?: T } | { ok: false; erro: string }
@@ -1161,4 +1161,62 @@ export async function salvarTabelaFrete(t: Pick<EntConfig, "frete_valor_km" | "f
   if (error) return { ok: false, erro: /frete_/.test(error.message) ? "Rode a migração 20261119000000_entregas_frete.sql para salvar a tabela de frete." : msgErro(error.message) }
   revalidar()
   return { ok: true }
+}
+
+/**
+ * Entregas em aberto (a programar, programadas e em rota) perto da cidade de um lead,
+ * para o vendedor ver no CRM se dá para aproveitar uma viagem. Distância em linha reta.
+ * As entregas do próprio lead ficam de fora (já aparecem em "Entregas deste cliente").
+ */
+export async function entregasNaRegiao(
+  cidade: string | null | undefined, uf: string | null | undefined, raioKm = 200, leadId?: string | null,
+): Promise<RegiaoDoLead> {
+  const c = acharCidade(cidade, uf)
+  if (!c) return { centro: null, itens: [] }
+  const centro = { nome: c.nome, uf: c.uf, lat: c.lat, lng: c.lng }
+  const { supabase, user } = await sessao()
+  if (!user) return { centro, itens: [] }
+  const { data: entregas, error } = await supabase
+    .from("ent_entregas")
+    .select("id, destinatario, cidade, uf, lat, lng, status, chegada_prevista, viagem_id, lead_id")
+    .in("status", ["a_programar", "programada", "em_rota"])
+    .limit(2000)
+  if (error || !entregas?.length) return { centro, itens: [] }
+
+  const perto = entregas
+    .filter(e => !leadId || e.lead_id !== leadId)
+    .map(e => {
+      // entrega sem coordenada: usa o centro da cidade dela
+      const pos = e.lat != null && e.lng != null ? { lat: Number(e.lat), lng: Number(e.lng) } : acharCidade(e.cidade, e.uf)
+      if (!pos) return null
+      return { e, lat: pos.lat, lng: pos.lng, km: Math.round(linhaReta(centro, pos)) }
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x && x.km <= raioKm)
+  if (!perto.length) return { centro, itens: [] }
+
+  const viagemIds = [...new Set(perto.map(p => p.e.viagem_id).filter(Boolean))] as string[]
+  const { data: viagens } = viagemIds.length
+    ? await supabase.from("ent_viagens").select("id, titulo, saida_prevista, status, veiculo_id").in("id", viagemIds)
+    : { data: [] as { id: string; titulo: string | null; saida_prevista: string; status: StatusViagem; veiculo_id: string | null }[] }
+  const veicIds = [...new Set((viagens || []).map(v => v.veiculo_id).filter(Boolean))] as string[]
+  const { data: veics } = veicIds.length
+    ? await supabase.from("ent_veiculos").select("id, placa, descricao").in("id", veicIds)
+    : { data: [] as { id: string; placa: string; descricao: string | null }[] }
+
+  const ordemStatus: Record<string, number> = { em_rota: 0, programada: 1, a_programar: 2 }
+  const itens: EntregaNaRegiao[] = perto.map(({ e, lat, lng, km }) => {
+    const v = (viagens || []).find(x => x.id === e.viagem_id)
+    const vc = (veics || []).find(x => x.id === v?.veiculo_id)
+    return {
+      id: e.id, destinatario: e.destinatario, cidade: e.cidade, uf: e.uf, lat, lng, distancia_km: km,
+      status: e.status as StatusEntrega, chegada_prevista: e.chegada_prevista,
+      viagem: v ? { id: v.id, titulo: v.titulo, saida_prevista: v.saida_prevista, status: v.status } : null,
+      veiculo: vc ? (vc.descricao ? `${vc.descricao} (${vc.placa})` : vc.placa) : null,
+    }
+  })
+  itens.sort((a, b) =>
+    (ordemStatus[a.status] ?? 9) - (ordemStatus[b.status] ?? 9)
+    || String(a.viagem?.saida_prevista || "9999").localeCompare(String(b.viagem?.saida_prevista || "9999"))
+    || a.distancia_km - b.distancia_km)
+  return { centro, itens: itens.slice(0, 60) }
 }
