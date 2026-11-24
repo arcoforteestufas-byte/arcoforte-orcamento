@@ -14,7 +14,7 @@ import {
 } from "@/app/actions/entregas"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  ALERTA_PRAZO_DIAS, NOMES_UF, RISCO_PRAZO, agruparPorLocal, STATUS_ENTREGA, STATUS_VIAGEM, classificarPrazo, formatarKm, posicaoRecente, type RiscoPrazo,
+  ALERTA_PRAZO_DIAS, NOMES_UF, RISCO_PRAZO, STATUS_SEPARACAO, agruparPorLocal, STATUS_ENTREGA, STATUS_VIAGEM, classificarPrazo, formatarKm, posicaoRecente, type RiscoPrazo,
   type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora, type EntVeiculo, type EntViagem, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
 import { cn } from "@/lib/utils"
@@ -406,6 +406,8 @@ function AbaRotas({ painel, dataDaEntrega, onSolicitar }: {
 // MAPA DE ENTREGAS
 // ======================================================================
 
+const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+
 function AbaMapa({ painel, dataDaEntrega, onEditar }: {
   painel: EntPainel
   dataDaEntrega: (e: EntEntrega) => string | null
@@ -418,6 +420,7 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
   const [uf, setUf] = useState<string | null>(null)
   const [mostrarEntregues, setMostrarEntregues] = useState(false)
   const [mostrarAProgramar, setMostrarAProgramar] = useState(true)
+  const [filtroLista, setFiltroLista] = useState<"todas" | "com" | "sem">("todas")
 
   const veic = (id: string | null | undefined) => painel.veiculos.find(v => v.id === id)
   const mot = (id: string | null | undefined) => painel.motoristas.find(m => m.id === id)
@@ -441,6 +444,8 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [painel, periodo, de, ate, veiculo, mostrarEntregues, mostrarAProgramar])
   const filtradas = noPeriodo.filter(e => !uf || e.uf === uf)
+  const comLista = filtradas.filter(e => e.itens?.length).length
+  const listaMostrada = filtroLista === "todas" ? filtradas : filtradas.filter(e => !!e.itens?.length === (filtroLista === "com"))
 
   const porUf: Record<string, number> = {}
   for (const e of noPeriodo) if (e.uf) porUf[e.uf] = (porUf[e.uf] || 0) + 1
@@ -483,7 +488,7 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
   const semPonto = filtradas.filter(e => e.lat == null || e.lng == null).length
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
+    <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <select className={cn(inputClasse, "w-auto bg-background")} value={periodo} onChange={e => setPeriodo(e.target.value)}>
@@ -520,34 +525,72 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-background shadow-sm">
-        <div className="border-b px-4 py-3 text-sm font-semibold">{filtradas.length} entrega(s){uf ? ` em ${NOMES_UF[uf]}` : " no período"}</div>
-        <div className="max-h-[68vh] overflow-y-auto divide-y">
-          {filtradas.length === 0 && <p className="p-4 text-sm text-muted-foreground">Nenhuma entrega neste período.</p>}
-          {filtradas.map(e => {
+      <div className="flex flex-col overflow-hidden rounded-2xl border bg-background shadow-sm xl:max-h-[calc(68vh+120px)]">
+        <div className="space-y-2 border-b bg-muted/30 px-4 py-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-sm font-semibold">{listaMostrada.length} entrega(s){uf ? ` em ${NOMES_UF[uf]}` : " no período"}</span>
+            {uf && <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setUf(null)}>todos os estados</button>}
+          </div>
+          {/* filtro rápido: com ou sem lista de produtos */}
+          <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1 text-xs">
+            {([["todas", `Todas (${filtradas.length})`], ["com", `Com produtos (${comLista})`], ["sem", `Sem lista (${filtradas.length - comLista})`]] as const).map(([v, r]) => (
+              <button key={v} onClick={() => setFiltroLista(v)}
+                className={cn("rounded-md px-1.5 py-1 font-medium transition", filtroLista === v ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{r}</button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 space-y-2 overflow-y-auto p-2 max-xl:max-h-[68vh]">
+          {listaMostrada.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Nenhuma entrega aqui.</p>}
+          {listaMostrada.map(e => {
             const vg = viagemDe(e.viagem_id)
             const v = veic(vg?.veiculo_id)
             const st = STATUS_ENTREGA[e.status]
             const d = dataDaEntrega(e)
+            const cor = e.status === "a_programar" || e.status === "entregue" ? st.cor : v?.cor || st.cor
+            const podeEditar = painel.podeGerenciar || (e.status === "a_programar" && e.solicitado_por === painel.userId)
+            const nItens = e.itens?.length || 0
+            const sep = nItens ? painel.separacoes?.[e.id] : undefined
             return (
-              <div key={e.id} className="flex gap-3 px-4 py-3 text-sm">
-                <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: e.status === "a_programar" || e.status === "entregue" ? st.cor : v?.cor || st.cor }} />
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate">{e.destinatario}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {[e.cidade, e.uf].filter(Boolean).join(" - ") || "sem cidade"}{d ? ` · ${formatarData(d)}` : ""}{e.distancia_km != null ? ` · ${formatarKm(e.distancia_km)}` : ""}
+              <div key={e.id} onClick={() => podeEditar && onEditar(e)}
+                className={cn("group relative overflow-hidden rounded-xl border bg-background py-2.5 pl-4 pr-3 text-sm transition",
+                  podeEditar && "cursor-pointer hover:border-[#d97021]/50 hover:shadow-md")}>
+                <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: cor }} />
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="line-clamp-2 font-semibold leading-snug" title={e.destinatario}>{e.destinatario}</div>
+                    <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{[e.cidade, e.uf].filter(Boolean).join(" - ") || "sem cidade"}{e.distancia_km != null ? ` · ${formatarKm(e.distancia_km)}` : ""}</span>
+                    </div>
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
-                    <span className={`rounded-full px-1.5 py-0.5 font-medium ring-1 ring-inset ${st.classe}`}>{st.rotulo}</span>
-                    {v && <span className="text-muted-foreground">🚚 {v.placa}</span>}
-                    {e.lat == null && <span className="text-amber-700">sem local</span>}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  {vg && <Link href={`/entregas/viagem/${vg.id}`} className="text-xs font-medium text-[#d97021] hover:underline">viagem</Link>}
-                  {(painel.podeGerenciar || (e.status === "a_programar" && e.solicitado_por === painel.userId)) && (
-                    <button className="text-muted-foreground hover:text-foreground" title="Editar" onClick={() => onEditar(e)}><Pencil className="h-3.5 w-3.5" /></button>
+                  {d && (
+                    <div className="shrink-0 rounded-lg border bg-muted/40 px-2 py-1 text-center leading-none" title={`Data: ${formatarData(d)}`}>
+                      <div className="text-base font-bold">{d.slice(8, 10)}</div>
+                      <div className="text-[10px] uppercase text-muted-foreground">{MESES_CURTOS[Number(d.slice(5, 7)) - 1]}</div>
+                    </div>
                   )}
+                </div>
+                <div className={cn("mt-2 flex flex-wrap items-center gap-1.5 text-[11px]", vg ? "pr-20" : "pr-6")}>
+                  <span className={`rounded-full px-2 py-0.5 font-medium ring-1 ring-inset ${st.classe}`}>{st.rotulo}</span>
+                  {nItens ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
+                      title="Tem a lista de produtos do pedido">
+                      <Package className="h-3 w-3" /> {nItens} produto(s){e.pedido_erp ? ` · ped. ${e.pedido_erp}` : ""}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2 py-0.5 text-slate-500"
+                      title="Importe o pedido do Sensio na entrega para ter a lista de produtos">
+                      <Package className="h-3 w-3" /> sem lista de produtos
+                    </span>
+                  )}
+                  {sep && <span className={`rounded-full px-2 py-0.5 font-medium ring-1 ring-inset ${STATUS_SEPARACAO[sep.status].classe}`}>{sep.status === "conferida" ? "✓ conferida" : STATUS_SEPARACAO[sep.status].rotulo}</span>}
+                  {e.peso_kg ? <span className="text-muted-foreground">{Number(e.peso_kg).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} kg</span> : null}
+                  {v && <span className="inline-flex items-center gap-1 text-muted-foreground"><Truck className="h-3 w-3" /> {v.placa}</span>}
+                  {e.lat == null && <span className="text-amber-700">sem local</span>}
+                </div>
+                <div className="absolute right-2 bottom-2 flex items-center gap-2 opacity-70 group-hover:opacity-100">
+                  {vg && <Link href={`/entregas/viagem/${vg.id}`} onClick={x => x.stopPropagation()} className="text-xs font-medium text-[#d97021] hover:underline">viagem →</Link>}
+                  {podeEditar && <Pencil className="h-3.5 w-3.5 text-muted-foreground" />}
                 </div>
               </div>
             )

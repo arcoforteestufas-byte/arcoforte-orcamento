@@ -208,7 +208,6 @@ export function EntregaDialog({ aberto, inicial, viagens, podeGerenciar, config,
             </Secao>
 
             <Secao titulo="Carga e data" icone={<Package className="h-3.5 w-3.5" />}>
-              <ProdutosDaEntrega entrega={e} onChange={campos => setE(x => ({ ...x, ...campos }))} />
               <div className="grid grid-cols-2 gap-2">
                 <Campo rotulo="Chegada prevista">
                   <input className={inputClasse} type="date" value={e.chegada_prevista || ""} onChange={x => set("chegada_prevista", x.target.value)} />
@@ -246,6 +245,13 @@ export function EntregaDialog({ aberto, inicial, viagens, podeGerenciar, config,
               </span>
               {pino && <button type="button" className="shrink-0 hover:text-red-600 inline-flex items-center gap-1" onClick={() => { setPino(null); setPinoExato(false); setDistancia(null) }}><X className="h-3 w-3" /> tirar ponto</button>}
             </div>
+          </div>
+
+          {/* produtos do pedido: largura toda do formulário */}
+          <div className="lg:col-span-2">
+            <Secao titulo="Produtos do pedido (Sensio)" icone={<FileSpreadsheet className="h-3.5 w-3.5" />}>
+              <ProdutosDaEntrega entrega={e} onChange={campos => setE(x => ({ ...x, ...campos }))} />
+            </Secao>
           </div>
         </div>
 
@@ -397,21 +403,32 @@ function ProdutosDaEntrega({ entrega: e, onChange }: {
             ))}
           </div>
           <div className={listaInteira ? "" : "max-h-[32rem] overflow-y-auto"}>
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-muted/80 text-[10px] uppercase text-muted-foreground backdrop-blur">
-                <tr><th className="px-2 py-1 text-left">Cód.</th><th className="px-2 py-1 text-left">Produto</th><th className="px-2 py-1 text-right">Qtd</th><th className="px-2 py-1 text-right">Peso</th><th /></tr>
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-10 bg-muted/90 text-[11px] uppercase tracking-wide text-muted-foreground backdrop-blur">
+                <tr>
+                  <th className="w-16 px-3 py-2 text-left">Cód.</th>
+                  <th className="px-3 py-2 text-left">Produto</th>
+                  <th className="w-32 px-3 py-2 text-right">Qtd</th>
+                  <th className="hidden w-24 px-3 py-2 text-right sm:table-cell">Peso un.</th>
+                  <th className="w-24 px-3 py-2 text-right">Peso</th>
+                  <th className="w-8" />
+                </tr>
               </thead>
               <tbody className="divide-y">
                 {itens.map((i, idx) => (
-                  <tr key={idx}>
-                    <td className="px-2 py-1 font-mono text-muted-foreground">{i.codigo || "—"}</td>
-                    <td className="px-2 py-1">{i.descricao}{pedidos.length > 1 && i.pedido ? <span className="text-muted-foreground"> · ped. {i.pedido}</span> : null}</td>
-                    <td className="px-2 py-1 text-right whitespace-nowrap">
-                      <QtdInput key={`${idx}-${i.codigo}-${i.quantidade}`} valor={i.quantidade}
-                        onSalvar={q => aplicar(itens.map((y, j) => j === idx ? { ...y, quantidade: q } : y))} /> <span className="text-muted-foreground">{i.unidade || ""}</span>
+                  <tr key={idx} className="align-top odd:bg-background even:bg-muted/20 hover:bg-[#d97021]/5">
+                    <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">{i.codigo || "—"}</td>
+                    <td className="px-3 py-1.5">
+                      <div className="font-medium leading-snug">{i.descricao}{pedidos.length > 1 && i.pedido ? <span className="font-normal text-muted-foreground"> · ped. {i.pedido}</span> : null}</div>
+                      {i.obs && <div className="text-xs text-amber-800">{i.obs}</div>}
                     </td>
-                    <td className="px-2 py-1 text-right whitespace-nowrap">{i.peso_unit_kg ? `${kg(i.peso_unit_kg * i.quantidade)} kg` : <span className="text-amber-600" title="Sem peso no pedido e no cadastro de produtos">—</span>}</td>
-                    <td className="px-1 py-1 text-right">
+                    <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                      <QtdInput key={`${idx}-${i.codigo}-${i.quantidade}`} valor={i.quantidade}
+                        onSalvar={q => aplicar(itens.map((y, j) => j === idx ? { ...y, quantidade: q } : y))} /> <span className="inline-block w-6 text-left text-xs text-muted-foreground">{i.unidade || ""}</span>
+                    </td>
+                    <td className="hidden px-3 py-1.5 text-right whitespace-nowrap text-muted-foreground sm:table-cell">{i.peso_unit_kg ? `${kg(i.peso_unit_kg)} kg` : ""}</td>
+                    <td className="px-3 py-1.5 text-right whitespace-nowrap font-medium">{i.peso_unit_kg ? `${kg(i.peso_unit_kg * i.quantidade)} kg` : <span className="text-amber-600" title="Sem peso no pedido e no cadastro de produtos">sem peso</span>}</td>
+                    <td className="px-2 py-1.5 text-right">
                       <button type="button" className="text-muted-foreground hover:text-red-600" title="Tirar desta entrega" onClick={() => aplicar(itens.filter((_, j) => j !== idx))}><X className="h-3.5 w-3.5" /></button>
                     </td>
                   </tr>
