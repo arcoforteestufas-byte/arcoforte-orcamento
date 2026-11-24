@@ -60,7 +60,7 @@ export default async function NovoOrcamentoPage() {
   const { data: clientes } = await clientesQuery
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl mx-auto">
+    <div className="flex flex-col gap-6 max-w-5xl lg:max-w-none mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Novo Orçamento Rápido</h2>

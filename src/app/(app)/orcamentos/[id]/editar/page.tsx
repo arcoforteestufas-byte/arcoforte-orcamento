@@ -100,7 +100,7 @@ export default async function EditarOrcamentoPage({ params }: { params: Promise<
   const { data: clientes } = await clientesQuery
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl mx-auto">
+    <div className="flex flex-col gap-6 max-w-5xl lg:max-w-none mx-auto">
       <div className="flex items-center gap-4">
         <Link href={`/orcamentos/${orcamento.id}`} className={buttonVariants({ variant: "outline", size: "icon" })}>
           <ArrowLeft className="h-4 w-4" />

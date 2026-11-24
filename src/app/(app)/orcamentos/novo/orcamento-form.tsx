@@ -15,7 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { registrarOrcamentoNoLead } from "@/app/actions/crm"
 import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
-import { Previa3D } from "./previa-3d"
+import { Previa3D, usePrevia3D } from "./previa-3d"
 
 function ProdutoSelectComBusca({
   id,
@@ -241,6 +241,9 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
     }
   })
   const [resultado, setResultado] = useState<ItemOrcamento[]>(() => orcamentoInicial?.itens || [])
+  // Estufa em 3D ao lado (tela dividida em telas grandes; janela flutuante nas pequenas)
+  const previa = usePrevia3D()
+  const dividir = previa.larga && previa.aberta
   
   // Controle de Cliente
   const [localClientes, setLocalClientes] = useState(clientes)
@@ -1032,8 +1035,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
   const itensSemPeso = new Set(resultado.filter(i => !pesoPorCodigo.get(String(i.produto_codigo))).map(i => String(i.produto_codigo))).size
 
   return (
-    <div className="grid gap-6 md:grid-cols-[2fr_1fr] pb-36 md:pb-0">
-      <Previa3D params={paramsForm} />
+    <div className={`grid gap-6 pb-36 md:pb-0 ${dividir ? "lg:grid-cols-2" : "md:grid-cols-[2fr_1fr]"}`}>
       <div className="flex flex-col gap-6">
         <Card className="shadow-sm border-slate-200 overflow-hidden">
           <div className="h-1 w-full bg-gradient-to-r from-[#d97021] to-[#ff9e5e]" />
@@ -2747,7 +2749,45 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
         </Dialog>
       </div>
 
-      <div>
+      <div className={dividir ? "sticky top-4 flex h-[calc(100vh-5.5rem)] min-h-[520px] flex-col gap-3 self-start" : ""}>
+        {dividir && (
+          <div className="min-h-0 flex-1">
+            <Previa3D params={paramsForm} aberta={previa.aberta} setAberta={previa.setAberta} encaixada />
+          </div>
+        )}
+        {!dividir && <Previa3D params={paramsForm} aberta={previa.aberta} setAberta={previa.setAberta} encaixada={false} />}
+        {dividir ? (
+          <div className="shrink-0 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-white shadow-md">
+            {tentouCalcular && chavesErrosAtivos.length > 0 && (
+              <div role="alert" className="mb-3 flex items-start gap-2 rounded-md border border-red-500/50 bg-red-950/70 p-2 text-xs text-red-200">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                <span><strong className="text-red-300">Cálculo pausado:</strong> {errosValidacao[chavesErrosAtivos[0]]}</span>
+              </div>
+            )}
+            {valorTotal > 500000 && (
+              <div role="alert" className="mb-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-950/60 p-2 text-xs text-amber-200">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                <span><strong>Valor elevado:</strong> passa de R$ 500.000,00. Confira as medidas antes de salvar.</span>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <div className="min-w-0">
+                <div className="text-xs text-zinc-400">Resumo financeiro</div>
+                <div className="text-3xl font-bold leading-tight text-[#d97021]">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}</div>
+              </div>
+              <div className="grid flex-1 grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                <span className="text-zinc-400">Estrutura</span><span className="text-right text-zinc-200">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalEstrutura)}</span>
+                <span className="text-zinc-400">Filmes</span><span className="text-right text-zinc-200">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFilmes)}</span>
+                <span className="text-zinc-400">Telas</span><span className="text-right text-zinc-200">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalTelas)}</span>
+                {resultado.length > 0 && <><span className="text-zinc-400">Peso (frete)</span><span className="text-right font-semibold text-zinc-100" title={itensSemPeso > 0 ? `${itensSemPeso} produto(s) sem peso cadastrado` : undefined}>{pesoTotalKg > 0 ? `${pesoTotalKg.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg${itensSemPeso > 0 ? ' *' : ''}` : '—'}</span></>}
+              </div>
+              <Button className="w-full gap-2 bg-[#d97021] text-white hover:bg-[#c3631b]" onClick={handleSalvarOrcamento} disabled={isLoading}>
+                <Save className="h-4 w-4" />
+                {isLoading ? "Salvando..." : orcamentoInicial ? "Salvar Alterações" : "Salvar Orçamento"}
+              </Button>
+            </div>
+          </div>
+        ) : (
         <Card className="sticky top-6 shadow-md bg-zinc-900 text-white border-zinc-800">
           <CardHeader>
             <CardTitle className="text-lg text-zinc-300">Resumo Financeiro</CardTitle>
@@ -2815,6 +2855,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
             </Button>
           </CardFooter>
         </Card>
+        )}
       </div>
 
       {/* Mobile Sticky Footer */}
