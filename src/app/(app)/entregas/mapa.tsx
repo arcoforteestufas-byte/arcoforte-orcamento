@@ -90,7 +90,7 @@ function anelMascara(): [number, number][][] {
 }
 
 /**
- * Mapa do Brasil (Leaflet). Mostra os estados; ao aproximar, mostra ruas (CARTO/OpenStreetMap).
+ * Mapa do Brasil (Leaflet). Mostra os estados; ao aproximar, mostra ruas (OpenStreetMap).
  * - pontos: entregas · caminhoes: posição ao vivo · linhas: rotas
  * - coresUf: cor de preenchimento de cada estado (ex.: quantidade de entregas)
  * - onUf: clique no estado
@@ -369,20 +369,18 @@ export function Mapa({
 
       // ruas/estradas (só com zoom)
       // OpenStreetMap padrão (não exige chave de acesso)
-      ruasRef.current = props.current.estiloMapa === "ruas"
-        // mapa claro e limpo, parecido com os de GPS (CARTO Voyager, sem chave)
-        ? L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-          maxZoom: 19, subdomains: "abcd",
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        })
-        : L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        })
+      ruasRef.current = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      })
       // tema escuro: escurece as ruas com filtro (o mapa do OpenStreetMap só existe claro)
       if (props.current.tema === "escuro") {
         const painelRuas = mapa.getPane("tilePane")
         if (painelRuas) painelRuas.style.filter = "invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6)"
+      } else if (props.current.estiloMapa === "ruas") {
+        // cores mais suaves (parecido com mapas de GPS), para a rota azul se destacar
+        const painelRuas = mapa.getPane("tilePane")
+        if (painelRuas) painelRuas.style.filter = "saturate(0.55) brightness(1.04) contrast(0.95)"
       }
 
       // máscara "só Brasil": fica acima do mapa de ruas e abaixo dos estados/rotas
