@@ -208,7 +208,7 @@ export function EntregaDialog({ aberto, inicial, viagens, podeGerenciar, config,
             </Secao>
 
             <Secao titulo="Carga e data" icone={<Package className="h-3.5 w-3.5" />}>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-x-2 gap-y-3">
                 <Campo rotulo="Prazo final (contrato)">
                   <input className={inputClasse} type="date" value={e.prazo_entrega || ""} disabled={!!e.lead_id}
                     title={e.lead_id ? "Vem da venda (lead). Para mudar, use \"Alterar prazo\" no lead." : "Data limite de entrega combinada com o cliente"}
