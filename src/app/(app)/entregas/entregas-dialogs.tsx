@@ -581,8 +581,10 @@ function PedidoDoLead({ entrega: e, aberto, onLigar }: {
 // VIAGEM
 // ======================================================================
 
-export function ViagemDialog({ aberto, inicial, cadastros, entregas, onFechar, onSalvo }: {
+export function ViagemDialog({ aberto, inicial, cadastros, entregas, escolhidasIniciais, onFechar, onSalvo }: {
   aberto: boolean
+  /** viagem nova já com estas entregas, nesta ordem */
+  escolhidasIniciais?: string[]
   inicial: Partial<EntViagem> | null
   cadastros: EntCadastros
   entregas: EntEntrega[]
@@ -598,7 +600,7 @@ export function ViagemDialog({ aberto, inicial, cadastros, entregas, onFechar, o
     setV(inicial?.saida_prevista ? inicial : { saida_prevista: new Date().toISOString().slice(0, 10), terceirizada: false, ...(inicial || {}) })
     setEscolhidas(inicial?.id
       ? entregas.filter(e => e.viagem_id === inicial.id && e.status !== "cancelada").sort((a, b) => a.ordem - b.ordem).map(e => e.id)
-      : [])
+      : (escolhidasIniciais || []))
     setFiltroUf("")
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberto, inicial])

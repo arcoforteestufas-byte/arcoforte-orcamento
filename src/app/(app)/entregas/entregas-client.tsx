@@ -5,16 +5,16 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
-  AlertTriangle, Building2, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Maximize2, Package, Pencil, Plus,
-  Radio, RefreshCw, Route, Search, Star, Trash2, Trophy, Truck, UserRound, XCircle,
+  AlertTriangle, ArrowDown, ArrowUp, Building2, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Maximize2, Package, Pencil, Plus,
+  Radio, RefreshCw, Route, Search, Sparkles, Star, Trash2, Trophy, Truck, UserRound, X, XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
-  cancelarEntrega, dadosEntregaDoLead, excluirCadastro, excluirTabelaFrete, programarEntrega, salvarOrigem, salvarTabelaFrete, salvarTabelaFreteExtra,
+  cancelarEntrega, dadosEntregaDoLead, excluirCadastro, excluirTabelaFrete, programarEntrega, salvarOrigem, simularRota, salvarTabelaFrete, salvarTabelaFreteExtra,
 } from "@/app/actions/entregas"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  ALERTA_PRAZO_DIAS, NOMES_UF, RISCO_PRAZO, STATUS_SEPARACAO, agruparPorLocal, STATUS_ENTREGA, STATUS_VIAGEM, classificarPrazo, formatarKm, posicaoRecente, type RiscoPrazo,
+  ALERTA_PRAZO_DIAS, NOMES_UF, RISCO_PRAZO, STATUS_SEPARACAO, agruparPorLocal, STATUS_ENTREGA, STATUS_VIAGEM, classificarPrazo, formatarDuracao, formatarKm, posicaoRecente, type RiscoPrazo,
   type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora, type EntVeiculo, type EntViagem, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
 import { cn } from "@/lib/utils"
@@ -93,6 +93,7 @@ export function EntregasClient({ painel, vendas = [], novaDoLead, abaInicial }: 
   const [aba, setAba] = useState<Aba>(abas.find(a => a === abaInicial) || (painel.podeGerenciar ? "mapa" : "rotas"))
   const [entregaEdit, setEntregaEdit] = useState<EntregaInicial | null>(novaDoLead)
   const [viagemEdit, setViagemEdit] = useState<Partial<EntViagem> | null>(null)
+  const [escolhidasNova, setEscolhidasNova] = useState<string[]>([])
   const [filtroVendas, setFiltroVendas] = useState<FiltroVendas>("sem")
 
   // abriu vindo do lead: limpa o ?lead= da barra para não reabrir ao atualizar
@@ -230,13 +231,13 @@ export function EntregasClient({ painel, vendas = [], novaDoLead, abaInicial }: 
       {aba === "rotas" && <AbaRotas painel={painel} dataDaEntrega={dataDaEntrega} onSolicitar={setEntregaEdit} />}
       {aba === "mapa" && <AbaMapa painel={painel} dataDaEntrega={dataDaEntrega} onEditar={setEntregaEdit} />}
       {aba === "agenda" && <AbaAgenda painel={painel} />}
-      {aba === "programar" && <AbaProgramar painel={painel} entregas={aProgramar} onEditar={setEntregaEdit} />}
+      {aba === "programar" && <AbaProgramar painel={painel} entregas={aProgramar} onEditar={setEntregaEdit} onNovaViagem={ids => { setEscolhidasNova(ids); setViagemEdit({}) }} />}
       {aba === "cadastros" && painel.podeGerenciar && <AbaCadastros painel={painel} />}
 
       <EntregaDialog aberto={!!entregaEdit} inicial={entregaEdit} viagens={painel.viagens} podeGerenciar={painel.podeGerenciar} config={painel.config}
         onFechar={() => setEntregaEdit(null)} onSalvo={() => { setEntregaEdit(null); router.refresh() }} />
-      <ViagemDialog aberto={!!viagemEdit} inicial={viagemEdit} cadastros={painel} entregas={painel.entregas}
-        onFechar={() => setViagemEdit(null)} onSalvo={(id) => { setViagemEdit(null); router.push(`/entregas/viagem/${id}`) }} />
+      <ViagemDialog aberto={!!viagemEdit} inicial={viagemEdit} cadastros={painel} entregas={painel.entregas} escolhidasIniciais={escolhidasNova}
+        onFechar={() => { setViagemEdit(null); setEscolhidasNova([]) }} onSalvo={(id) => { setViagemEdit(null); setEscolhidasNova([]); router.push(`/entregas/viagem/${id}`) }} />
     </div>
   )
 }
@@ -708,129 +709,282 @@ function CartaoViagem({ v, painel }: { v: EntViagem; painel: EntPainel }) {
 // A PROGRAMAR
 // ======================================================================
 
-function AbaProgramar({ painel, entregas, onEditar }: {
+function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
   painel: EntPainel
   entregas: EntEntrega[]
   onEditar: (e: EntregaInicial) => void
+  onNovaViagem: (ids: string[]) => void
 }) {
   const router = useRouter()
   const [agrupar, setAgrupar] = useState(true)
+  const [busca, setBusca] = useState("")
+  const [sel, setSel] = useState<string[]>([]) // na ordem da rota
+  const [rota, setRota] = useState<{ chave: string; dados: Awaited<ReturnType<typeof simularRota>> } | null>(null)
+  const [colocando, setColocando] = useState(false)
   const viagens = painel.viagens.filter(v => v.status === "planejada" || v.status === "em_rota").sort((a, b) => a.saida_prevista.localeCompare(b.saida_prevista))
   const nome = (id: string | null) => painel.usuarios.find(u => u.id === id)?.nome || "—"
+  const origem = { lat: painel.config.origem_lat, lng: painel.config.origem_lng, nome: painel.config.origem_nome }
+
+  const porId = new Map(entregas.map(e => [e.id, e]))
+  const selValidas = sel.filter(id => porId.has(id))
+  const escolhidas = selValidas.map(id => porId.get(id)!)
+  const comLocal = escolhidas.filter(e => e.lat != null && e.lng != null)
+  const chaveRota = comLocal.map(e => `${e.lat},${e.lng}`).join(";")
+
+  // rota por estrada das selecionadas (espera o usuário parar de clicar)
+  useEffect(() => {
+    if (!chaveRota) return
+    let cancelado = false
+    const t = setTimeout(async () => {
+      const dados = await simularRota(comLocal.map(e => ({ lat: e.lat!, lng: e.lng! }))).catch(() => null)
+      if (!cancelado) setRota({ chave: chaveRota, dados })
+    }, 500)
+    return () => { cancelado = true; clearTimeout(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaveRota])
+  const rotaAtual = rota && rota.chave === chaveRota ? rota.dados : null
+  const calculando = !!chaveRota && !rotaAtual && rota?.chave !== chaveRota
+
+  const termo = busca.trim().toLowerCase()
+  const visiveis = termo
+    ? entregas.filter(e => [e.destinatario, e.cidade, e.uf, e.descricao_carga, e.pedido_erp].some(x => (x || "").toLowerCase().includes(termo)))
+    : entregas
+
+  const alternar = (id: string) => setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
+  const alternarGrupo = (grupo: EntEntrega[]) => {
+    const ids = grupo.map(e => e.id)
+    const todas = ids.every(id => selValidas.includes(id))
+    setSel(todas ? selValidas.filter(id => !ids.includes(id)) : [...selValidas, ...ids.filter(id => !selValidas.includes(id))])
+  }
+  const mover = (i: number, d: -1 | 1) => setSel(s => {
+    const l = s.filter(id => porId.has(id))
+    const j = i + d
+    if (j < 0 || j >= l.length) return l
+    ;[l[i], l[j]] = [l[j], l[i]]
+    return l
+  })
+  // vizinho mais próximo a partir da origem
+  const ordenarProximidade = () => {
+    const restantes = [...comLocal]
+    const ordem: string[] = []
+    let atual = { lat: origem.lat, lng: origem.lng }
+    while (restantes.length) {
+      let melhor = 0, menor = Infinity
+      restantes.forEach((p, i) => { const d = (p.lat! - atual.lat) ** 2 + (p.lng! - atual.lng) ** 2; if (d < menor) { menor = d; melhor = i } })
+      const [p] = restantes.splice(melhor, 1)
+      ordem.push(p.id)
+      atual = { lat: p.lat!, lng: p.lng! }
+    }
+    setSel([...ordem, ...escolhidas.filter(e => e.lat == null || e.lng == null).map(e => e.id)])
+  }
+
+  const colocarNaViagem = async (vid: string) => {
+    if (!vid || !selValidas.length) return
+    const vg = viagens.find(v => v.id === vid)
+    if (!confirm(`Colocar ${selValidas.length} entrega(s) na viagem "${vg?.titulo || "Viagem"}" (${vg ? formatarData(vg.saida_prevista) : ""})?`)) return
+    setColocando(true)
+    let ok = 0
+    for (const id of selValidas) {
+      const r = await programarEntrega(id, vid)
+      if (r.ok) ok++
+      else toast.error(`${porId.get(id)?.destinatario}: ${r.erro}`)
+    }
+    setColocando(false)
+    if (ok) toast.success(`${ok} entrega(s) colocada(s) na viagem`)
+    setSel([])
+    router.refresh()
+  }
+
+  const pesoSel = escolhidas.reduce((s, e) => s + (Number(e.peso_kg) || 0), 0)
+  const kg = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 0 })
+
+  const pontos: PontoMapa[] = entregas.filter(e => e.lat != null && e.lng != null).map(e => {
+    const i = selValidas.indexOf(e.id)
+    return {
+      id: e.id, lat: e.lat!, lng: e.lng!,
+      cor: i >= 0 ? "#d97021" : "#94a3b8", rotulo: i >= 0 ? String(i + 1) : "", destaque: i >= 0,
+      popupHtml: `<b>${escaparHtml(e.destinatario)}</b><br/>${escaparHtml([e.cidade, e.uf].filter(Boolean).join(" - "))}${e.peso_kg ? ` · ${escaparHtml(kg(Number(e.peso_kg)))} kg` : ""}<br/><span style="color:#64748b">${i >= 0 ? "clique para tirar da rota" : "clique para pôr na rota"}</span>`,
+    }
+  })
+  const linhas: LinhaMapa[] = rotaAtual?.desenho?.length
+    ? [{ pontos: rotaAtual.desenho, cor: "#d97021", espessura: 4, tracejada: rotaAtual.estimada }]
+    : comLocal.length ? [{ pontos: [[origem.lat, origem.lng], ...comLocal.map(e => [e.lat!, e.lng!] as [number, number])], cor: "#d97021", espessura: 2, tracejada: true, opacidade: 0.5 }] : []
 
   if (!entregas.length) {
     return <div className="rounded-2xl border-2 border-dashed p-10 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-2 h-8 w-8 opacity-40" /> Nenhuma entrega esperando programação.</div>
   }
 
-
-  const linha = (e: EntEntrega) => (
-    <div key={e.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center">
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium">{e.destinatario}</span>
-          {e.uf && <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold">{e.cidade} - {e.uf}</span>}
-          {e.distancia_km != null && <span className="text-xs text-muted-foreground">{formatarKm(e.distancia_km)}</span>}
+  const linha = (e: EntEntrega) => {
+    const i = selValidas.indexOf(e.id)
+    const marcada = i >= 0
+    const podeEditar = painel.podeGerenciar || e.solicitado_por === painel.userId
+    const n = e.itens?.length || 0
+    return (
+      <li key={e.id} onClick={() => alternar(e.id)}
+        className={cn("group flex cursor-pointer items-start gap-2.5 px-3 py-2 text-sm transition", marcada ? "bg-[#d97021]/10" : "hover:bg-muted/50")}>
+        <span className={cn("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[11px] font-bold",
+          marcada ? "border-[#d97021] bg-[#d97021] text-white" : "border-slate-300 bg-background text-transparent")}>
+          {marcada ? i + 1 : "·"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="truncate font-semibold" title={e.destinatario}>{e.destinatario}</span>
+            {e.chegada_prevista && <span className="shrink-0 text-xs text-muted-foreground">{formatarData(e.chegada_prevista)}</span>}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-0.5"><MapPin className="h-3 w-3" />{[e.cidade, e.uf].filter(Boolean).join(" - ") || "sem cidade"}</span>
+            {e.distancia_km != null && <span>{formatarKm(e.distancia_km)}</span>}
+            {e.peso_kg ? <span className="font-medium text-foreground/80">{kg(Number(e.peso_kg))} kg</span> : null}
+            {n ? <span className="inline-flex items-center gap-0.5 text-emerald-700"><Package className="h-3 w-3" />{n}</span>
+              : <span className="inline-flex items-center gap-0.5 text-slate-400" title="Sem lista de produtos"><Package className="h-3 w-3" />—</span>}
+            {e.lat == null && <span className="text-amber-700">sem local</span>}
+          </div>
+          {(e.descricao_carga || e.observacoes) && (
+            <div className="truncate text-xs text-muted-foreground/80" title={[e.descricao_carga, e.observacoes, `Solicitada por ${nome(e.solicitado_por)} em ${formatarData(e.criado_em)}`].filter(Boolean).join("\n\n")}>
+              {e.descricao_carga || e.observacoes}
+            </div>
+          )}
         </div>
-        <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-          {e.chegada_prevista && <span>Desejada: {formatarData(e.chegada_prevista)}</span>}
-          {e.peso_kg ? <span>{Number(e.peso_kg).toLocaleString("pt-BR")} kg</span> : null}
-          {e.descricao_carga && <span>{e.descricao_carga}</span>}
-          <span>Solicitada por {nome(e.solicitado_por)} em {formatarData(e.criado_em)}</span>
-          {e.lead_id && <Link href={`/crm/lead/${e.lead_id}`} className="text-[#d97021] hover:underline">ver lead</Link>}
+        <div className="flex shrink-0 items-center gap-0.5 opacity-60 group-hover:opacity-100" onClick={x => x.stopPropagation()}>
+          {e.lead_id && <Link href={`/crm/lead/${e.lead_id}`} className="px-1 text-xs text-[#d97021] hover:underline">lead</Link>}
+          {podeEditar && <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => onEditar(e)}><Pencil className="h-3.5 w-3.5" /></Button>}
+          {painel.podeGerenciar && (
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600" title="Cancelar entrega" onClick={async () => {
+              if (!confirm(`Cancelar a entrega de "${e.destinatario}"?`)) return
+              const r = await cancelarEntrega(e.id)
+              if (!r.ok) return toast.error(r.erro)
+              router.refresh()
+            }}><XCircle className="h-3.5 w-3.5" /></Button>
+          )}
         </div>
-        {e.observacoes && <div className="mt-1 text-xs text-muted-foreground italic">{e.observacoes}</div>}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {painel.podeGerenciar && (
-          <select className={cn(inputClasse, "w-64")} defaultValue="" onChange={async ev => {
-            const vid = ev.target.value
-            if (!vid) return
-            const r = await programarEntrega(e.id, vid)
-            if (!r.ok) { ev.target.value = ""; return toast.error(r.erro) }
-            toast.success("Entrega colocada na viagem")
-            router.refresh()
-          }}>
-            <option value="">Colocar na viagem...</option>
-            {viagens.map(v => {
-              const ve = painel.veiculos.find(x => x.id === v.veiculo_id)
-              return <option key={v.id} value={v.id}>{formatarData(v.saida_prevista)} · {v.titulo || "Viagem"}{ve ? ` · ${ve.placa}` : ""}</option>
-            })}
-          </select>
-        )}
-        {(painel.podeGerenciar || e.solicitado_por === painel.userId) && (
-          <Button size="icon" variant="ghost" title="Editar" onClick={() => onEditar(e)}><Pencil className="h-4 w-4" /></Button>
-        )}
-        {painel.podeGerenciar && (
-          <Button size="icon" variant="ghost" className="text-red-600" title="Cancelar entrega" onClick={async () => {
-            if (!confirm(`Cancelar a entrega de "${e.destinatario}"?`)) return
-            const r = await cancelarEntrega(e.id)
-            if (!r.ok) return toast.error(r.erro)
-            router.refresh()
-          }}><XCircle className="h-4 w-4" /></Button>
-        )}
-      </div>
-    </div>
-
-  )
-
-  // coloca todas as entregas de um grupo (cidade/estado) na mesma viagem
-  const programarGrupo = async (grupo: EntEntrega[], vid: string, nomeGrupo: string) => {
-    if (!vid) return
-    if (!confirm(`Colocar as ${grupo.length} entrega(s) de ${nomeGrupo} nesta viagem?`)) return
-    let ok = 0
-    for (const e of grupo) {
-      const r = await programarEntrega(e.id, vid)
-      if (r.ok) ok++
-      else toast.error(`${e.destinatario}: ${r.erro}`)
-    }
-    if (ok) toast.success(`${ok} entrega(s) colocada(s) na viagem`)
-    router.refresh()
+      </li>
+    )
   }
 
   const cabecalho = (nivel: 1 | 2 | 3, titulo: string, grupo: EntEntrega[]) => {
+    const marcadas = grupo.filter(e => selValidas.includes(e.id)).length
     const peso = grupo.reduce((s, e) => s + (Number(e.peso_kg) || 0), 0)
     return (
-      <div className={cn("flex flex-wrap items-center gap-2", nivel === 1 ? "rounded-lg bg-[#d97021]/10 px-3 py-2" : "px-1")}>
-        <span className={nivel === 1 ? "text-base font-bold" : "text-sm font-semibold"}>{titulo}</span>
-        <span className="text-xs text-muted-foreground">{grupo.length} entrega(s){peso > 0 ? ` · ${peso.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} kg` : ""}</span>
-        {painel.podeGerenciar && nivel > 1 && grupo.length > 1 && (
-          <select className={cn(inputClasse, "ml-auto h-8 w-56 text-xs")} value="" onChange={ev => programarGrupo(grupo, ev.target.value, titulo)}>
-            <option value="">Colocar todas na viagem...</option>
-            {viagens.map(v => {
-              const ve = painel.veiculos.find(x => x.id === v.veiculo_id)
-              return <option key={v.id} value={v.id}>{formatarData(v.saida_prevista)} · {v.titulo || "Viagem"}{ve ? ` · ${ve.placa}` : ""}</option>
-            })}
-          </select>
-        )}
-      </div>
+      <label className={cn("flex cursor-pointer items-center gap-2 px-3 py-1.5",
+        nivel === 1 ? "bg-[#d97021]/10 text-sm font-bold" : nivel === 2 ? "bg-muted/60 text-xs font-bold" : "bg-muted/25 text-xs font-semibold")}>
+        <input type="checkbox" className="h-3.5 w-3.5 accent-[#d97021]" checked={marcadas === grupo.length}
+          ref={el => { if (el) el.indeterminate = marcadas > 0 && marcadas < grupo.length }} onChange={() => alternarGrupo(grupo)} />
+        <span>{titulo}</span>
+        <span className="font-normal text-muted-foreground">{grupo.length} · {kg(peso)} kg</span>
+      </label>
     )
   }
 
   return (
-    <div className="space-y-3">
-      <label className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-        <input type="checkbox" className="accent-[#d97021]" checked={agrupar} onChange={x => setAgrupar(x.target.checked)} /> Agrupar por região, estado e cidade
-      </label>
-      {!agrupar ? (
-        <div className="rounded-2xl border bg-background shadow-sm divide-y">{entregas.map(linha)}</div>
-      ) : (
-        agruparPorLocal(entregas, e => ({ uf: e.uf, cidade: e.cidade })).map(r => (
-          <section key={r.regiao} className="space-y-2">
-            {cabecalho(1, r.regiao, r.itens)}
-            {r.estados.map(es => (
-              <div key={es.uf} className="space-y-2 border-l-2 border-[#d97021]/20 pl-3">
-                {r.estados.length > 1 || es.cidades.length > 1 ? cabecalho(2, es.uf === "—" ? "Sem estado" : `${NOMES_UF[es.uf] || es.uf} (${es.uf})`, es.itens) : null}
-                {es.cidades.map(c => (
-                  <div key={c.cidade} className="space-y-1.5">
-                    {cabecalho(3, `${c.cidade}${es.uf !== "—" ? ` - ${es.uf}` : ""}`, c.itens)}
-                    <div className="rounded-2xl border bg-background shadow-sm divide-y">{c.itens.map(linha)}</div>
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+      {/* LISTA */}
+      <div className="flex flex-col overflow-hidden rounded-2xl border bg-background shadow-sm lg:max-h-[calc(100vh-180px)]">
+        <div className="space-y-2 border-b bg-muted/30 p-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input className={cn(inputClasse, "h-9 bg-background pl-8")} placeholder="Buscar cliente, cidade, pedido..." value={busca} onChange={x => setBusca(x.target.value)} />
+            </div>
+            <span className="shrink-0 text-xs text-muted-foreground">{entregas.length} a programar</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <label className="inline-flex items-center gap-1.5">
+              <input type="checkbox" className="accent-[#d97021]" checked={agrupar} onChange={x => setAgrupar(x.target.checked)} /> Agrupar por região, estado e cidade
+            </label>
+            {selValidas.length > 0 && <button className="font-medium hover:text-red-600" onClick={() => setSel([])}>limpar seleção ({selValidas.length})</button>}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {!visiveis.length && <p className="p-6 text-center text-sm text-muted-foreground">Nada encontrado.</p>}
+          {!agrupar ? (
+            <ul className="divide-y">{visiveis.map(linha)}</ul>
+          ) : (
+            agruparPorLocal(visiveis, e => ({ uf: e.uf, cidade: e.cidade })).map(r => (
+              <section key={r.regiao}>
+                {cabecalho(1, r.regiao, r.itens)}
+                {r.estados.map(es => (
+                  <div key={es.uf}>
+                    {r.estados.length > 1 || es.cidades.length > 1 ? cabecalho(2, es.uf === "—" ? "Sem estado" : `${NOMES_UF[es.uf] || es.uf} (${es.uf})`, es.itens) : null}
+                    {es.cidades.map(c => (
+                      <div key={c.cidade}>
+                        {cabecalho(3, `${c.cidade}${es.uf !== "—" ? ` - ${es.uf}` : ""}`, c.itens)}
+                        <ul className="divide-y">{c.itens.map(linha)}</ul>
+                      </div>
+                    ))}
                   </div>
                 ))}
+              </section>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* MAPA + ROTA */}
+      <div className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+        <div className="overflow-hidden rounded-2xl border shadow-sm">
+          <Mapa pontos={pontos} linhas={linhas} origem={origem} altura="min(52vh, 520px)" ajustarAoMudar={false} onPonto={alternar} />
+        </div>
+
+        <div className="rounded-2xl border bg-background p-4 shadow-sm">
+          {!selValidas.length ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Route className="h-4 w-4" /> Marque as entregas na lista (ou clique nos pontos do mapa) para montar a rota.</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold">{selValidas.length} entrega(s) na rota · {kg(pesoSel)} kg</div>
+                  <div className="text-xs text-muted-foreground">
+                    {calculando ? "Calculando a rota..." : rotaAtual
+                      ? <><b className="text-foreground">{formatarKm(rotaAtual.kmIda)}</b> de ida · {formatarKm(rotaAtual.kmTotal)} com a volta{rotaAtual.minutos ? ` · ~${formatarDuracao(rotaAtual.minutos)} dirigindo` : ""}{rotaAtual.estimada ? " (estimada)" : ""}</>
+                      : comLocal.length ? "Não deu para calcular a rota agora." : "As entregas escolhidas não têm local no mapa."}
+                  </div>
+                </div>
+                {comLocal.length > 2 && (
+                  <Button size="sm" variant="outline" className="gap-1" onClick={ordenarProximidade}><Sparkles className="h-3.5 w-3.5" /> Ordenar pela proximidade</Button>
+                )}
               </div>
-            ))}
-          </section>
-        ))
-      )}
+
+              <ol className="max-h-56 divide-y overflow-y-auto rounded-lg border text-sm">
+                {escolhidas.map((e, i) => {
+                  const k = comLocal.indexOf(e)
+                  const trecho = k >= 0 ? rotaAtual?.trechosKm?.[k] : undefined
+                  return (
+                    <li key={e.id} className="flex items-center gap-2 px-2.5 py-1.5">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#d97021] text-[11px] font-bold text-white">{i + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">{e.destinatario}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {[e.cidade, e.uf].filter(Boolean).join(" - ")}{trecho != null ? ` · +${formatarKm(trecho)}` : ""}{e.lat == null ? " · sem local (fora da rota)" : ""}
+                        </div>
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" disabled={i === 0} onClick={() => mover(i, -1)} title="Subir"><ArrowUp className="h-3.5 w-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" disabled={i === escolhidas.length - 1} onClick={() => mover(i, 1)} title="Descer"><ArrowDown className="h-3.5 w-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-red-600" onClick={() => alternar(e.id)} title="Tirar da rota"><X className="h-3.5 w-3.5" /></Button>
+                    </li>
+                  )
+                })}
+              </ol>
+
+              {painel.podeGerenciar && (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button className="flex-1 gap-1 bg-[#d97021] text-white hover:bg-[#c3631b]" disabled={colocando} onClick={() => onNovaViagem(selValidas)}>
+                    <Truck className="h-4 w-4" /> Criar viagem com estas ({selValidas.length})
+                  </Button>
+                  {viagens.length > 0 && (
+                    <select className={cn(inputClasse, "sm:w-60")} value="" disabled={colocando} onChange={ev => colocarNaViagem(ev.target.value)}>
+                      <option value="">{colocando ? "Colocando..." : "ou pôr numa viagem existente..."}</option>
+                      {viagens.map(v => {
+                        const ve = painel.veiculos.find(x => x.id === v.veiculo_id)
+                        return <option key={v.id} value={v.id}>{formatarData(v.saida_prevista)} · {v.titulo || "Viagem"}{ve ? ` · ${ve.placa}` : ""}</option>
+                      })}
+                    </select>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

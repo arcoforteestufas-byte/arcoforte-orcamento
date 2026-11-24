@@ -66,7 +66,7 @@ function anelMascara(): [number, number][][] {
 export function Mapa({
   pontos = [], caminhoes = [], linhas = [], altura = 480, pontoEditavel, onMover, ajustarAoMudar = true, centralizar = 0,
   coresUf, dicaUf, onUf, ufSelecionada, origem, className = "",
-  tema = "claro", onLinha, onLinhaHover, foco, ajustarInicial = true, soBrasil = true,
+  tema = "claro", onLinha, onLinhaHover, onPonto, foco, ajustarInicial = true, soBrasil = true,
 }: {
   /** true (padrão) = esconde os outros países e o oceano, mostra só o Brasil */
   soBrasil?: boolean
@@ -74,6 +74,8 @@ export function Mapa({
   /** clique / mouse sobre uma rota (usa LinhaMapa.id) */
   onLinha?: (id: string) => void
   onLinhaHover?: (id: string | null) => void
+  /** clique num marcador de entrega (usa PontoMapa.id); com ele, o marcador não abre o balão */
+  onPonto?: (id: string) => void
   /** enquadra estes pontos sempre que `chave` mudar */
   foco?: { limites: [number, number][]; chave: number } | null
   /** false = não enquadra os pontos automaticamente (quem controla é o `foco`) */
@@ -103,8 +105,8 @@ export function Mapa({
   const ruasRef = useRef<Leaflet.TileLayer | null>(null)
   const editRef = useRef<Leaflet.Marker | null>(null)
   const mascaraRef = useRef<Leaflet.Polygon | null>(null)
-  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, soBrasil })
-  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, soBrasil }
+  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, onPonto, soBrasil })
+  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, onPonto, soBrasil }
   const ajustouRef = useRef(!ajustarInicial)
   const chaveAjusteRef = useRef("")
   const centralizarRef = useRef(0)
@@ -198,7 +200,11 @@ export function Mapa({
         popupAnchor: [0, -t + 2],
       })
       const m = L.marker([p.lat, p.lng], { icon: icone }).addTo(camada)
-      if (p.popupHtml) m.bindPopup(p.popupHtml)
+      if (props.current.onPonto) {
+        const id = p.id
+        m.on("click", () => props.current.onPonto?.(id))
+        if (p.popupHtml) m.bindTooltip(p.popupHtml, { direction: "top", offset: [0, -t + 4] })
+      } else if (p.popupHtml) m.bindPopup(p.popupHtml)
       limites.push([p.lat, p.lng])
     }
 

@@ -147,6 +147,24 @@ async function recalcularRota(supabase: Supa, viagemId: string | null | undefine
   }).eq("id", viagemId)
 }
 
+/** Prévia da rota (origem → pontos na ordem → volta), para montar a viagem antes de criar */
+export async function simularRota(pontos: { lat: number; lng: number }[]): Promise<{
+  kmIda: number; kmTotal: number; minutos: number; trechosKm: number[]; desenho: [number, number][]; estimada: boolean
+} | null> {
+  const { supabase, user } = await sessao()
+  if (!user) return null
+  const pts = pontos.slice(0, 60).map(p => ({ lat: Number(p.lat), lng: Number(p.lng) })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+  if (!pts.length) return null
+  const cfg = await lerConfig(supabase)
+  const origem = { lat: cfg.origem_lat, lng: cfg.origem_lng }
+  const r = await rotaPorEstrada([origem, ...pts, origem])
+  if (!r) return null
+  return {
+    kmIda: Math.round(r.trechosKm.slice(0, -1).reduce((s, t) => s + t, 0) * 10) / 10,
+    kmTotal: r.km, minutos: r.minutos, trechosKm: r.trechosKm, desenho: r.desenho, estimada: r.estimada,
+  }
+}
+
 export async function recalcularRotaViagem(viagemId: string): Promise<Resultado> {
   const { supabase, erro } = await exigirGerente()
   if (erro) return { ok: false, erro }
