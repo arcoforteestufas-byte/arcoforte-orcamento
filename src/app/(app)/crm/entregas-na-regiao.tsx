@@ -5,9 +5,10 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Loader2, MapPin } from "lucide-react"
+import { CalendarClock, Loader2, MapPin } from "lucide-react"
 import { entregasNaRegiao } from "@/app/actions/entregas"
-import { STATUS_ENTREGA, type RegiaoDoLead } from "@/lib/entregas-types"
+import { STATUS_ENTREGA, situacaoPrazoEntrega, type RegiaoDoLead } from "@/lib/entregas-types"
+import { hojeISO } from "@/lib/crm-types"
 import { Mapa, escaparHtml, type PontoMapa } from "../entregas/mapa"
 import { formatarData } from "./crm-utils"
 
@@ -31,9 +32,12 @@ export function EntregasNaRegiao({ leadId, cidade, uf }: { leadId: string; cidad
     return () => { ativo = false }
   }, [cidade, uf, raio, leadId, temLocal])
 
+  const [hoje] = useState(() => hojeISO())
   const pontos = useMemo<PontoMapa[]>(() => {
     if (!dados?.centro) return []
-    const lista: PontoMapa[] = dados.itens.map(en => ({
+    const lista: PontoMapa[] = dados.itens.map(en => {
+      const pz = situacaoPrazoEntrega(en.prazo_entrega, hoje, en.status)
+      return {
       id: en.id,
       lat: en.lat,
       lng: en.lng,
@@ -41,8 +45,10 @@ export function EntregasNaRegiao({ leadId, cidade, uf }: { leadId: string; cidad
       popupHtml:
         `<b>${escaparHtml([en.cidade, en.uf].filter(Boolean).join(" - ") || en.destinatario)}</b><br>` +
         `${escaparHtml(STATUS_ENTREGA[en.status]?.rotulo || en.status)} · ~${en.distancia_km} km do lead` +
+        (pz ? `<br><b style="color:${pz.cor}">${escaparHtml(pz.texto)}</b>` : "<br>Sem prazo de contrato") +
         (en.viagem ? `<br>Saída ${escaparHtml(formatarData(en.viagem.saida_prevista))}${en.veiculo ? ` · ${escaparHtml(en.veiculo)}` : ""}` : "<br>Ainda sem viagem"),
-    }))
+      }
+    })
     lista.push({
       id: "lead",
       lat: dados.centro.lat,
@@ -52,7 +58,7 @@ export function EntregasNaRegiao({ leadId, cidade, uf }: { leadId: string; cidad
       popupHtml: `<b>Lead: ${escaparHtml(dados.centro.nome)} - ${escaparHtml(dados.centro.uf)}</b>`,
     })
     return lista
-  }, [dados])
+  }, [dados, hoje])
 
   if (!temLocal) {
     return (
@@ -100,7 +106,9 @@ export function EntregasNaRegiao({ leadId, cidade, uf }: { leadId: string; cidad
 
       {dados?.itens.length ? (
         <ul className="divide-y rounded-lg border">
-          {dados.itens.map(en => (
+          {dados.itens.map(en => {
+            const pz = situacaoPrazoEntrega(en.prazo_entrega, hoje, en.status)
+            return (
             <li key={en.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
               <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${STATUS_ENTREGA[en.status]?.classe || ""}`}>
                 {STATUS_ENTREGA[en.status]?.rotulo || en.status}
@@ -108,6 +116,15 @@ export function EntregasNaRegiao({ leadId, cidade, uf }: { leadId: string; cidad
               <span className="min-w-0 flex-1">
                 <span className="inline-flex items-center gap-1 font-medium"><MapPin className="h-3.5 w-3.5 text-muted-foreground" />{[en.cidade, en.uf].filter(Boolean).join(" - ") || en.destinatario}</span>
                 <span className="text-muted-foreground"> · ~{en.distancia_km} km</span>
+                <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                  {pz ? (
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${pz.classe}`} title="Prazo final de entrega previsto no contrato">
+                      <CalendarClock className="h-3 w-3" /> {pz.texto}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">Sem prazo de contrato</span>
+                  )}
+                </span>
                 <span className="block text-xs text-muted-foreground">
                   {en.viagem
                     ? <>Saída {formatarData(en.viagem.saida_prevista)}{en.veiculo ? ` · ${en.veiculo}` : ""}{en.viagem.titulo ? ` · ${en.viagem.titulo}` : ""}</>
@@ -118,7 +135,8 @@ export function EntregasNaRegiao({ leadId, cidade, uf }: { leadId: string; cidad
                 <Link href={`/entregas/viagem/${en.viagem.id}`} className="text-xs font-medium text-[#d97021] hover:underline">ver viagem</Link>
               )}
             </li>
-          ))}
+            )
+          })}
         </ul>
       ) : null}
     </div>

@@ -121,6 +121,8 @@ export interface EntEntrega {
   itens?: EntItemCarga[]
   /** número(s) do pedido no Sensio */
   pedido_erp?: string | null
+  /** prazo final de entrega do contrato (vem do lead ganho) — SQL 20261201 */
+  prazo_entrega?: string | null
 }
 
 /** Produto que vai na entrega */
@@ -473,6 +475,8 @@ export interface EntregaNaRegiao {
   distancia_km: number
   status: StatusEntrega
   chegada_prevista: string | null
+  /** prazo final de entrega do contrato */
+  prazo_entrega: string | null
   viagem: { id: string; titulo: string | null; saida_prevista: string; status: StatusViagem } | null
   veiculo: string | null
 }
@@ -481,4 +485,27 @@ export interface RegiaoDoLead {
   /** cidade do lead com coordenadas (null = cidade não encontrada na base do IBGE) */
   centro: { nome: string; uf: string; lat: number; lng: number } | null
   itens: EntregaNaRegiao[]
+}
+
+/**
+ * Texto e cor do prazo do contrato de uma entrega, para mostrar em listas e no mapa.
+ * `hoje` em AAAA-MM-DD. Entregue/cancelada não fica vermelho.
+ */
+export function situacaoPrazoEntrega(prazo: string | null | undefined, hoje: string, status?: StatusEntrega): {
+  texto: string; curto: string; classe: string; cor: string; dias: number
+} | null {
+  if (!prazo) return null
+  const d = prazo.slice(0, 10)
+  const br = d.split("-").reverse().join("/")
+  const dias = Math.round((new Date(d + "T12:00:00").getTime() - new Date(hoje + "T12:00:00").getTime()) / 86400000)
+  const fechada = status === "entregue" || status === "cancelada"
+  const quando = dias < 0 ? `atrasada ${-dias} dia(s)` : dias === 0 ? "vence hoje" : `faltam ${dias} dia(s)`
+  const nivel = fechada ? "ok" : dias < 0 ? "atraso" : dias <= ALERTA_PRAZO_DIAS ? "risco" : "ok"
+  return {
+    texto: fechada ? `Prazo ${br}` : `Prazo ${br} · ${quando}`,
+    curto: `até ${br.slice(0, 5)}`,
+    classe: nivel === "atraso" ? "bg-red-50 text-red-700 ring-red-200" : nivel === "risco" ? "bg-amber-50 text-amber-800 ring-amber-200" : "bg-sky-50 text-sky-800 ring-sky-200",
+    cor: nivel === "atraso" ? "#b91c1c" : nivel === "risco" ? "#b45309" : "#0369a1",
+    dias,
+  }
 }

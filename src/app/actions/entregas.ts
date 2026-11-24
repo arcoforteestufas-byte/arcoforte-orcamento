@@ -200,6 +200,14 @@ export async function obterPainel(): Promise<EntPainel> {
   const sep = await supabase.from("ent_separacoes").select("entrega_id, status, divergencia")
   const separacoes: NonNullable<EntPainel["separacoes"]> = {}
   for (const r of sep.error ? [] : sep.data || []) separacoes[r.entrega_id] = { status: r.status, divergencia: !!r.divergencia }
+  // prazo do contrato: antes do SQL 20261201 (ou entrega antiga) vem do lead
+  const entregasLidas = (en.data || []) as EntEntrega[]
+  const semPrazo = [...new Set(entregasLidas.filter(e => !e.prazo_entrega && e.lead_id).map(e => e.lead_id))] as string[]
+  if (semPrazo.length) {
+    const { data: lp } = await supabase.from("crm_leads").select("id, prazo_entrega").in("id", semPrazo)
+    const mapa = new Map((lp || []).map(l => [l.id, (l.prazo_entrega as string | null) ?? null]))
+    for (const e of entregasLidas) if (!e.prazo_entrega && e.lead_id) e.prazo_entrega = mapa.get(e.lead_id) ?? null
+  }
   const erro = tr.error || vi.error || en.error
   if (erro) {
     return { ...vazio, userId: user.id, podeGerenciar: podeGerenciar(user), erro: msgErro(erro.message) }
@@ -380,6 +388,7 @@ export async function dadosEntregaDoLead(leadId: string): Promise<Resultado<Part
       cidade_ibge: escolhida?.ibge ?? null,
       peso_kg: peso,
       chegada_prevista: lead.prazo_entrega || null,
+      prazo_entrega: lead.prazo_entrega || null,
       descricao_carga: pedidos.length ? pedidos.join(" + ") : null,
       observacoes: obs || null,
       aviso: !orc
@@ -575,6 +584,9 @@ export async function salvarEntrega(
   // produtos que vão na entrega (pedido do Sensio)
   if ("itens" in e) campos.itens = limparItens(e.itens)
   if ("pedido_erp" in e) campos.pedido_erp = texto(e.pedido_erp)
+  // prazo do contrato: entrega ligada a lead herda do lead (gatilho no banco); avulsa pode digitar
+  if ("prazo_entrega" in e) campos.prazo_entrega = texto(e.prazo_entrega)
+  if (campos.lead_id) delete campos.prazo_entrega // ligada a lead: o banco copia o prazo do contrato
 
   campos.atualizado_em = new Date().toISOString()
   const gravar = () => e.id
@@ -588,6 +600,14 @@ export async function salvarEntrega(
     }
     delete campos.itens
     delete campos.pedido_erp
+    r = await gravar()
+  }
+  // antes do SQL 20261201 a coluna prazo_entrega não existe
+  if (r.error && /prazo_entrega/.test(r.error.message) && "prazo_entrega" in campos) {
+    if (campos.prazo_entrega && !campos.lead_id) {
+      return { ok: false, erro: "Para guardar o prazo do contrato na entrega, rode a migração 20261201000000_entregas_prazo_contrato.sql no Supabase." }
+    }
+    delete campos.prazo_entrega
     r = await gravar()
   }
   if (r.error) return { ok: false, erro: msgErro(r.error.message) }
@@ -1178,7 +1198,7 @@ export async function entregasNaRegiao(
   if (!user) return { centro, itens: [] }
   const { data: entregas, error } = await supabase
     .from("ent_entregas")
-    .select("id, destinatario, cidade, uf, lat, lng, status, chegada_prevista, viagem_id, lead_id")
+    .select("*") // inclui prazo_entrega quando o SQL 20261201 já rodou
     .in("status", ["a_programar", "programada", "em_rota"])
     .limit(2000)
   if (error || !entregas?.length) return { centro, itens: [] }
@@ -1203,6 +1223,12 @@ export async function entregasNaRegiao(
     ? await supabase.from("ent_veiculos").select("id, placa, descricao").in("id", veicIds)
     : { data: [] as { id: string; placa: string; descricao: string | null }[] }
 
+  // prazo do contrato: o da entrega; senão o do lead (venda) dela
+  const leadIds = [...new Set(perto.filter(p => !p.e.prazo_entrega && p.e.lead_id).map(p => p.e.lead_id))] as string[]
+  const { data: leadsPrazo } = leadIds.length
+    ? await supabase.from("crm_leads").select("id, prazo_entrega").in("id", leadIds)
+    : { data: [] as { id: string; prazo_entrega: string | null }[] }
+  const prazoLead = new Map((leadsPrazo || []).map(l => [l.id, (l.prazo_entrega as string | null) ?? null]))
   const ordemStatus: Record<string, number> = { em_rota: 0, programada: 1, a_programar: 2 }
   const itens: EntregaNaRegiao[] = perto.map(({ e, lat, lng, km }) => {
     const v = (viagens || []).find(x => x.id === e.viagem_id)
@@ -1210,6 +1236,7 @@ export async function entregasNaRegiao(
     return {
       id: e.id, destinatario: e.destinatario, cidade: e.cidade, uf: e.uf, lat, lng, distancia_km: km,
       status: e.status as StatusEntrega, chegada_prevista: e.chegada_prevista,
+      prazo_entrega: (e.prazo_entrega as string | null | undefined) || (e.lead_id ? prazoLead.get(e.lead_id) ?? null : null),
       viagem: v ? { id: v.id, titulo: v.titulo, saida_prevista: v.saida_prevista, status: v.status } : null,
       veiculo: vc ? (vc.descricao ? `${vc.descricao} (${vc.placa})` : vc.placa) : null,
     }
@@ -1217,6 +1244,7 @@ export async function entregasNaRegiao(
   itens.sort((a, b) =>
     (ordemStatus[a.status] ?? 9) - (ordemStatus[b.status] ?? 9)
     || String(a.viagem?.saida_prevista || "9999").localeCompare(String(b.viagem?.saida_prevista || "9999"))
+    || String(a.prazo_entrega || "9999").localeCompare(String(b.prazo_entrega || "9999"))
     || a.distancia_km - b.distancia_km)
   return { centro, itens: itens.slice(0, 60) }
 }

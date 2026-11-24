@@ -208,7 +208,13 @@ export function EntregaDialog({ aberto, inicial, viagens, podeGerenciar, config,
             </Secao>
 
             <Secao titulo="Carga e data" icone={<Package className="h-3.5 w-3.5" />}>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <Campo rotulo="Prazo final (contrato)">
+                  <input className={inputClasse} type="date" value={e.prazo_entrega || ""} disabled={!!e.lead_id}
+                    title={e.lead_id ? "Vem da venda (lead). Para mudar, use \"Alterar prazo\" no lead." : "Data limite de entrega combinada com o cliente"}
+                    onChange={x => set("prazo_entrega", x.target.value)} />
+                  {e.lead_id && <span className="text-[11px] text-muted-foreground">Vem do contrato da venda (lead).</span>}
+                </Campo>
                 <Campo rotulo="Chegada prevista">
                   <input className={inputClasse} type="date" value={e.chegada_prevista || ""} onChange={x => set("chegada_prevista", x.target.value)} />
                 </Campo>
@@ -495,6 +501,7 @@ function PedidoDoLead({ entrega: e, aberto, onLigar }: {
     for (const k of ["destinatario", "telefone", "endereco", "peso_kg", "chegada_prevista", "descricao_carga"] as const) {
       if (vazio(k) && d[k] != null) (campos as Record<string, unknown>)[k] = d[k]
     }
+    if (d.prazo_entrega) campos.prazo_entrega = d.prazo_entrega // prazo do contrato manda
     if (vazio("cidade") && d.cidade) { campos.cidade = d.cidade; campos.uf = d.uf ?? null; campos.cidade_ibge = d.cidade_ibge ?? null }
     const outras = l.entregasAtivas.filter(id => id !== e.id).length
     setBusca(null)

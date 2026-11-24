@@ -6,7 +6,7 @@ import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
-  AlertTriangle, ArrowDown, ArrowUp, Building2, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Maximize2, Minimize2, Package, Pencil, Plus,
+  AlertTriangle, ArrowDown, ArrowUp, Building2, CalendarClock, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Maximize2, Minimize2, Package, Pencil, Plus,
   Radio, RefreshCw, Route, Search, Sparkles, Star, Trash2, Trophy, Truck, UserRound, X, XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,7 @@ import {
 } from "@/app/actions/entregas"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  ALERTA_PRAZO_DIAS, NOMES_UF, RISCO_PRAZO, STATUS_SEPARACAO, agruparPorLocal, STATUS_ENTREGA, STATUS_VIAGEM, classificarPrazo, formatarDuracao, formatarKm, posicaoRecente, type RiscoPrazo,
+  ALERTA_PRAZO_DIAS, NOMES_UF, RISCO_PRAZO, STATUS_SEPARACAO, agruparPorLocal, STATUS_ENTREGA, STATUS_VIAGEM, classificarPrazo, formatarDuracao, formatarKm, posicaoRecente, situacaoPrazoEntrega, type RiscoPrazo,
   type EntEntrega, type EntMotorista, type EntPainel, type EntTransportadora, type EntVeiculo, type EntViagem, type VendaFechada, type EntTabelaFrete,
 } from "@/lib/entregas-types"
 import { cn } from "@/lib/utils"
@@ -408,6 +408,18 @@ function AbaRotas({ painel, dataDaEntrega, onSolicitar }: {
 // MAPA DE ENTREGAS
 // ======================================================================
 
+/** Selo do prazo final do contrato (vermelho atrasado, laranja perto, azul com folga) */
+function ChipPrazo({ e, curto }: { e: EntEntrega; curto?: boolean }) {
+  const pz = situacaoPrazoEntrega(e.prazo_entrega, hoje(), e.status)
+  if (!pz) return null
+  return (
+    <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset", pz.classe)}
+      title={`Prazo final do contrato: ${pz.texto.replace(/^Prazo /, "")}`}>
+      <CalendarClock className="h-3 w-3" /> {curto ? pz.curto : pz.texto}
+    </span>
+  )
+}
+
 const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
 function AbaMapa({ painel, dataDaEntrega, onEditar }: {
@@ -574,6 +586,7 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
                 </div>
                 <div className={cn("mt-2 flex flex-wrap items-center gap-1.5 text-[11px]", vg ? "pr-20" : "pr-6")}>
                   <span className={`rounded-full px-2 py-0.5 font-medium ring-1 ring-inset ${st.classe}`}>{st.rotulo}</span>
+                  <ChipPrazo e={e} />
                   {nItens ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
                       title="Tem a lista de produtos do pedido">
@@ -839,7 +852,8 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
             <span className="truncate font-semibold" title={e.destinatario}>{e.destinatario}</span>
-            {e.chegada_prevista && <span className="shrink-0 text-xs text-muted-foreground">{formatarData(e.chegada_prevista)}</span>}
+            {e.prazo_entrega ? <ChipPrazo e={e} curto />
+              : e.chegada_prevista && <span className="shrink-0 text-xs text-muted-foreground">{formatarData(e.chegada_prevista)}</span>}
           </div>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-0.5"><MapPin className="h-3 w-3" />{[e.cidade, e.uf].filter(Boolean).join(" - ") || "sem cidade"}</span>
@@ -935,7 +949,7 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
                       <div className="min-w-0 flex-1">
                         <div className="truncate font-medium" title={e.destinatario}>{e.destinatario}</div>
                         <div className="truncate text-xs text-muted-foreground">
-                          {[e.cidade, e.uf].filter(Boolean).join(" - ")}{trecho != null ? ` · +${formatarKm(trecho)}` : ""}{e.lat == null ? " · sem local" : ""}
+                          {[e.cidade, e.uf].filter(Boolean).join(" - ")}{trecho != null ? ` · +${formatarKm(trecho)}` : ""}{e.lat == null ? " · sem local" : ""}{e.prazo_entrega ? ` · prazo ${formatarData(e.prazo_entrega)}` : ""}
                         </div>
                       </div>
                       <div className="flex shrink-0 opacity-0 transition group-hover:opacity-100">
