@@ -15,6 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { registrarOrcamentoNoLead } from "@/app/actions/crm"
 import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
+import { Previa3D } from "./previa-3d"
 
 function ProdutoSelectComBusca({
   id,
@@ -1032,6 +1033,7 @@ export function OrcamentoForm({ parametrosDef, regras, produtos, clientes, orcam
 
   return (
     <div className="grid gap-6 md:grid-cols-[2fr_1fr] pb-36 md:pb-0">
+      <Previa3D params={paramsForm} />
       <div className="flex flex-col gap-6">
         <Card className="shadow-sm border-slate-200 overflow-hidden">
           <div className="h-1 w-full bg-gradient-to-r from-[#d97021] to-[#ff9e5e]" />
