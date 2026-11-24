@@ -15,6 +15,8 @@ export type PontoMapa = {
   destaque?: boolean
   /** bolinha pequena (ex.: entregas fora da rota), para não poluir o mapa */
   pequeno?: boolean
+  /** "parada": círculo branco numerado (estilo GPS); a última pode ser pino */
+  forma?: "parada"
 }
 
 export type CaminhaoMapa = {
@@ -31,7 +33,7 @@ export type LinhaMapa = {
   pontos: [number, number][]; cor: string; tracejada?: boolean; espessura?: number; popupHtml?: string
   id?: string; opacidade?: number; animada?: boolean
   /** "destaque": rota bonita (brilho, contorno, fluxo animado e setas de direção) */
-  estilo?: "destaque"
+  estilo?: "destaque" | "google"
 }
 
 export type TemaMapa = "claro" | "escuro"
@@ -98,7 +100,7 @@ function anelMascara(): [number, number][][] {
 export function Mapa({
   pontos = [], caminhoes = [], linhas = [], altura = 480, pontoEditavel, onMover, ajustarAoMudar = true, centralizar = 0,
   coresUf, dicaUf, onUf, ufSelecionada, origem, className = "",
-  tema = "claro", onLinha, onLinhaHover, onPonto, foco, ajustarInicial = true, soBrasil = true,
+  tema = "claro", onLinha, onLinhaHover, onPonto, estiloMapa = "estados", foco, ajustarInicial = true, soBrasil = true,
 }: {
   /** true (padrão) = esconde os outros países e o oceano, mostra só o Brasil */
   soBrasil?: boolean
@@ -108,6 +110,8 @@ export function Mapa({
   onLinhaHover?: (id: string | null) => void
   /** clique num marcador de entrega (usa PontoMapa.id); com ele, o marcador não abre o balão */
   onPonto?: (id: string) => void
+  /** "ruas": mapa de ruas sempre visível (estilo GPS), sem pintar os estados */
+  estiloMapa?: "estados" | "ruas"
   /** enquadra estes pontos sempre que `chave` mudar */
   foco?: { limites: [number, number][]; chave: number } | null
   /** false = não enquadra os pontos automaticamente (quem controla é o `foco`) */
@@ -137,8 +141,8 @@ export function Mapa({
   const ruasRef = useRef<Leaflet.TileLayer | null>(null)
   const editRef = useRef<Leaflet.Marker | null>(null)
   const mascaraRef = useRef<Leaflet.Polygon | null>(null)
-  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, onPonto, soBrasil })
-  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, onPonto, soBrasil }
+  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, onPonto, soBrasil, estiloMapa })
+  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, onPonto, soBrasil, estiloMapa }
   const ajustouRef = useRef(!ajustarInicial)
   const chaveAjusteRef = useRef("")
   const centralizarRef = useRef(0)
@@ -165,6 +169,11 @@ export function Mapa({
   function atualizarZoom() {
     const mapa = mapaRef.current
     if (!mapa) return
+    if (props.current.estiloMapa === "ruas") {
+      if (ruasRef.current && !mapa.hasLayer(ruasRef.current)) ruasRef.current.addTo(mapa)
+      if (siglasRef.current && mapa.hasLayer(siglasRef.current)) siglasRef.current.remove()
+      return
+    }
     const z = mapa.getZoom()
     // no tema escuro o mapa de terreno fica sempre ligado (também com o Brasil inteiro)
     const sempreRuas = props.current.tema === "escuro"
@@ -192,6 +201,13 @@ export function Mapa({
       if (ln.pontos.length < 2) continue
       const op = ln.opacidade ?? 0.9
       const esp = ln.espessura || 4
+      if (ln.estilo === "google") {
+        // azul com contorno mais escuro, como no Google Maps
+        L.polyline(ln.pontos, { color: "#1967d2", weight: esp + 4, opacity: 1, lineCap: "round", lineJoin: "round", interactive: false }).addTo(camada)
+        L.polyline(ln.pontos, { color: "#4285f4", weight: esp, opacity: 1, lineCap: "round", lineJoin: "round", dashArray: ln.tracejada ? "2 10" : undefined, interactive: false }).addTo(camada)
+        for (const p of ln.pontos) limites.push(p)
+        continue
+      }
       if (ln.estilo === "destaque") {
         // brilho largo e suave + contorno escuro: a rota "salta" do mapa
         L.polyline(ln.pontos, { color: ln.cor, weight: esp + 12, opacity: 0.15, lineCap: "round", lineJoin: "round", interactive: false }).addTo(camada)
@@ -244,8 +260,12 @@ export function Mapa({
     }
 
     for (const p of pontos) {
-      const t = p.pequeno ? 14 : p.destaque ? 32 : 26
-      const icone = p.pequeno ? L.divIcon({
+      const t = p.forma === "parada" ? 24 : p.pequeno ? 14 : p.destaque ? 32 : 26
+      const icone = p.forma === "parada" ? L.divIcon({
+        className: "",
+        html: `<div style="width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid ${p.cor};box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;color:#202124;font:700 11px/1 system-ui;cursor:pointer">${escaparHtml(p.rotulo ?? "")}</div>`,
+        iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -12],
+      }) : p.pequeno ? L.divIcon({
         className: "",
         html: `<div style="background:${p.cor};width:${t}px;height:${t}px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(15,23,42,.35);cursor:pointer"></div>`,
         iconSize: [t, t], iconAnchor: [t / 2, t / 2], popupAnchor: [0, -t / 2],
@@ -260,7 +280,7 @@ export function Mapa({
       if (props.current.onPonto) {
         const id = p.id
         m.on("click", () => props.current.onPonto?.(id))
-        if (p.popupHtml) m.bindTooltip(p.popupHtml, { direction: "top", offset: [0, -t + 4] })
+        if (p.popupHtml) m.bindTooltip(p.popupHtml, { direction: "top", offset: p.forma === "parada" || p.pequeno ? [0, -t / 2] : [0, -t + 4] })
       } else if (p.popupHtml) m.bindPopup(p.popupHtml)
       limites.push([p.lat, p.lng])
     }
@@ -349,10 +369,16 @@ export function Mapa({
 
       // ruas/estradas (só com zoom)
       // OpenStreetMap padrão (não exige chave de acesso)
-      ruasRef.current = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      })
+      ruasRef.current = props.current.estiloMapa === "ruas"
+        // mapa claro e limpo, parecido com os de GPS (CARTO Voyager, sem chave)
+        ? L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+          maxZoom: 19, subdomains: "abcd",
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        })
+        : L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        })
       // tema escuro: escurece as ruas com filtro (o mapa do OpenStreetMap só existe claro)
       if (props.current.tema === "escuro") {
         const painelRuas = mapa.getPane("tilePane")
@@ -365,7 +391,7 @@ export function Mapa({
         pane: "mascara", interactive: false, stroke: false, fillOpacity: 1,
         fillColor: props.current.tema === "escuro" ? "#0b1222" : "#eef2f7",
       })
-      if (props.current.soBrasil) mascaraRef.current.addTo(mapa)
+      if (props.current.soBrasil && props.current.estiloMapa !== "ruas") mascaraRef.current.addTo(mapa)
 
       // estados do Brasil
       ufsRef.current = L.geoJSON(brasilUfs as unknown as GeoJSON.FeatureCollection, {
@@ -382,7 +408,8 @@ export function Mapa({
             mouseout: e => { ufsRef.current?.resetStyle(e.target as Leaflet.Path); (e.target as Leaflet.Path).setStyle(estiloUf(uf.uf)) },
           })
         },
-      }).addTo(mapa)
+      })
+      if (props.current.estiloMapa !== "ruas") ufsRef.current.addTo(mapa)
 
       // siglas dos estados (no zoom do país)
       siglasRef.current = L.layerGroup()
@@ -402,7 +429,7 @@ export function Mapa({
           }),
         }).addTo(siglasRef.current!)
       })
-      siglasRef.current.addTo(mapa)
+      if (props.current.estiloMapa !== "ruas") siglasRef.current.addTo(mapa)
 
       camadaRef.current = L.layerGroup().addTo(mapa)
       mapa.on("click", (ev: Leaflet.LeafletMouseEvent) => { props.current.onMover?.(ev.latlng.lat, ev.latlng.lng) })
@@ -436,8 +463,9 @@ export function Mapa({
   useEffect(() => {
     const mapa = mapaRef.current, m = mascaraRef.current
     if (!mapa || !m) return
-    if (soBrasil && !mapa.hasLayer(m)) m.addTo(mapa)
-    if (!soBrasil && mapa.hasLayer(m)) m.remove()
+    const usar = soBrasil && estiloMapa !== "ruas"
+    if (usar && !mapa.hasLayer(m)) m.addTo(mapa)
+    if (!usar && mapa.hasLayer(m)) m.remove()
   })
 
   return (

@@ -802,13 +802,14 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
     const i = selValidas.indexOf(e.id)
     return {
       id: e.id, lat: e.lat!, lng: e.lng!,
-      cor: i >= 0 ? "#d97021" : "#94a3b8", rotulo: i >= 0 ? String(i + 1) : "", destaque: i >= 0, pequeno: i < 0,
+      cor: i < 0 ? "#94a3b8" : i === selValidas.length - 1 ? "#ea4335" : "#1a73e8", rotulo: i >= 0 ? String(i + 1) : "", destaque: i >= 0, pequeno: i < 0,
+      forma: i >= 0 && i < selValidas.length - 1 ? "parada" : undefined,
       popupHtml: `<b>${escaparHtml(e.destinatario)}</b><br/>${escaparHtml([e.cidade, e.uf].filter(Boolean).join(" - "))}${e.peso_kg ? ` · ${escaparHtml(kg(Number(e.peso_kg)))} kg` : ""}<br/><span style="color:#64748b">${i >= 0 ? "clique para tirar da rota" : "clique para pôr na rota"}</span>`,
     }
   })
   const linhas: LinhaMapa[] = rotaAtual?.desenho?.length
-    ? [{ pontos: rotaAtual.desenho, cor: "#f97316", espessura: 5, tracejada: rotaAtual.estimada, estilo: "destaque" }]
-    : comLocal.length ? [{ pontos: [[origem.lat, origem.lng], ...comLocal.map(e => [e.lat!, e.lng!] as [number, number])], cor: "#d97021", espessura: 2, tracejada: true, opacidade: 0.5 }] : []
+    ? [{ pontos: rotaAtual.desenho, cor: "#4285f4", espessura: 5, tracejada: rotaAtual.estimada, estilo: "google" }]
+    : comLocal.length ? [{ pontos: [[origem.lat, origem.lng], ...comLocal.map(e => [e.lat!, e.lng!] as [number, number])], cor: "#4285f4", espessura: 2, tracejada: true, opacidade: 0.5 }] : []
 
   if (!entregas.length) {
     return <div className="rounded-2xl border-2 border-dashed p-10 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-2 h-8 w-8 opacity-40" /> Nenhuma entrega esperando programação.</div>
@@ -821,9 +822,9 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
     const n = e.itens?.length || 0
     return (
       <li key={e.id} onClick={() => alternar(e.id)}
-        className={cn("group flex cursor-pointer items-start gap-2.5 px-3 py-2 text-sm transition", marcada ? "bg-[#d97021]/10" : "hover:bg-muted/50")}>
+        className={cn("group flex cursor-pointer items-start gap-2.5 px-3 py-2 text-sm transition", marcada ? "bg-[#e8f0fe]" : "hover:bg-muted/50")}>
         <span className={cn("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[11px] font-bold",
-          marcada ? "border-[#d97021] bg-[#d97021] text-white" : "border-slate-300 bg-background text-transparent")}>
+          marcada ? "border-[#1a73e8] bg-[#1a73e8] text-white" : "border-slate-300 bg-background text-transparent")}>
           {marcada ? i + 1 : "·"}
         </span>
         <div className="min-w-0 flex-1">
@@ -875,26 +876,105 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
     )
   }
 
+  // tempo até a última parada (a rota calculada inclui a volta)
+  const minIda = rotaAtual?.minutos && rotaAtual.kmTotal ? Math.round((rotaAtual.minutos * rotaAtual.kmIda) / rotaAtual.kmTotal) : 0
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-      {/* LISTA */}
-      <div className="flex flex-col overflow-hidden rounded-2xl border bg-background shadow-sm lg:max-h-[calc(100vh-180px)]">
-        <div className="space-y-2 border-b bg-muted/30 p-3">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input className={cn(inputClasse, "h-9 bg-background pl-8")} placeholder="Buscar cliente, cidade, pedido..." value={busca} onChange={x => setBusca(x.target.value)} />
+    <div className="flex flex-col overflow-hidden rounded-2xl border bg-background shadow-sm lg:h-[calc(100vh-200px)] lg:min-h-[600px] lg:flex-row">
+      {/* PAINEL LATERAL (estilo Google Maps): rota em cima, entregas embaixo */}
+      <aside className="flex w-full shrink-0 flex-col border-b lg:w-[380px] lg:border-b-0 lg:border-r">
+        {/* rota */}
+        <div className="max-h-[55%] shrink-0 overflow-y-auto border-b">
+          {!selValidas.length ? (
+            <div className="flex items-start gap-3 p-4 text-sm text-muted-foreground">
+              <Route className="mt-0.5 h-5 w-5 shrink-0 text-[#1a73e8]" />
+              <span>Clique nas entregas da lista (ou nos pontos do mapa) para montar a rota.</span>
             </div>
-            <span className="shrink-0 text-xs text-muted-foreground">{entregas.length} a programar</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <label className="inline-flex items-center gap-1.5">
-              <input type="checkbox" className="accent-[#d97021]" checked={agrupar} onChange={x => setAgrupar(x.target.checked)} /> Agrupar por região, estado e cidade
-            </label>
-            {selValidas.length > 0 && <button className="font-medium hover:text-red-600" onClick={() => setSel([])}>limpar seleção ({selValidas.length})</button>}
-          </div>
+          ) : (
+            <div className="space-y-3 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className={cn("text-2xl font-semibold leading-tight", calculando ? "text-muted-foreground" : "text-[#188038]")}>
+                    {calculando ? "Calculando..." : minIda ? formatarDuracao(minIda) : rotaAtual ? formatarKm(rotaAtual.kmIda) : "—"}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {rotaAtual
+                      ? <>{formatarKm(rotaAtual.kmIda)} de ida · {formatarKm(rotaAtual.kmTotal)} com a volta{rotaAtual.estimada ? " · estimada" : ""}</>
+                      : !calculando && (comLocal.length ? "Não deu para calcular a rota agora." : "Sem local no mapa.")}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{selValidas.length} parada(s) · {kg(pesoSel)} kg</div>
+                </div>
+                <button className="text-xs text-muted-foreground hover:text-red-600" onClick={() => setSel([])}>limpar</button>
+              </div>
+
+              {/* paradas, como no Google: origem → pontos → destino */}
+              <ol className="relative text-sm">
+                <span className="absolute left-[11px] top-3 bottom-3 border-l-2 border-dotted border-slate-300" />
+                <li className="relative flex items-center gap-3 py-1.5">
+                  <span className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[3px] border-slate-700 bg-white" />
+                  <span className="truncate font-medium">{origem.nome}</span>
+                </li>
+                {escolhidas.map((e, i) => {
+                  const k = comLocal.indexOf(e)
+                  const trecho = k >= 0 ? rotaAtual?.trechosKm?.[k] : undefined
+                  const ultima = i === escolhidas.length - 1
+                  return (
+                    <li key={e.id} className="group relative flex items-center gap-3 py-1.5">
+                      <span className={cn("z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                        ultima ? "bg-[#ea4335] text-white" : "border-[3px] border-[#1a73e8] bg-white text-slate-800")}>{i + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium" title={e.destinatario}>{e.destinatario}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {[e.cidade, e.uf].filter(Boolean).join(" - ")}{trecho != null ? ` · +${formatarKm(trecho)}` : ""}{e.lat == null ? " · sem local" : ""}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 opacity-0 transition group-hover:opacity-100">
+                        <Button size="icon" variant="ghost" className="h-6 w-6" disabled={i === 0} onClick={() => mover(i, -1)} title="Subir"><ArrowUp className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" disabled={ultima} onClick={() => mover(i, 1)} title="Descer"><ArrowDown className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6 hover:text-red-600" onClick={() => alternar(e.id)} title="Tirar da rota"><X className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+
+              {comLocal.length > 2 && (
+                <button className="inline-flex items-center gap-1 text-sm font-medium text-[#1a73e8] hover:underline" onClick={ordenarProximidade}>
+                  <Sparkles className="h-3.5 w-3.5" /> Ordenar pela proximidade
+                </button>
+              )}
+
+              {painel.podeGerenciar && (
+                <div className="space-y-2">
+                  <Button className="w-full gap-1 bg-[#1a73e8] text-white hover:bg-[#1765cc]" disabled={colocando} onClick={() => onNovaViagem(selValidas)}>
+                    <Truck className="h-4 w-4" /> Criar viagem com estas ({selValidas.length})
+                  </Button>
+                  {viagens.length > 0 && (
+                    <select className={cn(inputClasse, "h-9 text-sm")} value="" disabled={colocando} onChange={ev => colocarNaViagem(ev.target.value)}>
+                      <option value="">{colocando ? "Colocando..." : "ou pôr numa viagem existente..."}</option>
+                      {viagens.map(v => {
+                        const ve = painel.veiculos.find(x => x.id === v.veiculo_id)
+                        return <option key={v.id} value={v.id}>{formatarData(v.saida_prevista)} · {v.titulo || "Viagem"}{ve ? ` · ${ve.placa}` : ""}</option>
+                      })}
+                    </select>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        <div className="flex-1 overflow-y-auto">
+
+        {/* entregas a programar */}
+        <div className="space-y-2 border-b bg-muted/30 px-3 py-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input className={cn(inputClasse, "h-9 rounded-full bg-background pl-8")} placeholder={`Buscar entre ${entregas.length} a programar...`} value={busca} onChange={x => setBusca(x.target.value)} />
+          </div>
+          <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <input type="checkbox" className="accent-[#d97021]" checked={agrupar} onChange={x => setAgrupar(x.target.checked)} /> Agrupar por região, estado e cidade
+          </label>
+        </div>
+        <div className="max-h-[60vh] flex-1 overflow-y-auto lg:max-h-none">
           {!visiveis.length && <p className="p-6 text-center text-sm text-muted-foreground">Nada encontrado.</p>}
           {!agrupar ? (
             <ul className="divide-y">{visiveis.map(linha)}</ul>
@@ -917,73 +997,17 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
             ))
           )}
         </div>
-      </div>
+      </aside>
 
-      {/* MAPA + ROTA */}
-      <div className="space-y-3 lg:sticky lg:top-4 lg:self-start">
-        <div className="overflow-hidden rounded-2xl border shadow-sm">
-          <Mapa pontos={pontos} linhas={linhas} origem={origem} altura="min(52vh, 520px)" ajustarAoMudar={false} onPonto={alternar} />
-        </div>
-
-        <div className="rounded-2xl border bg-background p-4 shadow-sm">
-          {!selValidas.length ? (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Route className="h-4 w-4" /> Marque as entregas na lista (ou clique nos pontos do mapa) para montar a rota.</p>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-end justify-between gap-2">
-                <div>
-                  <div className="text-sm font-semibold">{selValidas.length} entrega(s) na rota · {kg(pesoSel)} kg</div>
-                  <div className="text-xs text-muted-foreground">
-                    {calculando ? "Calculando a rota..." : rotaAtual
-                      ? <><b className="text-foreground">{formatarKm(rotaAtual.kmIda)}</b> de ida · {formatarKm(rotaAtual.kmTotal)} com a volta{rotaAtual.minutos ? ` · ~${formatarDuracao(rotaAtual.minutos)} dirigindo` : ""}{rotaAtual.estimada ? " (estimada)" : ""}</>
-                      : comLocal.length ? "Não deu para calcular a rota agora." : "As entregas escolhidas não têm local no mapa."}
-                  </div>
-                </div>
-                {comLocal.length > 2 && (
-                  <Button size="sm" variant="outline" className="gap-1" onClick={ordenarProximidade}><Sparkles className="h-3.5 w-3.5" /> Ordenar pela proximidade</Button>
-                )}
-              </div>
-
-              <ol className="max-h-56 divide-y overflow-y-auto rounded-lg border text-sm">
-                {escolhidas.map((e, i) => {
-                  const k = comLocal.indexOf(e)
-                  const trecho = k >= 0 ? rotaAtual?.trechosKm?.[k] : undefined
-                  return (
-                    <li key={e.id} className="flex items-center gap-2 px-2.5 py-1.5">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#d97021] text-[11px] font-bold text-white">{i + 1}</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium">{e.destinatario}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {[e.cidade, e.uf].filter(Boolean).join(" - ")}{trecho != null ? ` · +${formatarKm(trecho)}` : ""}{e.lat == null ? " · sem local (fora da rota)" : ""}
-                        </div>
-                      </div>
-                      <Button size="icon" variant="ghost" className="h-6 w-6" disabled={i === 0} onClick={() => mover(i, -1)} title="Subir"><ArrowUp className="h-3.5 w-3.5" /></Button>
-                      <Button size="icon" variant="ghost" className="h-6 w-6" disabled={i === escolhidas.length - 1} onClick={() => mover(i, 1)} title="Descer"><ArrowDown className="h-3.5 w-3.5" /></Button>
-                      <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-red-600" onClick={() => alternar(e.id)} title="Tirar da rota"><X className="h-3.5 w-3.5" /></Button>
-                    </li>
-                  )
-                })}
-              </ol>
-
-              {painel.podeGerenciar && (
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button className="flex-1 gap-1 bg-[#d97021] text-white hover:bg-[#c3631b]" disabled={colocando} onClick={() => onNovaViagem(selValidas)}>
-                    <Truck className="h-4 w-4" /> Criar viagem com estas ({selValidas.length})
-                  </Button>
-                  {viagens.length > 0 && (
-                    <select className={cn(inputClasse, "sm:w-60")} value="" disabled={colocando} onChange={ev => colocarNaViagem(ev.target.value)}>
-                      <option value="">{colocando ? "Colocando..." : "ou pôr numa viagem existente..."}</option>
-                      {viagens.map(v => {
-                        const ve = painel.veiculos.find(x => x.id === v.veiculo_id)
-                        return <option key={v.id} value={v.id}>{formatarData(v.saida_prevista)} · {v.titulo || "Viagem"}{ve ? ` · ${ve.placa}` : ""}</option>
-                      })}
-                    </select>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+      {/* MAPA */}
+      <div className="relative h-[60vh] min-w-0 flex-1 lg:h-auto">
+        <Mapa pontos={pontos} linhas={linhas} origem={origem} altura="100%" className="!rounded-none !border-0 !shadow-none" ajustarAoMudar={false} onPonto={alternar} estiloMapa="ruas" />
+        {rotaAtual && !calculando && (
+          <div className="pointer-events-none absolute left-1/2 top-3 z-[500] -translate-x-1/2 rounded-lg bg-[#1a73e8] px-3 py-1.5 text-white shadow-lg">
+            <div className="flex items-center gap-1.5 text-sm font-semibold"><Truck className="h-4 w-4" /> {minIda ? formatarDuracao(minIda) : formatarKm(rotaAtual.kmIda)}</div>
+            <div className="text-xs opacity-90">{formatarKm(rotaAtual.kmIda)} de ida</div>
+          </div>
+        )}
       </div>
     </div>
   )
