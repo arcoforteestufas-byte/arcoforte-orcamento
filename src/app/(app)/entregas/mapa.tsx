@@ -13,6 +13,8 @@ export type PontoMapa = {
   rotulo?: string        // texto curto dentro do marcador (ex.: número da parada)
   popupHtml?: string     // já escapado (use escaparHtml)
   destaque?: boolean
+  /** bolinha pequena (ex.: entregas fora da rota), para não poluir o mapa */
+  pequeno?: boolean
 }
 
 export type CaminhaoMapa = {
@@ -28,9 +30,39 @@ export type CaminhaoMapa = {
 export type LinhaMapa = {
   pontos: [number, number][]; cor: string; tracejada?: boolean; espessura?: number; popupHtml?: string
   id?: string; opacidade?: number; animada?: boolean
+  /** "destaque": rota bonita (brilho, contorno, fluxo animado e setas de direção) */
+  estilo?: "destaque"
 }
 
 export type TemaMapa = "claro" | "escuro"
+
+/** Pontos espaçados ao longo da linha, com o ângulo da direção (graus, 0 = norte), para desenhar setas */
+function setasAoLongo(pts: [number, number][], quantas: number): { lat: number; lng: number; angulo: number }[] {
+  if (pts.length < 2) return []
+  const seg: number[] = []
+  let total = 0
+  for (let i = 1; i < pts.length; i++) {
+    const d = Math.hypot(pts[i][0] - pts[i - 1][0], (pts[i][1] - pts[i - 1][1]) * Math.cos((pts[i][0] * Math.PI) / 180))
+    seg.push(d)
+    total += d
+  }
+  if (!total) return []
+  const passo = total / (quantas + 1)
+  const saida: { lat: number; lng: number; angulo: number }[] = []
+  let alvo = passo, acum = 0
+  for (let i = 0; i < seg.length && saida.length < quantas; i++) {
+    while (seg[i] > 0 && acum + seg[i] >= alvo && saida.length < quantas) {
+      const t = (alvo - acum) / seg[i]
+      const [a, b] = [pts[i], pts[i + 1]]
+      const lat = a[0] + (b[0] - a[0]) * t, lng = a[1] + (b[1] - a[1]) * t
+      const angulo = (Math.atan2((b[1] - a[1]) * Math.cos((lat * Math.PI) / 180), b[0] - a[0]) * 180) / Math.PI
+      saida.push({ lat, lng, angulo })
+      alvo += passo
+    }
+    acum += seg[i]
+  }
+  return saida
+}
 
 export function escaparHtml(s: unknown) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!))
@@ -160,6 +192,27 @@ export function Mapa({
       if (ln.pontos.length < 2) continue
       const op = ln.opacidade ?? 0.9
       const esp = ln.espessura || 4
+      if (ln.estilo === "destaque") {
+        // brilho largo e suave + contorno escuro: a rota "salta" do mapa
+        L.polyline(ln.pontos, { color: ln.cor, weight: esp + 12, opacity: 0.15, lineCap: "round", lineJoin: "round", interactive: false }).addTo(camada)
+        L.polyline(ln.pontos, { color: "#7c2d12", weight: esp + 4, opacity: 0.55, lineCap: "round", lineJoin: "round", interactive: false }).addTo(camada)
+        L.polyline(ln.pontos, { color: ln.cor, weight: esp, opacity: 1, lineCap: "round", lineJoin: "round", dashArray: ln.tracejada ? "8 8" : undefined, interactive: false }).addTo(camada)
+        // fluxo: tracinhos claros andando no sentido da rota
+        L.polyline(ln.pontos, { color: "#fff", weight: Math.max(1.5, esp / 2.5), opacity: 0.85, dashArray: "1 14", lineCap: "round", className: "rota-fluxo", interactive: false }).addTo(camada)
+        // setas de direção ao longo da rota
+        for (const s of setasAoLongo(ln.pontos, 9)) {
+          L.marker([s.lat, s.lng], {
+            interactive: false, keyboard: false,
+            icon: L.divIcon({
+              className: "",
+              html: `<div style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;transform:rotate(${s.angulo}deg)"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1 L11 10 L6 7.5 L1 10 Z" fill="#fff" stroke="#7c2d12" stroke-width="1.2" stroke-linejoin="round"/></svg></div>`,
+              iconSize: [16, 16], iconAnchor: [8, 8],
+            }),
+          }).addTo(camada)
+        }
+        for (const p of ln.pontos) limites.push(p)
+        continue
+      }
       // contorno por baixo deixa a rota legível sobre qualquer fundo
       L.polyline(ln.pontos, { color: escuro ? "#0f172a" : "#fff", weight: esp + 3, opacity: op, interactive: false }).addTo(camada)
       const pl = L.polyline(ln.pontos, {
@@ -182,24 +235,28 @@ export function Mapa({
       L.marker([origem.lat, origem.lng], {
         icon: L.divIcon({
           className: "",
-          html: `<div style="display:flex;align-items:center;gap:4px;background:#0f172a;color:#fff;border:2px solid #fff;border-radius:999px;padding:3px 8px 3px 4px;font:700 11px/1 system-ui;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap"><span style="display:inline-flex;width:16px;height:16px;border-radius:50%;background:#d97021;align-items:center;justify-content:center">★</span>${escaparHtml(origem.nome)}</div>`,
-          iconSize: [110, 24], iconAnchor: [12, 12],
+          html: `<div style="width:20px;height:20px;border-radius:50%;background:#0f172a;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#f59e0b;font:700 11px/1 system-ui">★</div>`,
+          iconSize: [20, 20], iconAnchor: [10, 10],
         }),
-        zIndexOffset: 500,
-      }).bindPopup(`<b>Origem:</b> ${escaparHtml(origem.nome)}`).addTo(camada)
+        zIndexOffset: 300,
+      }).bindTooltip(`Saída: ${escaparHtml(origem.nome)}`, { direction: "top", offset: [0, -10] }).addTo(camada)
       limites.push([origem.lat, origem.lng])
     }
 
     for (const p of pontos) {
-      const t = p.destaque ? 32 : 26
-      const icone = L.divIcon({
+      const t = p.pequeno ? 14 : p.destaque ? 32 : 26
+      const icone = p.pequeno ? L.divIcon({
+        className: "",
+        html: `<div style="background:${p.cor};width:${t}px;height:${t}px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(15,23,42,.35);cursor:pointer"></div>`,
+        iconSize: [t, t], iconAnchor: [t / 2, t / 2], popupAnchor: [0, -t / 2],
+      }) : L.divIcon({
         className: "",
         html: `<div style="background:${p.cor};width:${t}px;height:${t}px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.35);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);color:#fff;font:700 11px/1 system-ui">${escaparHtml(p.rotulo ?? "")}</span></div>`,
         iconSize: [t, t],
         iconAnchor: [t / 2, t],
         popupAnchor: [0, -t + 2],
       })
-      const m = L.marker([p.lat, p.lng], { icon: icone }).addTo(camada)
+      const m = L.marker([p.lat, p.lng], { icon: icone, zIndexOffset: p.pequeno ? -100 : p.destaque ? 400 : 0 }).addTo(camada)
       if (props.current.onPonto) {
         const id = p.id
         m.on("click", () => props.current.onPonto?.(id))
@@ -392,7 +449,7 @@ export function Mapa({
           : "radial-gradient(ellipse at 40% 35%, #f8fafc 0%, #eef2f7 55%, #e2e8f0 100%)",
       }}>
       {/* animação das rotas em andamento */}
-      <style>{`.rota-animada{animation:rota-correr 1.2s linear infinite}@keyframes rota-correr{to{stroke-dashoffset:-20}}`}</style>
+      <style>{`.rota-animada{animation:rota-correr 1.2s linear infinite}@keyframes rota-correr{to{stroke-dashoffset:-20}}.rota-fluxo{animation:rota-fluir 1.1s linear infinite}@keyframes rota-fluir{to{stroke-dashoffset:-15}}`}</style>
       <div ref={divRef} className="absolute inset-0" style={{ background: "transparent" }} />
     </div>
   )

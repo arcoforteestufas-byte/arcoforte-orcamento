@@ -802,12 +802,12 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
     const i = selValidas.indexOf(e.id)
     return {
       id: e.id, lat: e.lat!, lng: e.lng!,
-      cor: i >= 0 ? "#d97021" : "#94a3b8", rotulo: i >= 0 ? String(i + 1) : "", destaque: i >= 0,
+      cor: i >= 0 ? "#d97021" : "#94a3b8", rotulo: i >= 0 ? String(i + 1) : "", destaque: i >= 0, pequeno: i < 0,
       popupHtml: `<b>${escaparHtml(e.destinatario)}</b><br/>${escaparHtml([e.cidade, e.uf].filter(Boolean).join(" - "))}${e.peso_kg ? ` · ${escaparHtml(kg(Number(e.peso_kg)))} kg` : ""}<br/><span style="color:#64748b">${i >= 0 ? "clique para tirar da rota" : "clique para pôr na rota"}</span>`,
     }
   })
   const linhas: LinhaMapa[] = rotaAtual?.desenho?.length
-    ? [{ pontos: rotaAtual.desenho, cor: "#d97021", espessura: 4, tracejada: rotaAtual.estimada }]
+    ? [{ pontos: rotaAtual.desenho, cor: "#f97316", espessura: 5, tracejada: rotaAtual.estimada, estilo: "destaque" }]
     : comLocal.length ? [{ pontos: [[origem.lat, origem.lng], ...comLocal.map(e => [e.lat!, e.lng!] as [number, number])], cor: "#d97021", espessura: 2, tracejada: true, opacidade: 0.5 }] : []
 
   if (!entregas.length) {
