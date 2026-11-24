@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
+import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
-  AlertTriangle, ArrowDown, ArrowUp, Building2, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Maximize2, Package, Pencil, Plus,
+  AlertTriangle, ArrowDown, ArrowUp, Building2, CalendarDays, CheckCircle2, ChevronRight, Clock, Copy, Handshake, MapPin, MapPinned, Maximize2, Minimize2, Package, Pencil, Plus,
   Radio, RefreshCw, Route, Search, Sparkles, Star, Trash2, Trophy, Truck, UserRound, X, XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -721,6 +722,14 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
   const [sel, setSel] = useState<string[]>([]) // na ordem da rota
   const [rota, setRota] = useState<{ chave: string; dados: Awaited<ReturnType<typeof simularRota>> } | null>(null)
   const [colocando, setColocando] = useState(false)
+  const [cheia, setCheia] = useState(false)
+  // Esc sai da tela cheia
+  useEffect(() => {
+    if (!cheia) return
+    const k = (ev: KeyboardEvent) => { if (ev.key === "Escape") setCheia(false) }
+    window.addEventListener("keydown", k)
+    return () => window.removeEventListener("keydown", k)
+  }, [cheia])
   const viagens = painel.viagens.filter(v => v.status === "planejada" || v.status === "em_rota").sort((a, b) => a.saida_prevista.localeCompare(b.saida_prevista))
   const nome = (id: string | null) => painel.usuarios.find(u => u.id === id)?.nome || "—"
   const origem = { lat: painel.config.origem_lat, lng: painel.config.origem_lng, nome: painel.config.origem_nome }
@@ -879,10 +888,11 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
   // tempo até a última parada (a rota calculada inclui a volta)
   const minIda = rotaAtual?.minutos && rotaAtual.kmTotal ? Math.round((rotaAtual.minutos * rotaAtual.kmIda) / rotaAtual.kmTotal) : 0
 
-  return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border bg-background shadow-sm lg:h-[calc(100vh-200px)] lg:min-h-[600px] lg:flex-row">
+  const conteudo = (
+    <div className={cn("flex flex-col overflow-hidden border bg-background shadow-sm lg:flex-row",
+      cheia ? "fixed inset-0 z-[60] h-screen rounded-none" : "rounded-2xl lg:h-[calc(100vh-140px)] lg:min-h-[680px]")}>
       {/* PAINEL LATERAL (estilo Google Maps): rota em cima, entregas embaixo */}
-      <aside className="flex w-full shrink-0 flex-col border-b lg:w-[380px] lg:border-b-0 lg:border-r">
+      <aside className={cn("flex w-full shrink-0 flex-col border-b lg:border-b-0 lg:border-r", cheia ? "lg:w-[420px]" : "lg:w-[380px]")}>
         {/* rota */}
         <div className="max-h-[55%] shrink-0 overflow-y-auto border-b">
           {!selValidas.length ? (
@@ -1002,6 +1012,10 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
       {/* MAPA */}
       <div className="relative h-[60vh] min-w-0 flex-1 lg:h-auto">
         <Mapa pontos={pontos} linhas={linhas} origem={origem} altura="100%" className="!rounded-none !border-0 !shadow-none" ajustarAoMudar={false} onPonto={alternar} estiloMapa="ruas" />
+        <button onClick={() => setCheia(c => !c)} title={cheia ? "Sair da tela cheia (Esc)" : "Tela cheia"}
+          className="absolute right-3 top-3 z-[500] inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50">
+          {cheia ? <><Minimize2 className="h-4 w-4" /> Sair</> : <><Maximize2 className="h-4 w-4" /> Tela cheia</>}
+        </button>
         {rotaAtual && !calculando && (
           <div className="pointer-events-none absolute left-1/2 top-3 z-[500] -translate-x-1/2 rounded-lg bg-[#1a73e8] px-3 py-1.5 text-white shadow-lg">
             <div className="flex items-center gap-1.5 text-sm font-semibold"><Truck className="h-4 w-4" /> {minIda ? formatarDuracao(minIda) : formatarKm(rotaAtual.kmIda)}</div>
@@ -1011,6 +1025,8 @@ function AbaProgramar({ painel, entregas, onEditar, onNovaViagem }: {
       </div>
     </div>
   )
+  // tela cheia por cima de tudo (fora do layout, senão o menu lateral fica na frente)
+  return cheia ? createPortal(conteudo, document.body) : conteudo
 }
 
 // ======================================================================
