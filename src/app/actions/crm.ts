@@ -108,6 +108,7 @@ function normalizarFunil(f: Record<string, any>, acessos: { funil_id: string; us
     distribuicao_automatica: !!f.distribuicao_automatica,
     // antes do SQL v7 a coluna não existe: mantém o comportamento antigo (permite)
     permite_ganho: f.permite_ganho === undefined ? true : !!f.permite_ganho,
+    funil_pai_id: f.funil_pai_id ?? null,
     usuarios: acessos.filter(a => a.funil_id === f.id).map(a => a.usuario_id),
   } as CrmFunil
 }
@@ -155,8 +156,12 @@ export async function obterQuadro(funilId?: string, opcoes?: { semLeads?: boolea
 
   const acessos = acessosR.data || []
   // Só os funis em que o usuário trabalha (lista vazia = todos)
-  const funis = (funisR.data || [])
-    .map(f => normalizarFunil(f, acessos))
+  const todos = (funisR.data || []).map(f => normalizarFunil(f, acessos))
+  // funil filho (Follow-up) usa a equipe do funil pai
+  for (const f of todos) {
+    if (f.funil_pai_id) f.usuarios = todos.find(p => p.id === f.funil_pai_id)?.usuarios || f.usuarios
+  }
+  const funis = todos
     // logística abre leads ganhos de qualquer funil (só leitura), então enxerga todos os funis
     .filter(f => isAdmin || ehLogistica || !f.usuarios!.length || f.usuarios!.includes(user.id))
   const funilAtual = funis.find(f => f.id === funilId) || funis[0] || null
@@ -518,6 +523,28 @@ export async function enviarLeadParaFunil(id: string, funilId: string, vendedorI
   if (data) return { ok: false, erro: String(data) }
   revalidar(id)
   return { ok: true }
+}
+
+/**
+ * Move o lead entre o funil de vendas e o Follow-up dele (ida e volta), mantendo o responsável.
+ * Devolve o funil de destino.
+ */
+export async function alternarFollowup(id: string): Promise<Resultado<{ funilId: string }>> {
+  const { supabase, user } = await sessao()
+  if (!user) return { ok: false, erro: "Não autenticado" }
+  const { data, error } = await supabase.rpc("crm_alternar_followup", { p_lead: id })
+  if (error) {
+    return {
+      ok: false,
+      erro: error.message.includes("crm_alternar_followup")
+        ? "Falta rodar o SQL do Follow-up (20261127000000_crm_v9_followup.sql) no Supabase."
+        : error.message,
+    }
+  }
+  if (data) return { ok: false, erro: String(data) }
+  const { data: l } = await supabase.from("crm_leads").select("funil_id").eq("id", id).maybeSingle()
+  revalidar(id)
+  return { ok: true, dados: { funilId: l?.funil_id || "" } }
 }
 
 /** Quem trabalha num funil com fila compartilhada pega o lead para si. */

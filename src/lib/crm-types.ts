@@ -15,6 +15,7 @@ export interface CrmFunil {
   membros_editam_todos: boolean
   distribuicao_automatica: boolean // rodízio entre os usuários do funil ao receber leads
   permite_ganho: boolean // funil de vendas: só aqui o lead pode ser marcado como Ganho
+  funil_pai_id?: string | null // funil "filho" (ex.: Follow-up) que aparece dentro do funil pai (SQL v9)
   usuarios?: string[] // ids com acesso (vazio = todos)
 }
 

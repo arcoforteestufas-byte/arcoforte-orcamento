@@ -12,6 +12,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  alternarFollowup,
   adicionarAtividade, alternarTarefa, assumirLead, atualizarLead, criarTarefa, definirOrcamentoFechado, desvincularOrcamento, excluirAtividade,
   excluirLead, excluirTarefa, listarOrcamentosSemLead, moverLead, vincularOrcamento,
 } from "@/app/actions/crm"
@@ -71,6 +72,11 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
   // Ganho só no funil de vendas
   const etapaGanho = funil?.permite_ganho ? etapas.find(e => e.tipo === "ganho") : undefined
   const etapaPerdido = etapas.find(e => e.tipo === "perdido")
+  // par Vendas / Follow-up
+  const funilPai = funil?.funil_pai_id ? quadro.funis.find(f => f.id === funil.funil_pai_id) : funil
+  const funilFollowup = funilPai ? quadro.funis.find(f => f.funil_pai_id === funilPai.id) : undefined
+  const noFollowup = !!funil?.funil_pai_id
+  const [movendoFollowup, setMovendoFollowup] = useState(false)
   const nomeUsuario = (id: string | null) => quadro.usuarios.find(u => u.id === id)?.nome || "—"
   const whats = linkWhatsApp(lead.telefone)
   const equipe = funil?.usuarios || []
@@ -273,6 +279,20 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
             )}
             {podeEditar && (
               <div className="flex flex-wrap gap-2">
+                {lead.status === "aberto" && funilFollowup && (
+                  <Button variant="outline" className="gap-1 border-sky-300 text-sky-700 hover:bg-sky-50" disabled={movendoFollowup}
+                    title={noFollowup ? "Volta para o funil de vendas, em Negociação" : "Cliente não vai comprar agora: vai para o Follow-up"}
+                    onClick={async () => {
+                      setMovendoFollowup(true)
+                      const r = await alternarFollowup(lead.id)
+                      setMovendoFollowup(false)
+                      if (!r.ok) return toast.error(r.erro)
+                      toast.success(noFollowup ? `Lead voltou para ${funilPai?.nome || "Vendas"} (Negociação)` : "Lead movido para o Follow-up")
+                      atualizar()
+                    }}>
+                    <CalendarClock className="h-4 w-4" /> {noFollowup ? "Voltar para negociação" : "Mover para Follow-up"}
+                  </Button>
+                )}
                 {quadro.funis.length > 1 && (
                   <Button variant="outline" className="gap-1" onClick={() => setEnviar(true)}>
                     <Send className="h-4 w-4" /> Enviar para funil

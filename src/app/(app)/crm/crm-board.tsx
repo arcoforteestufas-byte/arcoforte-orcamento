@@ -12,7 +12,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { assumirLead, criarLead, listarClientesParaLead, moverLead } from "@/app/actions/crm"
+import { alternarFollowup, assumirLead, criarLead, listarClientesParaLead, moverLead } from "@/app/actions/crm"
 import {
   TEMPERATURA_INFO, campoNoFunil, hojeISO, temperatura,
   type CrmEtapa, type CrmLead, type CrmQuadro, type Temperatura,
@@ -28,6 +28,7 @@ function valorDoLead(l: CrmLead) {
 }
 
 const COLUNA_ENVIAR = "__enviar__"
+const COLUNA_FOLLOWUP = "__followup__"
 const SEM_RESPONSAVEL = "__fila__"
 
 export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
@@ -50,6 +51,14 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
 
   const funil = quadro.funilAtual
   const proximoFunil = quadro.funis.find(f => f.id === funil?.proximo_funil_id)
+  // Follow-up: funil filho que fica dentro do funil de vendas
+  const funilPai = funil?.funil_pai_id ? quadro.funis.find(f => f.id === funil.funil_pai_id) || null : funil
+  const funilFollowup = funilPai ? quadro.funis.find(f => f.funil_pai_id === funilPai.id) || null : null
+  const noFollowup = !!funil?.funil_pai_id
+  const abasPrincipais = quadro.funis.filter(f => !f.funil_pai_id)
+  const contagemComFilhos = (id: string) => quadro.funis
+    .filter(f => f.id === id || f.funil_pai_id === id)
+    .reduce((s, f) => s + (quadro.contagemFunis[f.id] || 0), 0)
   const nomeUsuario = (id: string) => quadro.usuarios.find(u => u.id === id)?.nome || "?"
   // vê leads dos outros: admin, liberado pelo admin, ou funil "membros veem todos" (menos para vendedor)
   const veOutros = quadro.isAdmin || quadro.liberadoVerTodos || (!quadro.restrito && !!funil?.membros_veem_todos)
@@ -125,7 +134,15 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
   // ------------------------------------------------------------------
   // Arrastar e soltar
   // ------------------------------------------------------------------
-  const soltar = async (etapa: CrmEtapa | typeof COLUNA_ENVIAR) => {
+  const moverFollowup = async (lead: CrmLead) => {
+    const r = await alternarFollowup(lead.id)
+    if (!r.ok) return toast.error(r.erro)
+    setLeads(ls => ls.filter(l => l.id !== lead.id))
+    toast.success(noFollowup ? `"${lead.titulo}" voltou para ${funilPai?.nome || "Vendas"} (Negociação)` : `"${lead.titulo}" foi para o Follow-up`)
+    router.refresh()
+  }
+
+  const soltar = async (etapa: CrmEtapa | typeof COLUNA_ENVIAR | typeof COLUNA_FOLLOWUP) => {
     const id = arrastando
     const antesDe = cartaoAlvo
     setArrastando(null); setColunaAlvo(null); setCartaoAlvo(null)
@@ -134,6 +151,7 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
     if (!lead) return
 
     if (etapa === COLUNA_ENVIAR) { setEnviar(lead); return }
+    if (etapa === COLUNA_FOLLOWUP) { if (lead.status === "aberto") moverFollowup(lead); else toast.error("Só lead em andamento pode mudar de funil."); return }
     if (etapa.tipo === "ganho") {
       if (!funil?.permite_ganho) { toast.error("Ganho só no funil de vendas. Envie o lead para o funil de vendas."); return }
       if (lead.etapa_id !== etapa.id) setGanho({ leadId: id, etapaId: etapa.id }); return
@@ -159,7 +177,7 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
     router.refresh()
   }
 
-  const eventosColuna = (chave: string, alvo: CrmEtapa | typeof COLUNA_ENVIAR) => ({
+  const eventosColuna = (chave: string, alvo: CrmEtapa | typeof COLUNA_ENVIAR | typeof COLUNA_FOLLOWUP) => ({
     onDragOver: (e: React.DragEvent) => { e.preventDefault(); if (colunaAlvo !== chave) setColunaAlvo(chave) },
     onDragLeave: (e: React.DragEvent<HTMLElement>) => {
       if (!e.currentTarget.contains(e.relatedTarget as Node)) { setColunaAlvo(null); setCartaoAlvo(null) }
@@ -245,10 +263,10 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
       </div>
 
       {/* Abas dos funis */}
-      {quadro.funis.length > 1 && (
+      {abasPrincipais.length > 1 && (
         <div className="flex items-center gap-1 overflow-x-auto rounded-xl border bg-background p-1 shadow-sm w-fit max-w-full">
-          {quadro.funis.map((f, i) => {
-            const ativo = f.id === funil.id
+          {abasPrincipais.map((f, i) => {
+            const ativo = f.id === funil.id || f.id === funil.funil_pai_id
             return (
               <div key={f.id} className="flex items-center">
                 <button onClick={() => router.push(`/crm?funil=${f.id}`)}
@@ -256,14 +274,38 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
                   style={ativo ? { backgroundColor: f.cor } : undefined}>
                   {!ativo && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: f.cor }} />}
                   {f.nome}
-                  <span className={`rounded-full px-1.5 text-[11px] ${ativo ? "bg-white/25" : "bg-muted"}`}>{quadro.contagemFunis[f.id] || 0}</span>
+                  <span className={`rounded-full px-1.5 text-[11px] ${ativo ? "bg-white/25" : "bg-muted"}`}>{contagemComFilhos(f.id)}</span>
                 </button>
-                {i < quadro.funis.length - 1 && f.proximo_funil_id === quadro.funis[i + 1]?.id && (
+                {i < abasPrincipais.length - 1 && f.proximo_funil_id === abasPrincipais[i + 1]?.id && (
                   <span className="px-0.5 text-muted-foreground/40">›</span>
                 )}
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Vendas | Follow-up (funil filho dentro do funil de vendas) */}
+      {funilPai && funilFollowup && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1 rounded-lg border bg-background p-1 shadow-sm">
+            {[funilPai, funilFollowup].map(f => {
+              const ativo = f.id === funil.id
+              return (
+                <button key={f.id} onClick={() => router.push(`/crm?funil=${f.id}`)}
+                  className={`flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${ativo ? "text-white shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                  style={ativo ? { backgroundColor: f.cor } : undefined}>
+                  {f.id === funilFollowup.id ? "Follow-up" : f.nome}
+                  <span className={`rounded-full px-1.5 text-[11px] ${ativo ? "bg-white/25" : "bg-muted"}`}>{quadro.contagemFunis[f.id] || 0}</span>
+                </button>
+              )
+            })}
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {noFollowup
+              ? "Leads quentes que receberam proposta e não estão no momento de comprar. Arraste para “Voltar para negociação” quando retomar."
+              : "Cliente não vai comprar agora? Arraste o lead para “Mover para Follow-up”."}
+          </span>
         </div>
       )}
 
@@ -367,6 +409,20 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
               </div>
             )
           })}
+
+          {/* Coluna para mover entre Vendas e Follow-up */}
+          {funilFollowup && (
+            <div {...eventosColuna(COLUNA_FOLLOWUP, COLUNA_FOLLOWUP)}
+              className={`w-[200px] shrink-0 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 text-center transition-all ${colunaAlvo === COLUNA_FOLLOWUP ? "border-sky-500 bg-sky-50" : "border-slate-300"}`}>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full text-white" style={{ backgroundColor: noFollowup ? (funilPai?.cor || "#d97021") : funilFollowup.cor }}>
+                <CalendarClock className="h-4 w-4" />
+              </span>
+              <div className="text-sm font-semibold">{noFollowup ? "Voltar para negociação" : "Mover para Follow-up"}</div>
+              <p className="text-xs text-muted-foreground">
+                {noFollowup ? `O lead volta para ${funilPai?.nome || "Vendas"}, em Negociação.` : "Não vai comprar agora, não respondeu ou ficou de dar resposta depois."}
+              </p>
+            </div>
+          )}
 
           {/* Coluna para enviar ao próximo funil */}
           {quadro.funis.length > 1 && (
