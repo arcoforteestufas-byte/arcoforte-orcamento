@@ -454,8 +454,16 @@ export function Mapa({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // redesenha quando os dados mudam
-  useEffect(() => { desenhar() })
+  // redesenha só quando o que aparece no mapa muda. Antes redesenhava a cada renderização da tela
+  // (ex.: relógio do painel a cada segundo), o que fechava o balão do pino logo depois de abrir.
+  const assinaturaRef = useRef("")
+  useEffect(() => {
+    const assinatura = JSON.stringify([pontos, linhas, caminhoes, origem, coresUf, dicaUf, ufSelecionada, tema, estiloMapa,
+      pontoEditavel, centralizar, foco?.chave, ajustarAoMudar, !!onPonto, !!onLinha])
+    if (assinatura === assinaturaRef.current) return
+    assinaturaRef.current = assinatura
+    desenhar()
+  })
 
   // liga/desliga a máscara "só Brasil"
   useEffect(() => {

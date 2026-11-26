@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { Mapa, escaparHtml, type CaminhaoMapa, type LinhaMapa, type PontoMapa } from "@/app/(app)/entregas/mapa"
 import {
-  NOMES_UF, STATUS_ENTREGA, STATUS_VIAGEM, formatarDuracao, formatarKm, posicaoRecente,
+  NOMES_UF, STATUS_ENTREGA, STATUS_SEPARACAO, STATUS_VIAGEM, formatarDuracao, formatarKm, posicaoRecente, situacaoPrazoEntrega,
   type EntEntrega, type EntPainel, type EntViagem,
 } from "@/lib/entregas-types"
 
@@ -75,6 +75,7 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
   const [agora, setAgora] = useState<Date | null>(null)
   const [foco, setFoco] = useState<{ limites: [number, number][]; chave: number } | null>(null)
   const [visao, setVisao] = useState<Visao>("tudo")
+  const [entregaSel, setEntregaSel] = useState<string | null>(null) // pino clicado: ficha da entrega à direita
 
   const cfg = painel.config
   const origem = { lat: cfg.origem_lat, lng: cfg.origem_lng, nome: cfg.origem_nome }
@@ -193,7 +194,7 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
       if (ev.key === " ") { ev.preventDefault(); setTocando(t => !t) }
       else if (ev.key === "ArrowRight") setCursor(c => Math.min(totalDias, (c ?? -1) + 1))
       else if (ev.key === "ArrowLeft") setCursor(c => (c == null ? null : c <= 0 ? null : c - 1))
-      else if (ev.key === "Escape") { focar(null); setUf(null) }
+      else if (ev.key === "Escape") { focar(null); setUf(null); setEntregaSel(null) }
       else if (ev.key.toLowerCase() === "f") alternarTelaCheia()
       else if (ev.key.toLowerCase() === "t") setModoTV(m => !m)
       else if (ev.key.toLowerCase() === "b") setSoBrasil(b => !b)
@@ -243,7 +244,8 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
         coresUf={Object.fromEntries(Object.entries(porUf).map(([u, n]) => [u, corUf(n)!]))}
         dicaUf={Object.fromEntries(Object.entries(porUf).map(([u, n]) => [u, `${n} entrega(s)`]))}
         ufSelecionada={uf} onUf={u => setUf(a => a === u ? null : u)}
-        onLinha={id => focar(selecionada === id ? null : id)} onLinhaHover={setHover} />
+        onLinha={id => focar(selecionada === id ? null : id)} onLinhaHover={setHover}
+        onPonto={id => { setEntregaSel(id); setDirAberto(true) }} />
 
       {/* TOPO */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between gap-3 p-4">
@@ -315,7 +317,7 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
                     .map(e => {
                       const d = visao === "entregues" ? e.entregue_em : dataDe(e)
                       return (
-                        <button key={e.id} onClick={() => e.lat != null && setFoco(f => ({ limites: [[e.lat!, e.lng!]], chave: (f?.chave || 0) + 1 }))}
+                        <button key={e.id} onClick={() => { setEntregaSel(e.id); setDirAberto(true); if (e.lat != null) setFoco(f => ({ limites: [[e.lat!, e.lng!]], chave: (f?.chave || 0) + 1 })) }}
                           className="flex w-full items-start gap-2.5 rounded-xl bg-white/5 p-2.5 text-left transition-colors hover:bg-white/10">
                           <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: STATUS_ENTREGA[e.status].cor }} />
                           <div className="min-w-0 flex-1">
@@ -383,7 +385,11 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
       <div className="absolute bottom-28 right-4 top-24 z-[1000] flex justify-end">
         {dirAberto ? (
           <div className={`flex w-[320px] flex-col overflow-hidden rounded-2xl ${vidro}`}>
-            {daSelecionada ? (
+            {entregaSel && painel.entregas.some(e => e.id === entregaSel) ? (
+              <DetalheEntrega e={painel.entregas.find(e => e.id === entregaSel)!} painel={painel} hoje={ini}
+                onFechar={() => setEntregaSel(null)} onEsconder={() => setDirAberto(false)}
+                onViagem={id => { setEntregaSel(null); focar(id) }} />
+            ) : daSelecionada ? (
               <DetalheViagem x={daSelecionada} painel={painel} onFechar={() => focar(null)} onEsconder={() => setDirAberto(false)} />
             ) : (
               <>
@@ -479,6 +485,104 @@ function Indicador({ valor, rotulo }: { valor: number | string; rotulo: string }
       <div className="text-xl font-bold tabular-nums">{valor}</div>
       <div className="text-[10px] uppercase tracking-wider text-slate-400">{rotulo}</div>
     </div>
+  )
+}
+
+function DetalheEntrega({ e, painel, hoje, onFechar, onEsconder, onViagem }: {
+  e: EntEntrega
+  painel: EntPainel
+  hoje: string
+  onFechar: () => void
+  onEsconder: () => void
+  onViagem: (id: string) => void
+}) {
+  const vg = painel.viagens.find(v => v.id === e.viagem_id)
+  const ve = painel.veiculos.find(v => v.id === vg?.veiculo_id)
+  const mo = painel.motoristas.find(m => m.id === vg?.motorista_id)
+  const st = STATUS_ENTREGA[e.status]
+  const paradas = vg ? painel.entregas.filter(x => x.viagem_id === vg.id && x.status !== "cancelada").sort((a, b) => a.ordem - b.ordem) : []
+  const posicao = paradas.findIndex(x => x.id === e.id)
+  const prazo = situacaoPrazoEntrega(e.prazo_entrega, hoje, e.status)
+  const sep = painel.separacoes?.[e.id]
+  const itens = e.itens || []
+  const cor = e.status === "entregue" || e.status === "a_programar" ? st.cor : ve?.cor || st.cor
+  const horaDe = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+
+  return (
+    <>
+      <div className="relative px-4 pb-3 pt-4" style={{ background: `linear-gradient(135deg, ${cor}55, transparent)` }}>
+        <div className="absolute right-3 top-3 flex gap-1">
+          <button onClick={onEsconder} className="text-slate-300 hover:text-white" title="Esconder"><PanelRightClose className="h-4 w-4" /></button>
+          <button onClick={onFechar} className="text-slate-300 hover:text-white" title="Fechar (Esc)"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ background: st.cor }}>{st.rotulo}</span>
+          {sep && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${STATUS_SEPARACAO[sep.status].classe}`}>{STATUS_SEPARACAO[sep.status].rotulo}</span>}
+        </div>
+        <div className="mt-2 pr-12 text-lg font-bold leading-tight">{e.destinatario}</div>
+        <div className="mt-1 text-xs text-slate-300"><MapPin className="mr-0.5 inline h-3 w-3" />{[e.cidade, e.uf].filter(Boolean).join(" - ") || "sem cidade"}{e.distancia_km != null ? ` · ${formatarKm(e.distancia_km)} da saída` : ""}</div>
+        {e.endereco && <div className="mt-0.5 text-xs text-slate-400">{e.endereco}</div>}
+        {e.telefone && <a href={`tel:${e.telefone}`} className="mt-0.5 block text-xs text-orange-300 hover:underline">{e.telefone}</a>}
+      </div>
+
+      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 text-sm">
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {e.status === "entregue" ? (
+            <div className="col-span-2 rounded-lg bg-emerald-500/15 p-2 text-emerald-200">✓ Entregue{e.entregue_em ? ` em ${horaDe(e.entregue_em)}` : ""}</div>
+          ) : e.chegada_prevista ? (
+            <div className="rounded-lg bg-black/25 p-2"><div className="text-[10px] uppercase text-slate-400">Chegada prevista</div>{dataBR(e.chegada_prevista, true)}</div>
+          ) : null}
+          {prazo && (
+            <div className="rounded-lg bg-black/25 p-2" style={{ color: e.status === "entregue" ? undefined : prazo.dias < 0 ? "#fca5a5" : prazo.dias <= 7 ? "#fcd34d" : undefined }}>
+              <div className="text-[10px] uppercase text-slate-400">Prazo do contrato</div>{prazo.texto.replace(/^Prazo /, "")}
+            </div>
+          )}
+          {e.peso_kg ? <div className="rounded-lg bg-black/25 p-2"><div className="text-[10px] uppercase text-slate-400">Peso</div>{Number(e.peso_kg).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} kg</div> : null}
+          {e.pedido_erp && <div className="rounded-lg bg-black/25 p-2"><div className="text-[10px] uppercase text-slate-400">Pedido</div>{e.pedido_erp}</div>}
+        </div>
+
+        {vg ? (
+          <button onClick={() => onViagem(vg.id)} className="block w-full rounded-xl bg-white/5 p-3 text-left transition-colors hover:bg-white/10">
+            <div className="flex items-center gap-2 text-xs text-slate-400"><Truck className="h-3.5 w-3.5" style={{ color: ve?.cor }} /> Viagem · {STATUS_VIAGEM[vg.status].rotulo}</div>
+            <div className="mt-1 font-semibold">{vg.titulo || "Viagem"}</div>
+            <div className="text-xs text-slate-300">{ve?.placa || "—"}{mo ? ` · ${mo.nome}` : ""} · sai {dataBR(vg.saida_prevista, true)}</div>
+            {posicao >= 0 && <div className="mt-1 text-xs text-slate-400">Parada {posicao + 1} de {paradas.length} · ver a rota no mapa →</div>}
+          </button>
+        ) : e.status === "a_programar" ? (
+          <div className="rounded-xl bg-amber-500/10 p-3 text-xs text-amber-200">Ainda sem viagem: programe em Entregas → A programar.</div>
+        ) : null}
+
+        {e.descricao_carga && <div><div className="text-[10px] uppercase text-slate-400">Carga</div><div className="text-slate-200">{e.descricao_carga}</div></div>}
+
+        {itens.length > 0 && (
+          <div>
+            <div className="mb-1 text-[10px] uppercase text-slate-400">Produtos ({itens.length})</div>
+            <ul className="space-y-1 text-xs">
+              {itens.slice(0, 8).map((it, i) => (
+                <li key={i} className="flex gap-2"><span className="w-12 shrink-0 text-right font-semibold tabular-nums">{Number(it.quantidade).toLocaleString("pt-BR")}{it.unidade ? ` ${it.unidade}` : ""}</span><span className="text-slate-300">{it.descricao}</span></li>
+              ))}
+              {itens.length > 8 && <li className="text-slate-500">+ {itens.length - 8} produto(s)</li>}
+            </ul>
+          </div>
+        )}
+
+        {e.observacoes && <div><div className="text-[10px] uppercase text-slate-400">Observações</div><div className="whitespace-pre-line text-xs text-slate-300">{e.observacoes}</div></div>}
+        {e.obs_motorista && <div><div className="text-[10px] uppercase text-slate-400">Recado do motorista</div><div className="whitespace-pre-line text-xs text-slate-300">{e.obs_motorista}</div></div>}
+      </div>
+
+      <div className="flex gap-2 border-t border-white/10 p-3">
+        {vg && (
+          <Link href={`/entregas/viagem/${vg.id}`} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2 text-sm font-semibold text-white hover:bg-orange-600">
+            Abrir viagem <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+        )}
+        {e.lead_id && (
+          <Link href={`/crm/lead/${e.lead_id}`} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white/10 py-2 text-sm font-semibold text-white hover:bg-white/20">
+            Ver venda <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+        )}
+      </div>
+    </>
   )
 }
 
