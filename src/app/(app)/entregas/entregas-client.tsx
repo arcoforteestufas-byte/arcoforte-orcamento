@@ -582,6 +582,7 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
       cor: entregue ? STATUS_ENTREGA.entregue.cor : sel.cor,
       rotulo: entregue ? "✓" : String(i + 1),
       forma: ehProxima ? undefined : "parada",
+      preenchido: entregue,
       destaque: ehProxima,
       popupHtml: `<div style="font:13px system-ui;min-width:180px"><b>${i + 1}. ${escaparHtml(e.destinatario)}</b><br/>${escaparHtml([e.cidade, e.uf].filter(Boolean).join(" - "))}<br/>` +
         (entregue ? `<span style="color:${STATUS_ENTREGA.entregue.cor};font-weight:600">✓ Entregue${e.entregue_em ? " às " + escaparHtml(hora(e.entregue_em)) : ""}</span>`

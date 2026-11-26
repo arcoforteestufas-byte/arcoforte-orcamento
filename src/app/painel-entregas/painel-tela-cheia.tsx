@@ -220,26 +220,63 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
 
   // ---------------- camadas do mapa
   const destaque = hover || selecionada
-  const linhas: LinhaMapa[] = viagens.map(({ v, paradas }) => ({
-    id: v.id,
-    pontos: rotaDe(v, paradas),
-    cor: veic(v.veiculo_id)?.cor || "#f97316",
-    espessura: destaque === v.id ? 6 : 3,
-    opacidade: destaque && destaque !== v.id ? 0.18 : 0.95,
-    animada: v.status === "em_rota",
-  }))
+  const linhas: LinhaMapa[] = viagens.flatMap(({ v, paradas }) => {
+    const pts = rotaDe(v, paradas)
+    const base = {
+      id: v.id,
+      cor: veic(v.veiculo_id)?.cor || "#f97316",
+      espessura: destaque === v.id ? 6 : 3,
+      opacidade: destaque && destaque !== v.id ? 0.18 : 0.95,
+    }
+    // em rota: corta a rota na última parada entregue (o que já passou fica cinza)
+    const ultimaFeita = v.status === "em_rota" ? [...paradas].reverse().find(p => p.status === "entregue" && p.lat != null) : undefined
+    if (!ultimaFeita || pts.length < 2) return [{ ...base, pontos: pts, animada: v.status === "em_rota" }]
+    let corte = 0, menor = Infinity
+    pts.forEach(([la, ln], i) => {
+      const d = (la - ultimaFeita.lat!) ** 2 + (ln - ultimaFeita.lng!) ** 2
+      if (d < menor) { menor = d; corte = i }
+    })
+    const feito = pts.slice(0, corte + 1), falta = pts.slice(corte)
+    const out: LinhaMapa[] = []
+    if (feito.length >= 2) out.push({ ...base, id: v.id + "-feito", pontos: feito, cor: "#94a3b8", opacidade: (base.opacidade ?? 1) * 0.55 })
+    if (falta.length >= 2) out.push({ ...base, pontos: falta, animada: true })
+    return out
+  })
   const daSelecionada = selecionada ? viagens.find(x => x.v.id === selecionada) : null
+  const idsViagensMostradas = new Set(viagens.map(x => x.v.id))
   const pontos: PontoMapa[] = entregas
-    .filter(e => e.lat != null && (!uf || e.uf === uf))
+    // filtro de estado não esconde as paradas de uma viagem que está na tela (ex.: viagem SP → MG)
+    .filter(e => e.lat != null && (!uf || e.uf === uf || (!!e.viagem_id && idsViagensMostradas.has(e.viagem_id))))
     .map(e => {
       const vg = viagemDe(e.viagem_id)
-      const naSel = daSelecionada?.paradas.some(p => p.id === e.id)
+      const naSel = !!daSelecionada?.paradas.some(p => p.id === e.id)
       const st = STATUS_ENTREGA[e.status]
+      const entregue = e.status === "entregue"
+      const corCaminhao = veic(vg?.veiculo_id)?.cor || "#f97316"
+      // viagem em rota: mostra o andamento parada a parada
+      const andamento = vg?.status === "em_rota" || naSel
+      const paradasVg = andamento ? painel.entregas.filter(p => p.viagem_id === vg?.id && p.status !== "cancelada").sort((a, b) => a.ordem - b.ordem) : []
+      const idx = paradasVg.findIndex(p => p.id === e.id)
+      const proxima = paradasVg.find(p => p.status !== "entregue")
+      const ehProxima = andamento && vg?.status === "em_rota" && proxima?.id === e.id
+      if (andamento && idx >= 0) {
+        return {
+          id: e.id, lat: e.lat!, lng: e.lng!,
+          cor: entregue ? STATUS_ENTREGA.entregue.cor : corCaminhao,
+          rotulo: entregue ? "✓" : String(idx + 1),
+          forma: ehProxima ? undefined : "parada" as const,
+          preenchido: entregue,
+          destaque: ehProxima,
+          popupHtml: `<div style="font:13px system-ui;min-width:180px"><b>${idx + 1}. ${escaparHtml(e.destinatario)}</b><br/>${escaparHtml([e.cidade, e.uf].filter(Boolean).join(" - "))}<br/>` +
+            (entregue ? `<span style="color:${STATUS_ENTREGA.entregue.cor};font-weight:700">✓ Entregue${e.entregue_em ? " " + escaparHtml(new Date(e.entregue_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })) : ""}</span>`
+              : ehProxima ? `<span style="color:${corCaminhao};font-weight:700">➜ Próxima parada</span>` : "Falta entregar") + "</div>",
+        }
+      }
       return {
         id: e.id, lat: e.lat!, lng: e.lng!,
-        cor: e.status === "entregue" ? st.cor : e.status === "a_programar" ? st.cor : veic(vg?.veiculo_id)?.cor || "#f97316",
-        rotulo: naSel ? String(daSelecionada!.paradas.findIndex(p => p.id === e.id) + 1) : e.status === "entregue" ? "✓" : "",
-        destaque: !!naSel,
+        cor: entregue ? st.cor : e.status === "a_programar" ? st.cor : corCaminhao,
+        rotulo: entregue ? "✓" : "",
+        destaque: naSel,
         pequeno: !naSel && visao === "tudo" && e.status === "a_programar",
         popupHtml: `<div style="font:13px system-ui;min-width:180px"><b>${escaparHtml(e.destinatario)}</b><br/>${escaparHtml([e.cidade, e.uf].filter(Boolean).join(" - "))}${e.distancia_km != null ? ` · ${escaparHtml(formatarKm(e.distancia_km))}` : ""}<br/><span style="color:${st.cor};font-weight:600">${st.rotulo}</span> · ${escaparHtml(dataBR(dataDe(e)))}</div>`,
       }
@@ -453,6 +490,12 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
                     <span>com viagem: cor do caminhão</span>
                   </div>
                   <div>Rota tracejada andando = caminhão em rota · 🚚 posição ao vivo</div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span>Viagem em rota:</span>
+                    <span className="inline-flex items-center gap-1"><span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-green-600 text-[8px] font-bold text-white">✓</span> entregue</span>
+                    <span className="inline-flex items-center gap-1"><span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 border-slate-300 bg-white text-[8px] font-bold text-slate-800">2</span> falta</span>
+                    <span>· pino = próxima · trecho cinza = já percorrido</span>
+                  </div>
                   <div className="text-slate-500">Use os botões do topo para ver cada situação separada.</div>
                 </div>
               </>
@@ -683,12 +726,15 @@ function DetalheViagem({ x, painel, onFechar, onEsconder, onLocalizar }: {
             const idx = comLocal.indexOf(p)
             const trecho = idx >= 0 && v.trechos ? v.trechos[idx] : null
             const st2 = STATUS_ENTREGA[p.status]
+            const ehProx = v.status === "em_rota" && paradas.find(q => q.status !== "entregue")?.id === p.id
             return (
-              <li key={p.id} className="relative text-sm">
+              <li key={p.id} className={`relative text-sm ${ehProx ? "-mx-2 rounded-lg bg-white/10 px-2 py-1" : ""}`}>
                 <span className="absolute -left-[27px] flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: p.status === "entregue" ? st2.cor : ve?.cor || "#f97316" }}>
                   {p.status === "entregue" ? "✓" : i + 1}
                 </span>
-                <div className="font-medium leading-tight">{p.destinatario}</div>
+                <div className={`font-medium leading-tight ${p.status === "entregue" ? "text-slate-400 line-through decoration-slate-500" : ""}`}>{p.destinatario}</div>
+                {p.status === "entregue" ? <div className="text-[11px] font-semibold text-green-400">✓ Entregue{p.entregue_em ? ` ${new Date(p.entregue_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : ""}</div>
+                  : ehProx ? <div className="text-[11px] font-semibold text-blue-300">➜ Próxima parada</div> : null}
                 <div className="text-xs text-slate-400">
                   <MapPin className="mr-0.5 inline h-3 w-3" />{[p.cidade, p.uf].filter(Boolean).join(" - ")}
                   {trecho != null && <> · +{formatarKm(trecho)}</>}

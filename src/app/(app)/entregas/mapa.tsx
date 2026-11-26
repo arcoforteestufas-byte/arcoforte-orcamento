@@ -17,6 +17,8 @@ export type PontoMapa = {
   pequeno?: boolean
   /** "parada": círculo branco numerado (estilo GPS); a última pode ser pino */
   forma?: "parada"
+  /** parada com o círculo cheio na cor (ex.: já entregue ✓); sem isso, círculo branco com borda */
+  preenchido?: boolean
 }
 
 export type CaminhaoMapa = {
@@ -265,7 +267,7 @@ export function Mapa({
       const t = p.forma === "parada" ? 24 : p.pequeno ? 14 : p.destaque ? 32 : 26
       const icone = p.forma === "parada" ? L.divIcon({
         className: "",
-        html: `<div style="width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid ${p.cor};box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;color:#202124;font:700 11px/1 system-ui;cursor:pointer">${escaparHtml(p.rotulo ?? "")}</div>`,
+        html: `<div style="width:24px;height:24px;border-radius:50%;background:${p.preenchido ? p.cor : "#fff"};border:3px solid ${p.preenchido ? "#fff" : p.cor};box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;color:${p.preenchido ? "#fff" : "#202124"};font:700 ${p.preenchido ? 13 : 11}px/1 system-ui;cursor:pointer">${escaparHtml(p.rotulo ?? "")}</div>`,
         iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -12],
       }) : p.pequeno ? L.divIcon({
         className: "",
