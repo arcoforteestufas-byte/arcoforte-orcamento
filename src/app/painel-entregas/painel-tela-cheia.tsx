@@ -49,6 +49,16 @@ function corUf(n: number) {
 
 const vidro = "bg-slate-900/80 backdrop-blur-md ring-1 ring-white/10 shadow-2xl"
 
+/** Visões do painel: separar o que está acontecendo, ou ver tudo junto */
+type Visao = "tudo" | "em_rota" | "programadas" | "a_programar" | "entregues"
+const VISOES: { v: Visao; r: string; cor: string; dica: string }[] = [
+  { v: "tudo", r: "Tudo", cor: "#f97316", dica: "Tudo junto no período" },
+  { v: "em_rota", r: "Em rota", cor: "#3b82f6", dica: "Caminhões na estrada agora, com as entregas deles" },
+  { v: "programadas", r: "Programadas", cor: "#94a3b8", dica: "Já têm viagem marcada, ainda não saíram" },
+  { v: "a_programar", r: "A programar", cor: STATUS_ENTREGA.a_programar.cor, dica: "Ainda sem viagem" },
+  { v: "entregues", r: "Entregues", cor: STATUS_ENTREGA.entregue.cor, dica: "Entregues no período (para trás)" },
+]
+
 export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
   const router = useRouter()
   const [periodo, setPeriodo] = useState("30")
@@ -64,6 +74,7 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
   const [soBrasil, setSoBrasil] = useState(true) // padrão: esconde os outros países
   const [agora, setAgora] = useState<Date | null>(null)
   const [foco, setFoco] = useState<{ limites: [number, number][]; chave: number } | null>(null)
+  const [visao, setVisao] = useState<Visao>("tudo")
 
   const cfg = painel.config
   const origem = { lat: cfg.origem_lat, lng: cfg.origem_lng, nome: cfg.origem_nome }
@@ -86,23 +97,49 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
   const veic = useCallback((id: string | null | undefined) => painel.veiculos.find(v => v.id === id), [painel.veiculos])
   const dataDe = useCallback((e: EntEntrega) => e.chegada_prevista || viagemDe(e.viagem_id)?.saida_prevista || null, [viagemDe])
 
-  // entregas do período (até o dia da linha do tempo, se estiver usando)
-  const entregas = useMemo(() => painel.entregas.filter(e => {
+  // categoria de cada entrega: em rota (caminhão na estrada), programada (viagem marcada), a programar ou entregue
+  const catDe = useCallback((e: EntEntrega): Visao => {
+    if (e.status === "entregue") return "entregues"
+    const vg = viagemDe(e.viagem_id)
+    if (e.status === "em_rota" || vg?.status === "em_rota") return "em_rota"
+    if (e.status === "programada" || vg) return "programadas"
+    return "a_programar"
+  }, [viagemDe])
+
+  // entregas de cada visão (até o dia da linha do tempo, se estiver usando)
+  const filtrar = useCallback((vis: Visao) => painel.entregas.filter(e => {
     if (e.status === "cancelada") return false
+    const cat = catDe(e)
+    const naEstrada = viagemDe(e.viagem_id)?.status === "em_rota"
+    // em rota: é agora, não depende do período; mostra também as já entregues dessa viagem (✓)
+    if (vis === "em_rota") return cat === "em_rota" || (cat === "entregues" && naEstrada)
+    // entregues: olha para trás (últimos N dias)
+    if (vis === "entregues") {
+      if (cat !== "entregues") return false
+      const d = (e.entregue_em || dataDe(e) || "").slice(0, 10)
+      return !!d && d >= somarDias(ini, -totalDias) && d <= ini
+    }
+    if (vis === "tudo" && (cat === "em_rota" || (cat === "entregues" && naEstrada))) return true
+    if (vis !== "tudo" && cat !== vis) return false
     const d = dataDe(e)
-    if (!d) return false
+    if (!d) return cat === "a_programar" // a programar sem data também aparece
     if (e.status === "entregue" && d < ini) return false
     return d >= ini && d <= (dataCursor || fim)
-  }), [painel.entregas, dataDe, ini, fim, dataCursor])
+  }), [painel.entregas, catDe, viagemDe, dataDe, ini, fim, dataCursor, totalDias])
+  const contagem = useMemo(() => Object.fromEntries(VISOES.map(x => [x.v, filtrar(x.v).length])) as Record<Visao, number>, [filtrar])
+  const entregas = useMemo(() => filtrar(visao), [filtrar, visao])
+  // visões sem viagem (a programar / entregues): a lista da esquerda mostra as entregas
+  const listaDeEntregas = visao === "a_programar" || visao === "entregues"
 
   const viagens = useMemo(() => painel.viagens
     .filter(v => v.status !== "cancelada" && (v.status === "em_rota" || (v.saida_prevista <= (dataCursor || fim) && (v.retorno_previsto || v.saida_prevista) >= ini)))
+    .filter(v => visao === "tudo" ? true : visao === "em_rota" ? v.status === "em_rota" : visao === "programadas" ? v.status === "planejada" : false)
     .sort((a, b) => a.saida_prevista.localeCompare(b.saida_prevista))
     .map(v => {
       const paradas = painel.entregas.filter(e => e.viagem_id === v.id && e.status !== "cancelada").sort((a, b) => a.ordem - b.ordem)
       return { v, paradas, ufs: [...new Set(paradas.map(p => p.uf).filter(Boolean))] as string[] }
     })
-    .filter(x => !uf || x.ufs.includes(uf)), [painel.viagens, painel.entregas, ini, fim, dataCursor, uf])
+    .filter(x => !uf || x.ufs.includes(uf)), [painel.viagens, painel.entregas, ini, fim, dataCursor, uf, visao])
 
   const porUf = useMemo(() => {
     const m: Record<string, number> = {}
@@ -187,10 +224,11 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
         cor: e.status === "entregue" ? st.cor : e.status === "a_programar" ? st.cor : veic(vg?.veiculo_id)?.cor || "#f97316",
         rotulo: naSel ? String(daSelecionada!.paradas.findIndex(p => p.id === e.id) + 1) : e.status === "entregue" ? "✓" : "",
         destaque: !!naSel,
+        pequeno: !naSel && visao === "tudo" && e.status === "a_programar",
         popupHtml: `<div style="font:13px system-ui;min-width:180px"><b>${escaparHtml(e.destinatario)}</b><br/>${escaparHtml([e.cidade, e.uf].filter(Boolean).join(" - "))}${e.distancia_km != null ? ` · ${escaparHtml(formatarKm(e.distancia_km))}` : ""}<br/><span style="color:${st.cor};font-weight:600">${st.rotulo}</span> · ${escaparHtml(dataBR(dataDe(e)))}</div>`,
       }
     })
-  const caminhoes: CaminhaoMapa[] = painel.viagens
+  const caminhoes: CaminhaoMapa[] = (visao === "tudo" || visao === "em_rota" ? painel.viagens : [])
     .filter(v => v.ultima_lat != null && v.ultima_lng != null && (v.status === "em_rota" || posicaoRecente(v.ultima_posicao_em)))
     .map(v => ({ id: v.id, lat: v.ultima_lat!, lng: v.ultima_lng!, cor: veic(v.veiculo_id)?.cor || "#3b82f6", placa: veic(v.veiculo_id)?.placa || "Caminhão", recente: posicaoRecente(v.ultima_posicao_em) }))
 
@@ -221,13 +259,25 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
           {emRota > 0 && <span className="ml-2 inline-flex items-center gap-1.5 rounded-full bg-blue-500/20 px-2.5 py-1 text-xs font-semibold text-blue-300"><Radio className="h-3.5 w-3.5 animate-pulse" /> {emRota} em rota</span>}
         </div>
 
-        <div className={`pointer-events-auto flex gap-1 rounded-2xl p-1.5 ${vidro}`}>
+        <div className="pointer-events-auto flex flex-col items-center gap-2">
+        <div className={`flex flex-wrap justify-center gap-1 rounded-2xl p-1.5 ${vidro}`}>
+          {VISOES.map(x => (
+            <button key={x.v} onClick={() => { setVisao(x.v); focar(null) }} title={x.dica}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors ${visao === x.v ? "bg-white text-slate-900 shadow" : "text-slate-300 hover:bg-white/10"}`}>
+              <span className={`h-2.5 w-2.5 rounded-full ${x.v === "em_rota" && contagem.em_rota ? "animate-pulse" : ""}`} style={{ background: x.cor }} />
+              {x.r}
+              <span className={`rounded-full px-1.5 text-[11px] tabular-nums ${visao === x.v ? "bg-slate-900/10" : "bg-white/10"}`}>{contagem[x.v]}</span>
+            </button>
+          ))}
+        </div>
+        <div className={`flex gap-1 rounded-2xl p-1.5 ${vidro}`}>
           {PERIODOS.map(p => (
             <button key={p.v} onClick={() => { setPeriodo(p.v); setCursor(null); setTocando(false) }}
               className={`rounded-xl px-3 py-1.5 text-sm font-medium transition-colors ${periodo === p.v ? "bg-orange-500 text-white shadow" : "text-slate-300 hover:bg-white/10"}`}>
-              {p.r}
+              {visao === "entregues" ? `últimos ${p.r}` : p.r}
             </button>
           ))}
+        </div>
         </div>
 
         <div className={`pointer-events-auto flex gap-1 rounded-2xl p-1.5 ${vidro}`}>
@@ -249,11 +299,36 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
               <Indicador valor={kmTotal ? `${Math.round(kmTotal / 1000 * 10) / 10}k` : "—"} rotulo="km (ida e volta)" />
             </div>
             <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="text-sm font-semibold">{uf ? `Viagens por ${NOMES_UF[uf]}` : "Viagens"}</span>
+              <span className="text-sm font-semibold">
+                {listaDeEntregas ? `${VISOES.find(x => x.v === visao)!.r}${uf ? ` em ${NOMES_UF[uf]}` : ""}` : `${visao === "em_rota" ? "Caminhões em rota" : visao === "programadas" ? "Viagens programadas" : "Viagens"}${uf ? ` por ${NOMES_UF[uf]}` : ""}`}
+              </span>
               <button onClick={() => setEsqAberto(false)} className="text-slate-400 hover:text-white" title="Esconder"><PanelLeftClose className="h-4 w-4" /></button>
             </div>
             <div className="flex-1 space-y-2 overflow-y-auto px-3 pb-3">
-              {viagens.length === 0 && <p className="px-2 py-6 text-center text-sm text-slate-400">Nenhuma viagem neste período.</p>}
+              {listaDeEntregas && (
+                <>
+                  {entregas.filter(e => !uf || e.uf === uf).length === 0 && <p className="px-2 py-6 text-center text-sm text-slate-400">Nenhuma entrega aqui.</p>}
+                  {entregas.filter(e => !uf || e.uf === uf)
+                    .sort((a, b) => visao === "entregues"
+                      ? String(b.entregue_em || "").localeCompare(String(a.entregue_em || ""))
+                      : String(dataDe(a) || "9999").localeCompare(String(dataDe(b) || "9999")))
+                    .map(e => {
+                      const d = visao === "entregues" ? e.entregue_em : dataDe(e)
+                      return (
+                        <button key={e.id} onClick={() => e.lat != null && setFoco(f => ({ limites: [[e.lat!, e.lng!]], chave: (f?.chave || 0) + 1 }))}
+                          className="flex w-full items-start gap-2.5 rounded-xl bg-white/5 p-2.5 text-left transition-colors hover:bg-white/10">
+                          <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: STATUS_ENTREGA[e.status].cor }} />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-semibold">{e.destinatario}</div>
+                            <div className="truncate text-xs text-slate-400">{[e.cidade, e.uf].filter(Boolean).join(" - ") || "sem cidade"}{e.peso_kg ? ` · ${Number(e.peso_kg).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} kg` : ""}</div>
+                          </div>
+                          {d && <span className="shrink-0 text-[11px] text-slate-400">{visao === "entregues" ? "✓ " : ""}{dataBR(d)}</span>}
+                        </button>
+                      )
+                    })}
+                </>
+              )}
+              {!listaDeEntregas && viagens.length === 0 && <p className="px-2 py-6 text-center text-sm text-slate-400">{visao === "em_rota" ? "Nenhum caminhão na estrada agora." : "Nenhuma viagem neste período."}</p>}
               {viagens.map(({ v, paradas, ufs }) => {
                 const ve = veic(v.veiculo_id)
                 const ativa = selecionada === v.id
@@ -277,6 +352,21 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
                           {v.distancia_ida_km != null && <span className="text-[11px] text-slate-400">{formatarKm(v.distancia_ida_km)}</span>}
                           <span className="text-[11px] text-slate-500">· {paradas.length} parada(s)</span>
                         </div>
+                        {v.status === "em_rota" && (() => {
+                          const feitas = paradas.filter(p => p.status === "entregue").length
+                          const prox = paradas.find(p => p.status !== "entregue")
+                          return (
+                            <div className="mt-2 space-y-1">
+                              <div className="flex items-center gap-2 text-[11px]">
+                                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                                  <div className="h-full rounded-full" style={{ width: `${paradas.length ? (feitas / paradas.length) * 100 : 0}%`, background: STATUS_ENTREGA.entregue.cor }} />
+                                </div>
+                                <span className="shrink-0 font-semibold">{feitas}/{paradas.length} entregues</span>
+                              </div>
+                              <div className="truncate text-[11px] text-blue-300">{prox ? <>➜ indo para <b className="text-white">{prox.cidade || prox.destinatario}</b></> : "✓ todas entregues · voltando"}</div>
+                            </div>
+                          )
+                        })()}
                       </div>
                     </div>
                   </button>
@@ -317,8 +407,13 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
                   ))}
                 </div>
                 <div className="border-t border-white/10 px-4 py-3 text-[11px] text-slate-400 space-y-1">
-                  <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_ENTREGA.a_programar.cor }} /> a programar · <span className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_ENTREGA.entregue.cor }} /> entregue</div>
-                  <div>Rotas tracejadas andando = caminhão em rota · 🚚 posição ao vivo</div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: STATUS_ENTREGA.a_programar.cor }} /> a programar{visao === "tudo" ? " (pontinho)" : ""}</span>
+                    <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: STATUS_ENTREGA.entregue.cor }} /> entregue ✓</span>
+                    <span>com viagem: cor do caminhão</span>
+                  </div>
+                  <div>Rota tracejada andando = caminhão em rota · 🚚 posição ao vivo</div>
+                  <div className="text-slate-500">Use os botões do topo para ver cada situação separada.</div>
                 </div>
               </>
             )}
@@ -328,8 +423,8 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
         )}
       </div>
 
-      {/* BAIXO: linha do tempo */}
-      <div className="absolute inset-x-4 bottom-4 z-[1000] flex justify-center">
+      {/* BAIXO: linha do tempo (não vale para "em rota", que é agora, nem "entregues", que olha para trás) */}
+      <div className={`absolute inset-x-4 bottom-4 z-[1000] justify-center ${visao === "em_rota" || visao === "entregues" ? "hidden" : "flex"}`}>
         <div className={`flex w-full max-w-4xl items-center gap-4 rounded-2xl px-4 py-3 ${vidro}`}>
           <button onClick={() => { if (!tocando && cursor != null && cursor >= totalDias) setCursor(null); setTocando(t => !t) }}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg transition-transform hover:scale-105"
