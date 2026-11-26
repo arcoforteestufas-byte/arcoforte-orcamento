@@ -420,6 +420,40 @@ function ChipPrazo({ e, curto }: { e: EntEntrega; curto?: boolean }) {
   )
 }
 
+/** Distância em linha reta (km) */
+function kmLinhaReta(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371, rad = Math.PI / 180
+  const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(h))
+}
+
+/** "agora", "há 5 min", "há 2 h" */
+function haQuanto(iso: string | null | undefined, agora: number) {
+  if (!iso) return ""
+  const min = Math.max(0, Math.round((agora - new Date(iso).getTime()) / 60000))
+  if (min < 1) return "agora"
+  if (min < 60) return `há ${min} min`
+  const h = Math.floor(min / 60)
+  return h < 24 ? `há ${h} h${min % 60 ? ` ${min % 60} min` : ""}` : `há ${Math.floor(h / 24)} dia(s)`
+}
+
+const hora = (iso: string | null | undefined) => iso ? new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""
+
+/** Viagem em rota com as paradas na ordem, quantas já foram entregues e para onde o caminhão vai agora */
+type ViagemAoVivo = {
+  v: EntViagem
+  cor: string
+  placa: string
+  motorista: string
+  paradas: EntEntrega[]
+  entregues: number
+  proxima: EntEntrega | null
+  /** km em linha reta do caminhão até a próxima parada */
+  kmProxima: number | null
+  sinal: "ao_vivo" | "fraco" | "sem"
+}
+
 const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
 function AbaMapa({ painel, dataDaEntrega, onEditar }: {
@@ -435,6 +469,14 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
   const [mostrarEntregues, setMostrarEntregues] = useState(false)
   const [mostrarAProgramar, setMostrarAProgramar] = useState(true)
   const [filtroLista, setFiltroLista] = useState<"todas" | "com" | "sem">("todas")
+  // acompanhar uma viagem em rota (o mapa e a lista mostram só ela)
+  const [acompanhar, setAcompanhar] = useState<string | null>(null)
+  const [foco, setFoco] = useState<{ limites: [number, number][]; chave: number } | null>(null)
+  const [agora, setAgora] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setAgora(Date.now()), 30000)
+    return () => clearInterval(t)
+  }, [])
 
   const veic = (id: string | null | undefined) => painel.veiculos.find(v => v.id === id)
   const mot = (id: string | null | undefined) => painel.motoristas.find(m => m.id === id)
@@ -501,6 +543,69 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
 
   const semPonto = filtradas.filter(e => e.lat == null || e.lng == null).length
 
+  // ---------- AO VIVO: viagens em rota ----------
+  const aoVivo: ViagemAoVivo[] = painel.viagens
+    .filter(v => v.status === "em_rota")
+    .map(v => {
+      const ve = veic(v.veiculo_id)
+      const paradas = painel.entregas.filter(e => e.viagem_id === v.id && e.status !== "cancelada").sort((a, b) => a.ordem - b.ordem)
+      const proxima = paradas.find(e => e.status !== "entregue") || null
+      const temPos = v.ultima_lat != null && v.ultima_lng != null
+      const kmProxima = temPos && proxima?.lat != null && proxima.lng != null
+        ? Math.round(kmLinhaReta({ lat: v.ultima_lat!, lng: v.ultima_lng! }, { lat: proxima.lat, lng: proxima.lng }))
+        : null
+      const idadeMin = v.ultima_posicao_em ? (agora - new Date(v.ultima_posicao_em).getTime()) / 60000 : Infinity
+      return {
+        v, cor: ve?.cor || "#2563eb", placa: ve?.placa || "Caminhão", motorista: mot(v.motorista_id)?.nome || "",
+        paradas, entregues: paradas.filter(e => e.status === "entregue").length, proxima, kmProxima,
+        sinal: !temPos ? "sem" : idadeMin <= 15 ? "ao_vivo" : "fraco",
+      } satisfies ViagemAoVivo
+    })
+    .sort((a, b) => a.placa.localeCompare(b.placa))
+  const sel = aoVivo.find(a => a.v.id === acompanhar) || null
+
+  const escolher = (id: string | null) => {
+    setAcompanhar(id)
+    const a = aoVivo.find(x => x.v.id === id)
+    if (!a) { setFoco(f => ({ limites: [], chave: (f?.chave || 0) + 1 })); return }
+    const lim: [number, number][] = a.paradas.filter(e => e.lat != null && e.lng != null).map(e => [e.lat!, e.lng!])
+    if (a.v.ultima_lat != null && a.v.ultima_lng != null) lim.push([a.v.ultima_lat, a.v.ultima_lng])
+    setFoco(f => ({ limites: lim, chave: (f?.chave || 0) + 1 }))
+  }
+
+  // modo acompanhar: só a viagem escolhida, com as paradas numeradas
+  const pontosAcomp: PontoMapa[] = !sel ? [] : sel.paradas.filter(e => e.lat != null && e.lng != null).map((e, i) => {
+    const entregue = e.status === "entregue"
+    const ehProxima = sel.proxima?.id === e.id
+    return {
+      id: e.id, lat: e.lat!, lng: e.lng!,
+      cor: entregue ? STATUS_ENTREGA.entregue.cor : sel.cor,
+      rotulo: entregue ? "✓" : String(i + 1),
+      forma: ehProxima ? undefined : "parada",
+      destaque: ehProxima,
+      popupHtml: `<div style="font:13px system-ui;min-width:180px"><b>${i + 1}. ${escaparHtml(e.destinatario)}</b><br/>${escaparHtml([e.cidade, e.uf].filter(Boolean).join(" - "))}<br/>` +
+        (entregue ? `<span style="color:${STATUS_ENTREGA.entregue.cor};font-weight:600">✓ Entregue${e.entregue_em ? " às " + escaparHtml(hora(e.entregue_em)) : ""}</span>`
+          : ehProxima ? `<span style="color:${sel.cor};font-weight:700">➜ Próxima parada${sel.kmProxima != null ? " · ~" + sel.kmProxima + " km" : ""}</span>` : "Aguardando") + "</div>",
+    }
+  })
+
+  // caminhão → próxima parada (linha tracejada animada): "para onde está indo agora"
+  const linhasAoVivo: LinhaMapa[] = (sel ? [sel] : aoVivo)
+    .filter(a => a.v.ultima_lat != null && a.v.ultima_lng != null && a.proxima?.lat != null && a.proxima.lng != null)
+    .map(a => ({ id: "prox-" + a.v.id, pontos: [[a.v.ultima_lat!, a.v.ultima_lng!], [a.proxima!.lat!, a.proxima!.lng!]], cor: a.cor, animada: true, espessura: sel ? 4 : 3, opacidade: 0.9 }))
+  // rota planejada da viagem acompanhada (fica de fundo)
+  if (sel?.v.rota?.length) linhasAoVivo.unshift({ id: "rota-" + sel.v.id, pontos: sel.v.rota, cor: sel.cor, espessura: 4, opacidade: 0.35 })
+
+  const popupCaminhao = (a: ViagemAoVivo | undefined) => !a ? "" :
+    `<br/><b>${a.entregues} de ${a.paradas.length}</b> entregue(s)<br/>` +
+    (a.proxima ? `➜ Indo para <b>${escaparHtml(a.proxima.destinatario)}</b><br/>${escaparHtml([a.proxima.cidade, a.proxima.uf].filter(Boolean).join(" - "))}${a.kmProxima != null ? " · ~" + a.kmProxima + " km" : ""}<br/>` : "Todas entregues · voltando<br/>")
+  const caminhoesMostrados = caminhoes
+    .filter(c => !sel || c.id === sel.v.id)
+    .map(c => {
+      const a = aoVivo.find(x => x.v.id === c.id)
+      return a ? { ...c, popupHtml: (c.popupHtml || "").replace("<a href", popupCaminhao(a) + "<a href") } : c
+    })
+
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
       <div className="space-y-3">
@@ -526,19 +631,125 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
           <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" className="accent-[#d97021]" checked={mostrarAProgramar} onChange={e => setMostrarAProgramar(e.target.checked)} /> A programar</label>
           <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" className="accent-[#d97021]" checked={mostrarEntregues} onChange={e => setMostrarEntregues(e.target.checked)} /> Entregues</label>
         </div>
-        <Mapa pontos={pontos} caminhoes={caminhoes} origem={origem} altura="min(68vh, 640px)"
-          coresUf={Object.fromEntries(Object.entries(porUf).map(([u, n]) => [u, corPorQuantidade(n)!]))}
+        {aoVivo.length > 0 && (
+          <div className="rounded-2xl border bg-background p-3 shadow-sm">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-2 text-sm font-semibold">
+                <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>
+                Ao vivo · {aoVivo.length} caminhão(ões) em rota
+              </span>
+              {sel && <button className="text-xs font-medium text-muted-foreground hover:text-foreground" onClick={() => escolher(null)}>ver todas as entregas</button>}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-3">
+              {aoVivo.map(a => {
+                const ativo = sel?.v.id === a.v.id
+                const pct = a.paradas.length ? Math.round((a.entregues / a.paradas.length) * 100) : 0
+                return (
+                  <button key={a.v.id} type="button" onClick={() => escolher(ativo ? null : a.v.id)}
+                    className={cn("relative overflow-hidden rounded-xl border py-2.5 pl-4 pr-3 text-left text-sm transition hover:shadow-md",
+                      ativo ? "border-transparent ring-2" : "hover:border-slate-300")}
+                    style={ativo ? { boxShadow: `0 0 0 2px ${a.cor}` } : undefined}>
+                    <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: a.cor }} />
+                    <div className="flex items-center gap-2">
+                      <Truck className="h-4 w-4 shrink-0" style={{ color: a.cor }} />
+                      <span className="font-bold">{a.placa}</span>
+                      {a.motorista && <span className="truncate text-xs text-muted-foreground">{a.motorista}</span>}
+                      <span className={cn("ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                        a.sinal === "ao_vivo" ? "bg-emerald-50 text-emerald-700" : a.sinal === "fraco" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-500")}
+                        title={a.v.ultima_posicao_em ? `Última posição às ${hora(a.v.ultima_posicao_em)}` : "O motorista ainda não abriu o link da viagem"}>
+                        <Radio className="h-3 w-3" />
+                        {a.sinal === "sem" ? "sem GPS" : a.sinal === "ao_vivo" ? haQuanto(a.v.ultima_posicao_em, agora) : `sem sinal ${haQuanto(a.v.ultima_posicao_em, agora)}`}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 text-xs">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: STATUS_ENTREGA.entregue.cor }} />
+                      </div>
+                      <span className="shrink-0 font-medium">{a.entregues} de {a.paradas.length} entregue(s)</span>
+                    </div>
+                    <div className="mt-1.5 truncate text-xs">
+                      {a.proxima ? (
+                        <><span className="font-semibold" style={{ color: a.cor }}>➜ Indo para</span> <b>{a.proxima.destinatario}</b>
+                          <span className="text-muted-foreground"> · {[a.proxima.cidade, a.proxima.uf].filter(Boolean).join(" - ")}{a.kmProxima != null ? ` · ~${a.kmProxima} km` : ""}</span></>
+                      ) : <span className="font-semibold text-emerald-700">✓ Todas entregues · voltando</span>}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+        <Mapa pontos={sel ? pontosAcomp : pontos} caminhoes={caminhoesMostrados} linhas={linhasAoVivo} origem={origem} altura="min(68vh, 640px)" foco={foco}
+          coresUf={sel ? undefined : Object.fromEntries(Object.entries(porUf).map(([u, n]) => [u, corPorQuantidade(n)!]))}
           dicaUf={Object.fromEntries(Object.entries(porUf).map(([u, n]) => [u, `${n} entrega(s)`]))}
           ufSelecionada={uf} onUf={u => setUf(atual => atual === u ? null : u)} />
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_ENTREGA.a_programar.cor }} /> A programar</span>
           <span>Programadas / em rota: cor do caminhão</span>
           <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_ENTREGA.entregue.cor }} /> Entregue</span>
-          <span>🚚 posição ao vivo (atualiza a cada 30 s)</span>
+          <span>🚚 posição ao vivo (atualiza a cada 30 s) · linha tracejada = para onde o caminhão está indo agora</span>
           {semPonto > 0 && <span className="text-amber-700">{semPonto} entrega(s) sem local no mapa</span>}
         </div>
       </div>
 
+      {sel ? (
+      <div className="flex flex-col overflow-hidden rounded-2xl border bg-background shadow-sm xl:max-h-[calc(68vh+120px)]">
+        <div className="border-b px-4 py-3" style={{ background: `linear-gradient(90deg, ${sel.cor}1f, transparent)` }}>
+          <div className="flex items-center gap-2">
+            <Truck className="h-5 w-5" style={{ color: sel.cor }} />
+            <span className="text-base font-bold">{sel.placa}</span>
+            <span className="truncate text-sm text-muted-foreground">{sel.motorista}</span>
+            <button className="ml-auto rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" title="Parar de acompanhar" onClick={() => escolher(null)}><X className="h-4 w-4" /></button>
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {sel.v.titulo ? `${sel.v.titulo} · ` : ""}saiu {sel.v.saida_real ? `às ${hora(sel.v.saida_real)}` : formatarData(sel.v.saida_prevista)}
+            {" · "}{sel.v.ultima_posicao_em ? `posição ${haQuanto(sel.v.ultima_posicao_em, agora)}` : "sem GPS"}
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-xs">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
+              <div className="h-full rounded-full" style={{ width: `${sel.paradas.length ? (sel.entregues / sel.paradas.length) * 100 : 0}%`, background: STATUS_ENTREGA.entregue.cor }} />
+            </div>
+            <b>{sel.entregues} de {sel.paradas.length}</b>
+          </div>
+        </div>
+        <ol className="flex-1 overflow-y-auto p-3">
+          <li className="relative flex gap-3 pb-3">
+            <span className="absolute left-[11px] top-6 bottom-0 border-l-2 border-dotted border-slate-300" />
+            <span className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[3px] border-slate-700 bg-white" />
+            <div className="text-sm"><div className="font-medium">{origem.nome}</div><div className="text-xs text-muted-foreground">Saída</div></div>
+          </li>
+          {sel.paradas.map((e, i) => {
+            const entregue = e.status === "entregue"
+            const ehProxima = sel.proxima?.id === e.id
+            const ultima = i === sel.paradas.length - 1
+            return (
+              <li key={e.id} className="relative flex gap-3 pb-3">
+                {!ultima && <span className={cn("absolute left-[11px] top-6 bottom-0 border-l-2", entregue ? "border-emerald-500" : "border-dotted border-slate-300")} />}
+                <span className={cn("z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                  entregue ? "bg-emerald-600 text-white" : ehProxima ? "text-white ring-4 ring-offset-0" : "border-[3px] bg-white text-slate-700")}
+                  style={entregue ? undefined : ehProxima ? { background: sel.cor, boxShadow: `0 0 0 4px ${sel.cor}33` } : { borderColor: sel.cor }}>
+                  {entregue ? "✓" : i + 1}
+                </span>
+                <div className={cn("min-w-0 flex-1 rounded-lg text-sm", ehProxima && "-mx-1 -my-1 px-2 py-1.5")} style={ehProxima ? { background: `${sel.cor}14` } : undefined}>
+                  <div className={cn("truncate font-medium", entregue && "text-muted-foreground line-through decoration-slate-300")} title={e.destinatario}>{e.destinatario}</div>
+                  <div className="truncate text-xs text-muted-foreground">{[e.cidade, e.uf].filter(Boolean).join(" - ") || "sem cidade"}{e.peso_kg ? ` · ${Number(e.peso_kg).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} kg` : ""}</div>
+                  <div className="mt-0.5 text-xs">
+                    {entregue ? <span className="font-medium text-emerald-700">✓ Entregue{e.entregue_em ? ` às ${hora(e.entregue_em)}` : ""}</span>
+                      : ehProxima ? <span className="font-semibold" style={{ color: sel.cor }}>➜ Próxima parada{sel.kmProxima != null ? ` · ~${sel.kmProxima} km em linha reta` : ""}</span>
+                      : <span className="text-muted-foreground">Aguardando</span>}
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+        <div className="border-t p-3">
+          <Link href={`/entregas/viagem/${sel.v.id}`} className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted">
+            Abrir a viagem <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+      ) : (
       <div className="flex flex-col overflow-hidden rounded-2xl border bg-background shadow-sm xl:max-h-[calc(68vh+120px)]">
         <div className="space-y-2 border-b bg-muted/30 px-4 py-3">
           <div className="flex items-baseline justify-between gap-2">
@@ -612,6 +823,7 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
           })}
         </div>
       </div>
+      )}
     </div>
   )
 }
