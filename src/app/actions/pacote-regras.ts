@@ -8,7 +8,7 @@
  * O pacote aplicado (e o mapa código R → id do banco) fica guardado no Storage,
  * bucket PRIVADO "pacote-regras" (atual.json + historico/).
  */
-import { createClient, createAdminClient } from "@/utils/supabase/server"
+import { createClient, createAdminClient, obterUsuario } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { Produto } from "@/utils/engine"
 import {
@@ -91,7 +91,7 @@ function ambienteAtual(): string {
 
 async function exigirAdministrador() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   if (!user) throw new Error("Você precisa estar autenticado.")
   const cargo = user.user_metadata?.cargo
   const perfil = user.user_metadata?.perfil

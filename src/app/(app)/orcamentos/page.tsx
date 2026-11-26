@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server"
+import { createClient, obterUsuario } from "@/utils/supabase/server"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -14,7 +14,7 @@ export const revalidate = 0
 export default async function OrcamentosPage() {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   const isAdministrador = user?.user_metadata?.cargo === 'Administrador'
 
   // Busca os orçamentos no banco com os dados do cliente

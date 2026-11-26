@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FileText, Users, Package, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { createClient } from "@/utils/supabase/server"
+import { createClient, obterUsuario } from "@/utils/supabase/server"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -10,7 +10,7 @@ export const revalidate = 0
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   const cargo = user?.user_metadata?.cargo || 'Visualizador'
   const isAdministrador = cargo === 'Administrador'
 

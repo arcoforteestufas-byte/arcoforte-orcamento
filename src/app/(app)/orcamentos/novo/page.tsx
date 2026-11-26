@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from "@/utils/supabase/server"
+import { createAdminClient, obterUsuario } from "@/utils/supabase/server"
 import { OrcamentoForm } from "./orcamento-form"
 import { anexarExplicacoes } from "@/lib/explicacoes-regras"
 
@@ -7,10 +7,9 @@ export const fetchCache = 'force-no-store'
 export const revalidate = 0
 
 export default async function NovoOrcamentoPage() {
-  const supabase = await createClient()
   const supabaseAdmin = await createAdminClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   const cargo = user?.user_metadata?.cargo || 'Visualizador'
   const isAdministrador = cargo === 'Administrador'
 
@@ -25,12 +24,6 @@ export default async function NovoOrcamentoPage() {
   // inclusive parâmetros criados pelo Sincronizador ou pelo Pacote de Regras.
   // Agora os parâmetros vêm só do banco, e são mantidos pela tela Configurações → Pacote de Regras.
 
-  console.log('DEBUG VERCEL:', {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    user: (await supabase.auth.getUser()).data.user?.id,
-    parametrosCount: parametrosDef?.length,
-    error
-  })
 
   const { data: produtos } = await supabaseAdmin
     .from('produtos')

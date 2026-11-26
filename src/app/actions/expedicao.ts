@@ -5,7 +5,7 @@
 // Quem confere não pode ser quem separou. Falta de produto é registrada com motivo.
 
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/utils/supabase/server"
+import { createClient, obterUsuario } from "@/utils/supabase/server"
 import {
   chavesDosItens, type EntItemCarga, type EntregaExpedicao, type SepItem, type Separacao,
 } from "@/lib/entregas-types"
@@ -20,7 +20,7 @@ function podeSeparar(cargo: unknown) {
 
 async function sessao() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   if (!user) return { supabase, user: null, nome: "", gerente: false, erro: "Faça login novamente." }
   const cargo = user.user_metadata?.cargo
   const nome = String(user.user_metadata?.nome || user.email?.split("@")[0] || "Usuário")

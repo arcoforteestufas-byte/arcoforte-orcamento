@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/utils/supabase/server"
+import { createClient, obterUsuario } from "@/utils/supabase/server"
 import * as XLSX from "xlsx"
 import { revalidatePath } from "next/cache"
 
@@ -40,7 +40,7 @@ function acharColunas(cabecalho: string[]): Colunas {
 export async function importarProdutosXLSX(formData: FormData) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await obterUsuario()
     if (!user) throw new Error("Usuário não autenticado")
 
     const file = formData.get('file') as File

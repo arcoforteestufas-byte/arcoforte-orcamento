@@ -1,12 +1,11 @@
-import { createClient } from "@/utils/supabase/server"
+import { obterUsuario } from "@/utils/supabase/server"
 import { CATALOGO3D_HTML } from "@/lib/estufa3d/catalogo-html"
 
 export const dynamic = "force-dynamic"
 
 // Catálogo de peças 3D: só para quem está logado no sistema (não fica público).
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   if (!user) {
     return new Response("Não autorizado", { status: 401 })
   }

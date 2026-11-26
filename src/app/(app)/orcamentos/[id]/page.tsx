@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server"
+import { createClient, obterUsuario } from "@/utils/supabase/server"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,7 +14,7 @@ export default async function OrcamentoViewPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const supabase = await createClient()
   // Logística só consulta (abre o orçamento a partir de um lead ganho em Entregas)
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   const somenteLeitura = user?.user_metadata?.cargo === 'Logística'
 
   // 1. Fetch Orçamento

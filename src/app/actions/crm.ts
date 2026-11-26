@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/utils/supabase/server"
+import { createClient, obterUsuario } from "@/utils/supabase/server"
 import { getCamposFaltando } from "@/utils/proposta-requisitos"
 import {
   CONFIG_PADRAO,
@@ -37,7 +37,7 @@ type Supa = Awaited<ReturnType<typeof createClient>>
 
 async function sessao() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   return { supabase, user }
 }
 

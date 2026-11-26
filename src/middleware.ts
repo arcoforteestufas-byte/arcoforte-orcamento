@@ -1,28 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 
 export async function middleware(request: NextRequest) {
-  // Atualiza os cookies da sessão
-  const response = await updateSession(request)
-
-  // Checar autenticação
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-      },
-    }
-  )
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Atualiza os cookies da sessão e confere o usuário (uma conferência só, local)
+  const { response, user } = await updateSession(request)
 
   const isLoginPage = request.nextUrl.pathname === '/login'
   // Link do motorista (roteiro + localização): público, protegido pelo código da viagem

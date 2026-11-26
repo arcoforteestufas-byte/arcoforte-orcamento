@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/utils/supabase/server"
+import { createClient, obterUsuario } from "@/utils/supabase/server"
 import { acharCidade, cidadePorIbge, cidadesDaUf, linhaReta, rotaPorEstrada } from "@/lib/geo/geo-server"
 import {
   CONFIG_ENT_PADRAO, classificarPrazo,
@@ -15,7 +15,7 @@ type Supa = Awaited<ReturnType<typeof createClient>>
 
 async function sessao() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   return { supabase, user }
 }
 

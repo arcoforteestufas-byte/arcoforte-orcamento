@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createAdminClient, createClient } from "@/utils/supabase/server"
+import { createAdminClient, createClient, obterUsuario } from "@/utils/supabase/server"
 import type { PrazoAlteracao } from "@/lib/entregas-types"
 
 const BUCKET = "contratos"
@@ -14,7 +14,7 @@ const hojeSP = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_P
 
 async function exigirAdmin() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   if (!user) return { supabase, user: null, erro: "Faça login novamente." }
   if (user.user_metadata?.cargo !== "Administrador") {
     return { supabase, user: null, erro: "O prazo de entrega de uma venda fechada é contratual: só o administrador pode alterar." }
@@ -113,7 +113,7 @@ export async function alterarPrazoContratual(dados: {
 /** Histórico das mudanças de prazo de um lead (vazio se a migração ainda não rodou) */
 export async function historicoPrazo(leadId: string): Promise<PrazoAlteracao[]> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   if (!user) return []
   const { data, error } = await supabase.from("crm_prazo_alteracoes").select("*").eq("lead_id", leadId).order("criado_em", { ascending: false })
   if (error || !data?.length) return []
@@ -131,7 +131,7 @@ export async function historicoPrazo(leadId: string): Promise<PrazoAlteracao[]> 
 /** Link temporário (5 min) para abrir o anexo. Só quem enxerga o registro (regras do lead) consegue. */
 export async function linkAnexoPrazo(id: string): Promise<{ ok: true; url: string } | { ok: false; erro: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   if (!user) return { ok: false, erro: "Faça login novamente." }
   const { data } = await supabase.from("crm_prazo_alteracoes").select("anexo_caminho").eq("id", id).maybeSingle()
   if (!data?.anexo_caminho) return { ok: false, erro: "Anexo não encontrado." }

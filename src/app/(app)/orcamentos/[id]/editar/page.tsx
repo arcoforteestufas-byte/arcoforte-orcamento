@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from "@/utils/supabase/server"
+import { createAdminClient, obterUsuario } from "@/utils/supabase/server"
 import { notFound } from "next/navigation"
 import { OrcamentoForm } from "../../novo/orcamento-form"
 import { ItemOrcamento } from "@/utils/engine"
@@ -13,10 +13,9 @@ export const revalidate = 0
 
 export default async function EditarOrcamentoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
   const supabaseAdmin = await createAdminClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   const cargo = user?.user_metadata?.cargo || 'Visualizador'
   const isAdministrador = cargo === 'Administrador'
 

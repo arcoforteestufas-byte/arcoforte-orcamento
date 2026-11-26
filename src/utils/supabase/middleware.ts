@@ -31,8 +31,11 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Atualizar sessão
-  await supabase.auth.getUser()
+  // Atualiza a sessão (renova o token se venceu) e confere a assinatura do token.
+  // Com chaves assimétricas (ES256) a conferência é local, sem ir ao servidor do Supabase.
+  const { data } = await supabase.auth.getClaims()
+  const c = data?.claims
+  const user = c?.sub ? { id: c.sub, email: c.email, user_metadata: (c.user_metadata || {}) as { cargo?: string; [k: string]: unknown } } : null
 
-  return supabaseResponse
+  return { response: supabaseResponse, user }
 }

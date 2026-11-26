@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/utils/supabase/server"
+import { obterUsuario } from "@/utils/supabase/server"
 import { lerPedidoSensioPdf } from "@/lib/pedido-sensio"
 
 const LIMITE = 4 * 1024 * 1024 // a Vercel aceita até ~4,5 MB por requisição
@@ -7,8 +7,7 @@ const LIMITE = 4 * 1024 * 1024 // a Vercel aceita até ~4,5 MB por requisição
 /** Lê o PDF do pedido do Sensio e devolve os produtos (para a entrega) */
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await obterUsuario()
     if (!user) return NextResponse.json({ erro: "Faça login novamente." }, { status: 401 })
 
     const form = await req.formData()

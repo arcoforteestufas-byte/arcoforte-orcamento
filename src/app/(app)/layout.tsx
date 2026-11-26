@@ -4,15 +4,14 @@ import { ChatWidget } from "@/components/chat-widget"
 import { Conteudo } from "@/components/layout/conteudo"
 import { SettingsProvider } from "@/contexts/SettingsContext"
 
-import { createClient } from "@/utils/supabase/server"
+import { obterUsuario } from "@/utils/supabase/server"
 
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
 
   return (
     <SettingsProvider>

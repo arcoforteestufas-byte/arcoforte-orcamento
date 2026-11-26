@@ -1,12 +1,12 @@
 "use server"
 
-import { createClient } from "@/utils/supabase/server"
+import { createClient, obterUsuario } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 
 export async function excluirProdutos(ids: string[]) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await obterUsuario()
     if (!user) throw new Error("Usuário não autenticado")
 
     // Buscar todos os produtos que o usuário quer excluir para checar o código (em lotes)

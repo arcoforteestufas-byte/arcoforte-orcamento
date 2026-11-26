@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Images } from "lucide-react"
-import { createClient } from "@/utils/supabase/server"
+import { createClient, obterUsuario } from "@/utils/supabase/server"
 import { buttonVariants } from "@/components/ui/button"
 import { configDoOrcamento, hashDaConfig } from "@/lib/estufa3d/config"
 import { Estufa3DViewer, type OpcaoOrcamento3D } from "./viewer"
@@ -13,7 +13,7 @@ const CAMPOS = "id, criado_em, parametros_utilizados, clientes ( nome )"
 export default async function CroquisPage({ searchParams }: { searchParams: Promise<{ orc?: string }> }) {
   const { orc } = await searchParams
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   const cargo = user?.user_metadata?.cargo || "Visualizador"
   const podeSalvar = cargo !== "Logística" && cargo !== "Visualizador"
 

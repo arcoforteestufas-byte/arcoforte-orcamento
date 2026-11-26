@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server"
+import { createClient, obterUsuario } from "@/utils/supabase/server"
 import { UploadModal } from "../upload-modal"
 import { CroquisGallery } from "../gallery"
 import Link from "next/link"
@@ -11,7 +11,7 @@ export const revalidate = 0
 export default async function CroquisPage() {
   const supabase = await createClient()
   
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   const cargo = user?.user_metadata?.cargo || 'Visualizador'
   const isAdministrador = cargo === 'Administrador'
 

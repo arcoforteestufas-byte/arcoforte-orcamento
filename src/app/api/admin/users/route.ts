@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import { createClient as createSessionClient } from '@/utils/supabase/server'
+import { obterUsuario } from '@/utils/supabase/server'
 
 // Create a Supabase client with the Service Role Key for admin tasks
 const getSupabaseAdmin = () => {
@@ -17,8 +17,7 @@ const getSupabaseAdmin = () => {
 
 // Só administrador usa esta rota (ela usa a chave de serviço e muda cargos/senhas)
 async function negarSeNaoAdmin() {
-  const supabase = await createSessionClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await obterUsuario()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   if (user.user_metadata?.cargo !== 'Administrador') return NextResponse.json({ error: 'Apenas administradores' }, { status: 403 })
   return null

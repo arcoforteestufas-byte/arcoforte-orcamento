@@ -2,7 +2,7 @@
 
 import fs from "fs/promises"
 import path from "path"
-import { createClient, createAdminClient } from "@/utils/supabase/server"
+import { createClient, createAdminClient, obterUsuario } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 
 const PATH_MANUAL_HUMANO = path.join(process.cwd(), "docs", "manual-humano.md")
@@ -290,7 +290,7 @@ export async function salvarManualOficial(
 ) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await obterUsuario()
 
     if (!user) {
       throw new Error("Você precisa estar autenticado para salvar a documentação oficial.")
