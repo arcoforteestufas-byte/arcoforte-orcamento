@@ -100,8 +100,10 @@ function anelMascara(): [number, number][][] {
 export function Mapa({
   pontos = [], caminhoes = [], linhas = [], altura = 480, pontoEditavel, onMover, ajustarAoMudar = true, centralizar = 0,
   coresUf, dicaUf, onUf, ufSelecionada, origem, className = "",
-  tema = "claro", onLinha, onLinhaHover, onPonto, estiloMapa = "estados", foco, ajustarInicial = true, soBrasil = true,
+  tema = "claro", onLinha, onLinhaHover, onPonto, estiloMapa = "estados", foco, ajustarInicial = true, soBrasil = true, onCaminhao,
 }: {
+  /** clique no caminhão (usa CaminhaoMapa.id); com ele, o caminhão não abre o balão */
+  onCaminhao?: (id: string) => void
   /** true (padrão) = esconde os outros países e o oceano, mostra só o Brasil */
   soBrasil?: boolean
   tema?: TemaMapa
@@ -141,8 +143,8 @@ export function Mapa({
   const ruasRef = useRef<Leaflet.TileLayer | null>(null)
   const editRef = useRef<Leaflet.Marker | null>(null)
   const mascaraRef = useRef<Leaflet.Polygon | null>(null)
-  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, onPonto, soBrasil, estiloMapa })
-  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, onPonto, soBrasil, estiloMapa }
+  const props = useRef({ onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, onPonto, soBrasil, estiloMapa, onCaminhao })
+  props.current = { onMover, onUf, coresUf, dicaUf, ufSelecionada, tema, onLinha, onLinhaHover, onPonto, soBrasil, estiloMapa, onCaminhao }
   const ajustouRef = useRef(!ajustarInicial)
   const chaveAjusteRef = useRef("")
   const centralizarRef = useRef(0)
@@ -297,7 +299,11 @@ export function Mapa({
         popupAnchor: [0, -30],
       })
       const m = L.marker([c.lat, c.lng], { icon: icone, zIndexOffset: 1000 }).addTo(camada)
-      if (c.popupHtml) m.bindPopup(c.popupHtml)
+      if (props.current.onCaminhao) {
+        const id = c.id
+        m.on("click", () => props.current.onCaminhao?.(id))
+        if (c.popupHtml) m.bindTooltip(c.popupHtml, { direction: "top", offset: [0, -30] })
+      } else if (c.popupHtml) m.bindPopup(c.popupHtml)
       limites.push([c.lat, c.lng])
     }
 
@@ -459,7 +465,7 @@ export function Mapa({
   const assinaturaRef = useRef("")
   useEffect(() => {
     const assinatura = JSON.stringify([pontos, linhas, caminhoes, origem, coresUf, dicaUf, ufSelecionada, tema, estiloMapa,
-      pontoEditavel, centralizar, foco?.chave, ajustarAoMudar, !!onPonto, !!onLinha])
+      pontoEditavel, centralizar, foco?.chave, ajustarAoMudar, !!onPonto, !!onLinha, !!onCaminhao])
     if (assinatura === assinaturaRef.current) return
     assinaturaRef.current = assinatura
     desenhar()

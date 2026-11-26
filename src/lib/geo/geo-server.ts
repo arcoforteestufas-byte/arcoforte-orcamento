@@ -32,6 +32,17 @@ export function acharCidade(nome: string | null | undefined, uf: string | null |
   return daUf.find(c => normalizar(c.nome) === n) || daUf.find(c => normalizar(c.nome).startsWith(n)) || null
 }
 
+/** Cidade mais próxima de uma posição (ex.: onde o caminhão está), com a distância até o centro dela */
+export function cidadeMaisProxima(lat: number, lng: number): { cidade: Cidade; km: number } | null {
+  let melhor: Cidade | null = null, menor = Infinity
+  const cos = Math.cos((lat * Math.PI) / 180)
+  for (const c of LISTA) {
+    const d = (c.lat - lat) ** 2 + ((c.lng - lng) * cos) ** 2 // comparação rápida; a distância certa vem depois
+    if (d < menor) { menor = d; melhor = c }
+  }
+  return melhor ? { cidade: melhor, km: Math.round(linhaReta({ lat, lng }, melhor)) } : null
+}
+
 /** Distância em linha reta (km) */
 export function linhaReta(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const R = 6371

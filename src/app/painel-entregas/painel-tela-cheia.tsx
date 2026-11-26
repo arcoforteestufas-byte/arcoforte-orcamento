@@ -30,6 +30,15 @@ function dataBR(iso: string | null | undefined, longo = false) {
     : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
 }
 
+/** "agora", "há 5 min", "há 2 h" */
+function haQuanto(iso: string, agora: number) {
+  const min = Math.max(0, Math.round((agora - new Date(iso).getTime()) / 60000))
+  if (min < 1) return "agora"
+  if (min < 60) return `há ${min} min`
+  const h = Math.floor(min / 60)
+  return h < 24 ? `há ${h} h` : `há ${Math.floor(h / 24)} dia(s)`
+}
+
 const PERIODOS = [
   { v: "7", r: "7 dias", dias: 7 },
   { v: "30", r: "30 dias", dias: 30 },
@@ -160,6 +169,12 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
     setFoco(f => ({ limites: x ? rotaDe(x.v, x.paradas) : [], chave: (f?.chave || 0) + 1 }))
   }, [viagens, rotaDe])
 
+  // leva o mapa até o caminhão
+  const irAoCaminhao = (v: EntViagem) => {
+    if (v.ultima_lat == null || v.ultima_lng == null) return
+    setFoco(f => ({ limites: [[v.ultima_lat!, v.ultima_lng!]], chave: (f?.chave || 0) + 1 }))
+  }
+
   // linha do tempo tocando: avança um dia a cada 0,7 s
   useEffect(() => {
     if (!tocando) return
@@ -231,7 +246,10 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
     })
   const caminhoes: CaminhaoMapa[] = (visao === "tudo" || visao === "em_rota" ? painel.viagens : [])
     .filter(v => v.ultima_lat != null && v.ultima_lng != null && (v.status === "em_rota" || posicaoRecente(v.ultima_posicao_em)))
-    .map(v => ({ id: v.id, lat: v.ultima_lat!, lng: v.ultima_lng!, cor: veic(v.veiculo_id)?.cor || "#3b82f6", placa: veic(v.veiculo_id)?.placa || "Caminhão", recente: posicaoRecente(v.ultima_posicao_em) }))
+    .map(v => ({
+      id: v.id, lat: v.ultima_lat!, lng: v.ultima_lng!, cor: veic(v.veiculo_id)?.cor || "#3b82f6", placa: veic(v.veiculo_id)?.placa || "Caminhão", recente: posicaoRecente(v.ultima_posicao_em),
+      popupHtml: `<div style="font:13px system-ui"><b>🚚 ${escaparHtml(veic(v.veiculo_id)?.placa || "Caminhão")}</b>${v.posicao_cidade ? "<br/>📍 " + escaparHtml(v.posicao_cidade) : ""}<br/>${v.ultima_posicao_em ? "Posição às " + escaparHtml(new Date(v.ultima_posicao_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })) : ""}${posicaoRecente(v.ultima_posicao_em) ? "" : " (sem sinal)"}<br/><span style="color:#64748b">clique para ver a viagem</span></div>`,
+    }))
 
   const kmTotal = viagens.reduce((s, x) => s + (Number(x.v.distancia_total_km) || 0), 0)
   const emRota = painel.viagens.filter(v => v.status === "em_rota").length
@@ -245,7 +263,8 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
         dicaUf={Object.fromEntries(Object.entries(porUf).map(([u, n]) => [u, `${n} entrega(s)`]))}
         ufSelecionada={uf} onUf={u => setUf(a => a === u ? null : u)}
         onLinha={id => focar(selecionada === id ? null : id)} onLinhaHover={setHover}
-        onPonto={id => { setEntregaSel(id); setDirAberto(true) }} />
+        onPonto={id => { setEntregaSel(id); setDirAberto(true) }}
+        onCaminhao={id => { setEntregaSel(null); setDirAberto(true); focar(id) }} />
 
       {/* TOPO */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between gap-3 p-4">
@@ -366,6 +385,21 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
                                 <span className="shrink-0 font-semibold">{feitas}/{paradas.length} entregues</span>
                               </div>
                               <div className="truncate text-[11px] text-blue-300">{prox ? <>➜ indo para <b className="text-white">{prox.cidade || prox.destinatario}</b></> : "✓ todas entregues · voltando"}</div>
+                              <div className="flex items-center gap-2 text-[11px]">
+                                {v.ultima_lat != null ? (
+                                  <>
+                                    <span className={`min-w-0 flex-1 truncate ${posicaoRecente(v.ultima_posicao_em) ? "text-slate-200" : "text-amber-300"}`}>
+                                      📍 {v.posicao_cidade || "posição recebida"}{v.ultima_posicao_em && agora ? ` · ${haQuanto(v.ultima_posicao_em, agora.getTime())}` : ""}{posicaoRecente(v.ultima_posicao_em) ? "" : " (sem sinal)"}
+                                    </span>
+                                    <span role="button" tabIndex={0} title="Mostrar o caminhão no mapa"
+                                      onClick={ev => { ev.stopPropagation(); irAoCaminhao(v) }}
+                                      onKeyDown={ev => { if (ev.key === "Enter") { ev.stopPropagation(); irAoCaminhao(v) } }}
+                                      className="inline-flex shrink-0 items-center gap-1 rounded-md bg-blue-500/25 px-1.5 py-0.5 font-semibold text-blue-200 hover:bg-blue-500/40">
+                                      <Locate className="h-3 w-3" /> localizar
+                                    </span>
+                                  </>
+                                ) : <span className="text-slate-500">📍 sem GPS: o motorista ainda não abriu o link da viagem</span>}
+                              </div>
                             </div>
                           )
                         })()}
@@ -390,7 +424,7 @@ export function PainelTelaCheia({ painel }: { painel: EntPainel }) {
                 onFechar={() => setEntregaSel(null)} onEsconder={() => setDirAberto(false)}
                 onViagem={id => { setEntregaSel(null); focar(id) }} />
             ) : daSelecionada ? (
-              <DetalheViagem x={daSelecionada} painel={painel} onFechar={() => focar(null)} onEsconder={() => setDirAberto(false)} />
+              <DetalheViagem x={daSelecionada} painel={painel} onFechar={() => focar(null)} onEsconder={() => setDirAberto(false)} onLocalizar={() => irAoCaminhao(daSelecionada.v)} />
             ) : (
               <>
                 <div className="flex items-center justify-between px-4 py-3">
@@ -586,11 +620,12 @@ function DetalheEntrega({ e, painel, hoje, onFechar, onEsconder, onViagem }: {
   )
 }
 
-function DetalheViagem({ x, painel, onFechar, onEsconder }: {
+function DetalheViagem({ x, painel, onFechar, onEsconder, onLocalizar }: {
   x: { v: EntViagem; paradas: EntEntrega[]; ufs: string[] }
   painel: EntPainel
   onFechar: () => void
   onEsconder: () => void
+  onLocalizar?: () => void
 }) {
   const { v, paradas } = x
   const ve = painel.veiculos.find(y => y.id === v.veiculo_id)
@@ -618,6 +653,20 @@ function DetalheViagem({ x, painel, onFechar, onEsconder }: {
           <div className="rounded-lg bg-black/25 p-2"><Route className="mb-0.5 h-3.5 w-3.5 text-slate-400" />{formatarKm(v.distancia_total_km) || "—"}{v.duracao_total_min ? ` · ${formatarDuracao(v.duracao_total_min)}` : ""}</div>
           <div className="rounded-lg bg-black/25 p-2"><Package className="mb-0.5 h-3.5 w-3.5 text-slate-400" />{peso.toLocaleString("pt-BR")} kg{cap ? ` / ${cap.toLocaleString("pt-BR")}` : ""}</div>
         </div>
+        {v.status === "em_rota" && (
+          <div className="mt-2 rounded-lg bg-blue-500/15 p-2 text-xs">
+            <div className="text-[10px] uppercase tracking-wider text-blue-300">Onde está agora</div>
+            {v.ultima_lat != null ? (
+              <>
+                <div className="font-semibold text-white">📍 {v.posicao_cidade || "posição recebida"}</div>
+                <div className={posicaoRecente(v.ultima_posicao_em) ? "text-slate-300" : "text-amber-300"}>
+                  {v.ultima_posicao_em ? `posição às ${new Date(v.ultima_posicao_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}{posicaoRecente(v.ultima_posicao_em) ? " · ao vivo" : " · sem sinal há mais de 15 min"}
+                </div>
+                {onLocalizar && <button onClick={onLocalizar} className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-blue-500/30 px-2 py-1 font-semibold text-blue-100 hover:bg-blue-500/50"><Locate className="h-3 w-3" /> Mostrar no mapa</button>}
+              </>
+            ) : <div className="text-slate-400">Sem GPS: o motorista ainda não abriu o link da viagem no celular.</div>}
+          </div>
+        )}
         {cap > 0 && (
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
             <div className={`h-full rounded-full ${peso > cap ? "bg-red-500" : "bg-orange-400"}`} style={{ width: `${Math.min(100, (peso / cap) * 100)}%` }} />

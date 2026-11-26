@@ -673,6 +673,7 @@ function AbaMapa({ painel, dataDaEntrega, onEditar }: {
                           <span className="text-muted-foreground"> · {[a.proxima.cidade, a.proxima.uf].filter(Boolean).join(" - ")}{a.kmProxima != null ? ` · ~${a.kmProxima} km` : ""}</span></>
                       ) : <span className="font-semibold text-emerald-700">✓ Todas entregues · voltando</span>}
                     </div>
+                    {a.v.posicao_cidade && <div className="mt-0.5 truncate text-xs text-muted-foreground">📍 {a.v.posicao_cidade}</div>}
                   </button>
                 )
               })}

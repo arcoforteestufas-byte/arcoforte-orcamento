@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient, obterUsuario } from "@/utils/supabase/server"
-import { acharCidade, cidadePorIbge, cidadesDaUf, linhaReta, rotaPorEstrada } from "@/lib/geo/geo-server"
+import { acharCidade, cidadeMaisProxima, cidadePorIbge, cidadesDaUf, linhaReta, rotaPorEstrada } from "@/lib/geo/geo-server"
 import {
   CONFIG_ENT_PADRAO, classificarPrazo,
   type ResumoPrazos, type RiscoPrazo, type PedidoDoLeadOpcao, type EntItemCarga,
@@ -216,7 +216,11 @@ export async function obterPainel(): Promise<EntPainel> {
     transportadoras: (tr.data || []) as EntTransportadora[],
     veiculos: (ve.data || []) as EntVeiculo[],
     motoristas: (mo.data || []) as EntMotorista[],
-    viagens: (vi.data || []) as EntViagem[],
+    viagens: ((vi.data || []) as EntViagem[]).map(v => {
+      if (v.ultima_lat == null || v.ultima_lng == null || (v.status !== "em_rota" && !v.ultima_posicao_em)) return v
+      const p = cidadeMaisProxima(Number(v.ultima_lat), Number(v.ultima_lng))
+      return { ...v, posicao_cidade: p ? `${p.km <= 3 ? "em" : "perto de"} ${p.cidade.nome} - ${p.cidade.uf}` : null }
+    }),
     entregas: ((en.data || []) as EntEntrega[]).map(e => ({ ...e, distancia_estimada: !!e.distancia_estimada })),
     usuarios: us.data || [],
     config: normalizarConfig(cfg.data),

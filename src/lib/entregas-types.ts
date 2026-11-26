@@ -89,6 +89,8 @@ export interface EntViagem {
   duracao_total_min: number | null
   trechos: number[] | null
   rota: [number, number][] | null
+  /** cidade mais próxima da última posição do caminhão (calculada ao carregar o painel), ex.: "perto de Palmas - TO" */
+  posicao_cidade?: string | null
 }
 
 export interface EntEntrega {
