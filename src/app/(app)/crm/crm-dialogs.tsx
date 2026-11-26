@@ -134,9 +134,10 @@ export function PerdidoDialog({ alvo, motivos, config, onFechar, onFeito }: {
   motivos: CrmItemLista[]
   config: CrmConfig
   onFechar: () => void
-  onFeito: (motivoId?: string | null) => void
+  onFeito: (motivoId?: string | null, foiParaNutricao?: boolean) => void
 }) {
   const [motivo, setMotivo] = useState("")
+  const [foraDoPerfil, setForaDoPerfil] = useState(false)
   const [obs, setObs] = useState("")
   const [perderOrcs, setPerderOrcs] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -147,9 +148,10 @@ export function PerdidoDialog({ alvo, motivos, config, onFechar, onFeito }: {
       setObs("")
       setPerderOrcs(true)
       setErroMotivo(false)
+      setForaDoPerfil(false)
     }
   }, [alvo])
-  const obrigatorio = config.motivo_perda_obrigatorio
+  const obrigatorio = config.motivo_perda_obrigatorio && !foraDoPerfil
   const ativos = motivos.filter(m => m.ativo)
   const opcoesMotivo = ativos.length > 0 ? ativos : MOTIVOS_FALLBACK
 
@@ -166,11 +168,14 @@ export function PerdidoDialog({ alvo, motivos, config, onFechar, onFeito }: {
       return
     }
     setSalvando(true)
-    const r = await marcarPerdido(alvo.leadId, alvo.etapaId, motivo || null, obs, perderOrcs)
+    const r = await marcarPerdido(alvo.leadId, alvo.etapaId, motivo || null, obs, perderOrcs, foraDoPerfil)
     setSalvando(false)
     if (!r.ok) return toast.error(r.erro)
-    toast.success("Lead marcado como perdido")
-    onFeito(motivo || null)
+    const nutricao = r.dados?.nutricao || null
+    if (foraDoPerfil) toast.success("Lead descartado: fora do perfil, não vai para o Marketing")
+    else if (nutricao) toast.success(`Perda registrada. O lead foi para o funil ${nutricao} para nutrição.`)
+    else toast.success("Lead marcado como perdido (não há funil de Marketing para nutrir)")
+    onFeito(motivo || null, !!nutricao)
   }
 
   return (
@@ -180,6 +185,22 @@ export function PerdidoDialog({ alvo, motivos, config, onFechar, onFeito }: {
           <DialogTitle className="flex items-center gap-2"><XCircle className="text-red-600" /> Marcar como perdido</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="grid gap-2" role="radiogroup" aria-label="Tipo de perda">
+            <label className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${!foraDoPerfil ? "border-[#d97021] bg-orange-50/60" : "hover:bg-muted"}`}>
+              <input type="radio" name="tipo-perda" className="mt-0.5 accent-[#d97021]" checked={!foraDoPerfil} onChange={() => setForaDoPerfil(false)} />
+              <span>
+                <span className="font-medium">Está no nosso perfil de cliente</span>
+                <span className="block text-xs text-muted-foreground">A perda fica registrada e o lead vai para o Marketing continuar aquecendo.</span>
+              </span>
+            </label>
+            <label className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${foraDoPerfil ? "border-red-600 bg-red-50" : "hover:bg-muted"}`}>
+              <input type="radio" name="tipo-perda" className="mt-0.5 accent-red-600" checked={foraDoPerfil} onChange={() => { setForaDoPerfil(true); setErroMotivo(false) }} />
+              <span>
+                <span className="font-medium">Fora do perfil (entrou por engano)</span>
+                <span className="block text-xs text-muted-foreground">Não tem nada a ver com nossos clientes. Fica descartado e não vai para o Marketing.</span>
+              </span>
+            </label>
+          </div>
           <div className="grid gap-1.5">
             <Label htmlFor="motivo-perda">Motivo da perda{obrigatorio ? " *" : ""}</Label>
             <select

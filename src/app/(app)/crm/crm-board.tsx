@@ -414,8 +414,11 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
         motivos={quadro.motivos}
         config={quadro.config}
         onFechar={() => setPerdido(null)}
-        onFeito={(motivoId) => {
-          if (perdido) {
+        onFeito={(motivoId, foiParaNutricao) => {
+          if (perdido && foiParaNutricao) {
+            // foi para o funil de Marketing: sai deste quadro
+            setLeads(ls => ls.filter(x => x.id !== perdido.leadId))
+          } else if (perdido) {
             const agora = new Date().toISOString()
             setLeads(ls => ls.map(x => x.id === perdido.leadId ? { ...x, status: "perdido", etapa_id: perdido.etapaId, perdido_em: agora, etapa_desde: agora, motivo_perda_id: motivoId ?? null } : x))
           }

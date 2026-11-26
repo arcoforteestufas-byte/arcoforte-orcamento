@@ -665,8 +665,9 @@ export async function marcarPerdido(
   etapaId: string,
   motivoId: string | null,
   obs: string | null,
-  perderOrcamentos: boolean
-): Promise<Resultado> {
+  perderOrcamentos: boolean,
+  foraDoPerfil = false
+): Promise<Resultado<{ nutricao: string | null }>> {
   const { supabase, user } = await sessao()
   if (!user) return { ok: false, erro: "Não autenticado" }
 
@@ -675,12 +676,13 @@ export async function marcarPerdido(
     supabase.from("crm_config").select("motivo_perda_obrigatorio").eq("id", 1).maybeSingle(),
   ])
   if (etapa?.tipo !== "perdido") return { ok: false, erro: "Etapa inválida para perda." }
-  if ((cfg?.motivo_perda_obrigatorio ?? true) && !motivoId) return { ok: false, erro: "Motivo da perda é obrigatório" }
+  // lead fora do perfil (entrou por engano) não precisa de motivo de negociação
+  if (!foraDoPerfil && (cfg?.motivo_perda_obrigatorio ?? true) && !motivoId) return { ok: false, erro: "Motivo da perda é obrigatório" }
 
   const ehFallback = motivoId?.startsWith("fallback:")
   const motivoUuid = ehFallback ? null : motivoId
   const nomeFallback = ehFallback ? motivoId!.replace(/^fallback:/, "") : ""
-  const obsFinal = [nomeFallback, obs?.trim()].filter(Boolean).join(" — ") || null
+  const obsFinal = [foraDoPerfil ? "Fora do perfil (entrou por engano)" : "", nomeFallback, obs?.trim()].filter(Boolean).join(" — ") || null
 
   const agora = new Date().toISOString()
   const { data, error } = await supabase.from("crm_leads").update({
@@ -700,10 +702,56 @@ export async function marcarPerdido(
     const { data: m } = await supabase.from("crm_motivos_perda").select("nome").eq("id", motivoUuid).maybeSingle()
     nomeMotivo = m?.nome || ""
   }
-  await registrar(supabase, id, "perdido", `Lead PERDIDO${nomeMotivo ? ` — ${nomeMotivo}` : ""}${obs?.trim() ? `: ${obs.trim()}` : ""}`)
+  await registrar(supabase, id, "perdido",
+    `Lead PERDIDO${foraDoPerfil ? " — FORA DO PERFIL (não vai para nutrição)" : ""}${nomeMotivo ? ` — ${nomeMotivo}` : ""}${obs?.trim() ? `: ${obs.trim()}` : ""}`)
+
+  let nutricao: string | null = null
+  if (foraDoPerfil) {
+    // marca no lead para ninguém voltar a trabalhar nele
+    const { data: l } = await supabase.from("crm_leads").select("campos").eq("id", id).maybeSingle()
+    await supabase.from("crm_leads").update({ campos: { ...((l?.campos as Record<string, unknown>) || {}), fora_do_perfil: true } }).eq("id", id)
+  } else {
+    nutricao = await enviarParaNutricao(supabase, id)
+  }
   revalidar(id)
   revalidatePath("/orcamentos")
-  return { ok: true }
+  return { ok: true, dados: { nutricao } }
+}
+
+/**
+ * Lead perdido que está no perfil da ArcoForte vai para o funil de Marketing (o funil com
+ * "Marketing" no nome), na etapa de nutrição, com próxima ação em 30 dias. A perda fica
+ * registrada no histórico. Se não houver funil de Marketing (ou o envio falhar), o lead
+ * continua Perdido. Devolve o nome do funil para onde foi, ou null.
+ */
+async function enviarParaNutricao(supabase: Supa, leadId: string): Promise<string | null> {
+  const { data: lead } = await supabase.from("crm_leads").select("funil_id").eq("id", leadId).maybeSingle()
+  const { data: funis } = await supabase.from("crm_funis").select("id, nome, ativo, ordem").ilike("nome", "%marketing%").order("ordem")
+  const destino = (funis || []).find(f => f.ativo !== false && f.id !== lead?.funil_id)
+  if (!destino) return null
+
+  let { data: msg, error } = await supabase.rpc("crm_enviar_lead", { p_lead: leadId, p_funil: destino.id, p_vendedor: null })
+  if (!error && msg) {
+    // o responsável atual não trabalha no Marketing: entrega para alguém da equipe do Marketing
+    const { data: equipe } = await supabase.from("crm_funil_usuarios").select("usuario_id").eq("funil_id", destino.id).limit(1)
+    if (equipe?.[0]) {
+      ;({ data: msg, error } = await supabase.rpc("crm_enviar_lead", { p_lead: leadId, p_funil: destino.id, p_vendedor: equipe[0].usuario_id }))
+    }
+  }
+  if (error || msg) return null
+
+  const { data: etapas } = await supabase.from("crm_etapas").select("id, nome")
+    .eq("funil_id", destino.id).eq("tipo", "aberta").ilike("nome", "%nutri%").order("ordem").limit(1)
+  const etapa = etapas?.[0]
+  const daqui30 = new Date(Date.now() + 30 * 86400000)
+  const proxima = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(daqui30)
+  await supabase.from("crm_leads").update({
+    ...(etapa ? { etapa_id: etapa.id, etapa_desde: new Date().toISOString() } : {}),
+    proxima_acao_em: proxima,
+  }).eq("id", leadId)
+  await registrar(supabase, leadId, "etapa",
+    `Enviado ao funil "${destino.nome}"${etapa ? ` (${etapa.nome})` : ""} para nutrição. Próxima ação em 30 dias.`)
+  return destino.nome
 }
 
 // =====================================================================
