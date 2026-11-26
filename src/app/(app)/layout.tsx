@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { ChatWidget } from "@/components/chat-widget"
+import { Conteudo } from "@/components/layout/conteudo"
 import { SettingsProvider } from "@/contexts/SettingsContext"
 
 import { createClient } from "@/utils/supabase/server"
@@ -24,9 +25,7 @@ export default async function AppLayout({
         <Header user={user} />
         
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 z-10">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+          <Conteudo>{children}</Conteudo>
         </main>
       </div>
 
