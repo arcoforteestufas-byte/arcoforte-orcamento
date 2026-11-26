@@ -77,6 +77,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
   const funilFollowup = funilPai ? quadro.funis.find(f => f.funil_pai_id === funilPai.id) : undefined
   const noFollowup = !!funil?.funil_pai_id
   const [movendoFollowup, setMovendoFollowup] = useState(false)
+  const [aba, setAba] = useState<"negocio" | "entrega" | "qualificacao" | "dados">("negocio")
   const nomeUsuario = (id: string | null) => quadro.usuarios.find(u => u.id === id)?.nome || "—"
   const whats = linkWhatsApp(lead.telefone)
   const equipe = funil?.usuarios || []
@@ -181,7 +182,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
   }
 
   return (
-    <div className="flex flex-col gap-5 pb-12">
+    <div className="flex flex-col gap-5 pb-24 md:pb-12">
       {lead.status === "aberto" && fretes.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-sm">
           <Truck className="h-5 w-5 shrink-0 text-blue-600" />
@@ -213,8 +214,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
         </div>
       )}
       {/* ------------------------------------------------ Cabeçalho */}
-      <div className="rounded-2xl border bg-background shadow-sm overflow-hidden">
-        <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${funil?.cor || "#d97021"}, ${etapa?.cor || "#d97021"})` }} />
+      <div className="rounded-xl border bg-background shadow-sm overflow-hidden">
         <div className="p-5 flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div className="flex items-start gap-3 min-w-0">
             <Link href={quadro.ehLogistica ? "/entregas?aba=vendas" : `/crm?funil=${lead.funil_id}`} className={buttonVariants({ variant: "outline", size: "icon", className: "shrink-0 mt-1" })} title={quadro.ehLogistica ? "Voltar às entregas" : "Voltar ao funil"}>
@@ -223,8 +223,8 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 {funil && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium text-white" style={{ backgroundColor: funil.cor }}>
-                    {funil.nome}
+                  <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: funil.cor }} />{funil.nome}
                   </span>
                 )}
                 {etapa && <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 font-medium">
@@ -235,7 +235,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
                 {lead.status === "ganho" && <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 font-medium text-white">Ganho</span>}
                 {lead.status === "perdido" && <span className="rounded-full bg-red-600 px-2.5 py-0.5 font-medium text-white">Perdido</span>}
               </div>
-              <h1 className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight break-words">{lead.titulo}</h1>
+              <h1 className="mt-1.5 text-2xl font-semibold tracking-tight break-words">{lead.titulo}</h1>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#d97021]/15 text-[9px] font-bold text-[#a8541a]">{iniciais(nomeUsuario(lead.vendedor_id))}</span>
@@ -355,7 +355,24 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
       <div className="grid gap-5 lg:grid-cols-3">
         {/* ------------------------------------------------ Coluna principal */}
         <div className="lg:col-span-2 space-y-5">
-          <Cartao titulo="Negócio: orçamento → proposta → contrato" icone={<FileText className="h-4 w-4 text-[#d97021]" />}
+          <div className="-mb-1 flex gap-1 overflow-x-auto border-b" role="tablist" aria-label="Seções do lead">
+            {([
+              ["negocio", "Negócio", false],
+              ["entrega", "Entrega e frete", false],
+              ["qualificacao", "Qualificação", camposMudaram],
+              ["dados", "Dados do lead", dadosMudaram],
+            ] as const).map(([k, rotulo, sujo]) => (
+              <button key={k} role="tab" aria-selected={aba === k} onClick={() => setAba(k)}
+                className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 pb-2 pt-1 text-sm font-medium transition-colors ${aba === k ? "border-[#d97021] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+                {rotulo}
+                {k === "negocio" && orcamentos.length > 0 && <span className="rounded-full bg-muted px-1.5 text-[11px] tabular-nums text-muted-foreground">{orcamentos.length}</span>}
+                {k === "entrega" && entregas.length > 0 && <span className="rounded-full bg-muted px-1.5 text-[11px] tabular-nums text-muted-foreground">{entregas.length}</span>}
+                {sujo && <span className="h-1.5 w-1.5 rounded-full bg-[#d97021]" title="Alterações não salvas" />}
+              </button>
+            ))}
+          </div>
+          {aba === "negocio" && (<>
+          <Cartao titulo="Negócio: orçamento → proposta → contrato" icone={<FileText className="h-4 w-4 text-muted-foreground" />}
             acoes={podeEditar && (
               <div className="flex gap-1.5">
                 <LigarOrcamento leadId={lead.id} clienteId={lead.cliente_id} onLigado={atualizar} />
@@ -396,12 +413,13 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
               </div>
             )}
           </Cartao>
-
-          <Cartao titulo="Entregas na região" icone={<MapPin className="h-4 w-4 text-[#d97021]" />}>
+          </>)}
+          {aba === "entrega" && (<>
+          <Cartao titulo="Entregas na região" icone={<MapPin className="h-4 w-4 text-muted-foreground" />}>
             <EntregasNaRegiao leadId={lead.id} cidade={lead.cidade} uf={lead.uf} />
           </Cartao>
 
-          <Cartao titulo="Entrega e frete" icone={<Truck className="h-4 w-4 text-[#d97021]" />}
+          <Cartao titulo="Entrega e frete" icone={<Truck className="h-4 w-4 text-muted-foreground" />}
             acoes={lead.status === "ganho" && (
               <Link href={`/entregas?lead=${lead.id}`} className={buttonVariants({ size: "sm", className: "gap-1 bg-emerald-600 hover:bg-emerald-700" })}>
                 <Truck className="h-3.5 w-3.5" /> Programar entrega
@@ -429,8 +447,9 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
               )}
             </div>
           </Cartao>
-
-          <Cartao titulo="Qualificação do lead" icone={<ClipboardList className="h-4 w-4 text-[#d97021]" />}
+          </>)}
+          {aba === "qualificacao" && (<>
+          <Cartao titulo="Qualificação do lead" icone={<ClipboardList className="h-4 w-4 text-muted-foreground" />}
             acoes={podeEditar && camposMudaram && (
               <Button size="sm" className="gap-1 bg-[#d97021] hover:bg-[#c3631b]" disabled={salvando === "campos"} onClick={() => salvar("campos")}>
                 <Save className="h-3.5 w-3.5" /> {salvando === "campos" ? "Salvando..." : "Salvar qualificação"}
@@ -439,8 +458,9 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
             <CamposQualificacao campos={quadro.campos} funilId={lead.funil_id} valores={campos} onChange={setCampos}
               config={quadro.config} desabilitado={!podeEditar} />
           </Cartao>
-
-          <Cartao titulo="Dados do lead" icone={<UserRound className="h-4 w-4 text-[#d97021]" />}
+          </>)}
+          {aba === "dados" && (<>
+          <Cartao titulo="Dados do lead" icone={<UserRound className="h-4 w-4 text-muted-foreground" />}
             acoes={podeEditar && dadosMudaram && (
               <Button size="sm" className="gap-1 bg-[#d97021] hover:bg-[#c3631b]" disabled={salvando === "dados"} onClick={() => salvar("dados")}>
                 <Save className="h-3.5 w-3.5" /> {salvando === "dados" ? "Salvando..." : "Salvar dados"}
@@ -465,6 +485,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
               )}
             </div>
           </Cartao>
+          </>)}
         </div>
 
         {/* ------------------------------------------------ Coluna lateral */}
@@ -473,7 +494,7 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
             <PrazoContrato leadId={lead.id} prazo={lead.prazo_entrega} situacao={prazoInfo} isAdmin={quadro.isAdmin}
               historico={historicoPrazos} onMudou={atualizar} />
           )}
-          <Cartao titulo="Cliente" icone={<UserRound className="h-4 w-4 text-[#d97021]" />}>
+          <Cartao titulo="Cliente" icone={<UserRound className="h-4 w-4 text-muted-foreground" />}>
             <ClienteDoLead lead={lead} cliente={cliente} podeEditar={podeEditar} modo={modoCliente} setModo={setModoCliente}
               onMudou={atualizar}
               depoisDeLigar={(clienteId) => { if (irParaOrcamento) { setIrParaOrcamento(false); abrirOrcamentoNovo(clienteId) } }} />
@@ -507,6 +528,22 @@ export function LeadPagina({ ficha, quadro, orcamentoSalvoId = null, fretes = []
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Celular: atalhos de contato sempre à mão */}
+      {(lead.telefone || whats) && (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t bg-background/95 p-3 backdrop-blur md:hidden">
+          {lead.telefone && (
+            <a href={`tel:${lead.telefone}`} className={buttonVariants({ variant: "outline", className: "flex-1 gap-1.5" })}>
+              <Phone className="h-4 w-4" /> Ligar
+            </a>
+          )}
+          {whats && (
+            <a href={whats} target="_blank" rel="noreferrer" className={buttonVariants({ className: "flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700" })}>
+              <MessageCircle className="h-4 w-4" /> WhatsApp
+            </a>
+          )}
+        </div>
+      )}
 
       <GanhoDialog alvo={ganho} onFechar={() => setGanho(null)} onFeito={() => { setGanho(null); atualizar() }} />
       <PerdidoDialog alvo={perdido} motivos={quadro.motivos} config={quadro.config} onFechar={() => setPerdido(null)} onFeito={() => { setPerdido(null); atualizar() }} />
@@ -731,7 +768,7 @@ function Tarefas({ leadId, tarefas, nomeUsuario, onMudou }: {
   }
 
   return (
-    <Cartao titulo={`Tarefas${abertas ? ` (${abertas})` : ""}`} icone={<ListTodo className="h-4 w-4 text-[#d97021]" />}>
+    <Cartao titulo={`Tarefas${abertas ? ` (${abertas})` : ""}`} icone={<ListTodo className="h-4 w-4 text-muted-foreground" />}>
       <form
         noValidate
         className="space-y-2"
@@ -858,7 +895,7 @@ function Historico({ leadId, atividades, nomeUsuario, userId, isAdmin, onMudou }
   }
 
   return (
-    <Cartao titulo="Histórico" icone={<MessageCircle className="h-4 w-4 text-[#d97021]" />}>
+    <Cartao titulo="Histórico" icone={<MessageCircle className="h-4 w-4 text-muted-foreground" />}>
       <div className="space-y-2">
         <div className="flex flex-wrap gap-1">
           {TIPOS_ATIVIDADE.map(t => (

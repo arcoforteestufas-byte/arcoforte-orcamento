@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import {
-  AlertTriangle, CalendarClock, CheckCircle2, FileText, Flame, ListTodo, MapPin, Plus, Search, Send,
-  Settings, Target, TrendingUp, Trophy, UserRound, Wallet, X, XCircle,
+  AlertTriangle, CalendarClock, CheckCircle2, Clock, FileText, Flame, ListTodo, MapPin, Plus, Search, Send,
+  Settings, SlidersHorizontal, Target, TrendingUp, Trophy, UserRound, Wallet, X, XCircle,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -48,6 +48,8 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
   const [ganho, setGanho] = useState<AlvoEtapa>(null)
   const [perdido, setPerdido] = useState<AlvoEtapa>(null)
   const [enviar, setEnviar] = useState<CrmLead | null>(null)
+  const [maisFiltros, setMaisFiltros] = useState(false)
+  const [etapaMobile, setEtapaMobile] = useState("")
 
   const funil = quadro.funilAtual
   const proximoFunil = quadro.funis.find(f => f.id === funil?.proximo_funil_id)
@@ -219,224 +221,278 @@ export function CrmBoard({ quadro }: { quadro: CrmQuadro }) {
     { rotulo: "Leads quentes", valor: String(resumo.quentes), icone: Flame, cor: "text-red-700 bg-red-100" },
   ]
 
+  const etapasVisiveis = quadro.etapas.filter(e => e.tipo !== "ganho" || funil?.permite_ganho || (porEtapa[e.id] || []).length > 0)
+  const etapaAtivaMobile = etapasVisiveis.find(e => e.id === etapaMobile) || etapasVisiveis.find(e => e.tipo === "aberta") || etapasVisiveis[0]
+  const filtrosExtras = (vendedor && vendedor !== quadro.userId && vendedor !== SEM_RESPONSAVEL ? 1 : 0) + (ordenacao !== "manual" ? 1 : 0) + (periodoFechados !== "30" ? 1 : 0)
+  const temFiltro = !!(temp || busca || vendedor || ordenacao !== "manual" || periodoFechados !== "30")
+  const chip = (ativo: boolean) => cn(
+    "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+    ativo ? "border-foreground bg-foreground text-background" : "bg-background text-muted-foreground hover:text-foreground hover:border-foreground/30",
+  )
+  const cartao = (l: CrmLead) => (
+    <CartaoLead key={l.id} l={l} quadro={quadro} nomeUsuario={nomeUsuario}
+      arrastando={arrastando} cartaoAlvo={cartaoAlvo}
+      onDragStart={() => setArrastando(l.id)}
+      onDragEnd={() => { setArrastando(null); setColunaAlvo(null); setCartaoAlvo(null) }}
+      onDragOver={() => { if (cartaoAlvo !== l.id) setCartaoAlvo(l.id) }}
+      onAbrir={() => router.push(`/crm/lead/${l.id}`)}
+      naFila={equipe.length > 0 && !equipe.includes(l.vendedor_id)}
+      foraDeEtapa={orfaos.has(l.id)}
+      onAssumir={podeAssumir && l.status === "aberto" && l.vendedor_id !== quadro.userId ? () => assumir(l) : undefined} />
+  )
+  const iconeEtapa = (etapa: CrmEtapa) => etapa.tipo === "ganho" ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+    : etapa.tipo === "perdido" ? <XCircle className="h-3.5 w-3.5 shrink-0 text-red-600" />
+    : <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: etapa.cor }} />
+
   return (
-    <div className="flex flex-col gap-4 h-[calc(100vh-7rem)]">
-      {/* ------------------------------------------------ Cabeçalho */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="min-w-0">
-            <h2 className="text-2xl font-bold tracking-tight">CRM</h2>
-            {funil.descricao && <p className="text-sm text-muted-foreground truncate">{funil.descricao}</p>}
-          </div>
+    <div className="flex flex-col gap-3 h-[calc(100vh-7rem)] min-h-0">
+      {/* ------------------------------------------------ Cabeçalho: título, funis e ação principal */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold tracking-tight">CRM</h2>
+          <p className="hidden sm:block text-sm text-muted-foreground truncate">
+            {funil.descricao || `${resumo.qtdAbertos} lead(s) em andamento em ${funilPai?.nome || funil.nome}`}
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input className={cn(inputClasse, "pl-8 w-52 bg-background")} placeholder="Buscar lead, cidade..." value={busca} onChange={e => setBusca(e.target.value)} />
-          </div>
-          {mostraFiltroVendedor && (
-            <select className={cn(inputClasse, "w-auto bg-background")} value={vendedor} onChange={e => setVendedor(e.target.value)}>
-              <option value="">Todos os responsáveis</option>
-              {equipe.length > 0 && <option value={SEM_RESPONSAVEL}>Na fila (sem responsável)</option>}
-              {quadro.usuarios.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-            </select>
-          )}
-          <select className={cn(inputClasse, "w-auto bg-background")} value={ordenacao} onChange={e => setOrdenacao(e.target.value as "manual" | "score")}>
-            <option value="manual">Ordem: manual</option>
-            <option value="score">Ordem: mais quentes</option>
-          </select>
-          <select className={cn(inputClasse, "w-auto bg-background")} value={periodoFechados} onChange={e => setPeriodoFechados(e.target.value)} title="Quais ganhos/perdidos aparecem">
-            <option value="30">Fechados: 30 dias</option>
-            <option value="90">Fechados: 90 dias</option>
-            <option value="365">Fechados: 12 meses</option>
-            <option value="todos">Fechados: todos</option>
-          </select>
+        <div className="flex shrink-0 items-center gap-2">
           {quadro.isAdmin && (
-            <Link href="/admin/configuracoes?tab=crm" title="Configurar funis, etapas e campos" className={buttonVariants({ variant: "outline", size: "icon", className: "bg-background" })}>
+            <Link href="/admin/configuracoes?tab=crm" title="Configurar funis, etapas e campos" aria-label="Configurar CRM"
+              className={buttonVariants({ variant: "ghost", size: "icon" })}>
               <Settings className="h-4 w-4" />
             </Link>
           )}
-          <Button className="gap-1 bg-[#d97021] hover:bg-[#c3631b] shadow-sm" onClick={() => setNovoAberto(true)}>
-            <Plus className="h-4 w-4" /> Novo lead
+          <Button className="gap-1.5 bg-[#d97021] hover:bg-[#c3631b]" onClick={() => setNovoAberto(true)}>
+            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo lead</span><span className="sm:hidden">Novo</span>
           </Button>
         </div>
       </div>
 
-      {/* Abas dos funis */}
-      {abasPrincipais.length > 1 && (
-        <div className="flex items-center gap-1 overflow-x-auto rounded-xl border bg-background p-1 shadow-sm w-fit max-w-full">
-          {abasPrincipais.map((f, i) => {
-            const ativo = f.id === funil.id || f.id === funil.funil_pai_id
-            return (
-              <div key={f.id} className="flex items-center">
-                <button onClick={() => router.push(`/crm?funil=${f.id}`)}
-                  className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all ${ativo ? "text-white shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-                  style={ativo ? { backgroundColor: f.cor } : undefined}>
-                  {!ativo && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: f.cor }} />}
-                  {f.nome}
-                  <span className={`rounded-full px-1.5 text-[11px] ${ativo ? "bg-white/25" : "bg-muted"}`}>{contagemComFilhos(f.id)}</span>
-                </button>
-                {i < abasPrincipais.length - 1 && f.proximo_funil_id === abasPrincipais[i + 1]?.id && (
-                  <span className="px-0.5 text-muted-foreground/40">›</span>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Vendas | Follow-up (funil filho dentro do funil de vendas) */}
-      {funilPai && funilFollowup && (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1 rounded-lg border bg-background p-1 shadow-sm">
-            {[funilPai, funilFollowup].map(f => {
-              const ativo = f.id === funil.id
+      {/* Funis (abas) + Vendas | Follow-up */}
+      {(abasPrincipais.length > 1 || funilFollowup) && (
+        <div className="flex flex-col gap-2 border-b md:flex-row md:items-end md:justify-between">
+          <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label="Funis">
+            {abasPrincipais.map(f => {
+              const ativo = f.id === funil.id || f.id === funil.funil_pai_id
               return (
-                <button key={f.id} onClick={() => router.push(`/crm?funil=${f.id}`)}
-                  className={`flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${ativo ? "text-white shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-                  style={ativo ? { backgroundColor: f.cor } : undefined}>
-                  {f.id === funilFollowup.id ? "Follow-up" : f.nome}
-                  <span className={`rounded-full px-1.5 text-[11px] ${ativo ? "bg-white/25" : "bg-muted"}`}>{quadro.contagemFunis[f.id] || 0}</span>
+                <button key={f.id} onClick={() => router.push(`/crm?funil=${f.id}`)} aria-current={ativo ? "page" : undefined}
+                  className={cn(
+                    "flex shrink-0 items-center gap-2 border-b-2 px-3 pb-2 pt-1 text-sm font-medium transition-colors",
+                    ativo ? "border-[#d97021] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}>
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: f.cor }} />
+                  {f.nome}
+                  <span className="rounded-full bg-muted px-1.5 text-[11px] tabular-nums text-muted-foreground">{contagemComFilhos(f.id)}</span>
                 </button>
               )
             })}
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {noFollowup
-              ? "Leads quentes que receberam proposta e não estão no momento de comprar. Arraste para “Voltar para negociação” quando retomar."
-              : "Cliente não vai comprar agora? Arraste o lead para “Mover para Follow-up”."}
-          </span>
+          </nav>
+          {funilPai && funilFollowup && (
+            <div className="mb-2 inline-flex w-fit items-center rounded-lg bg-muted p-0.5 text-sm" role="tablist" aria-label="Negociação ou Follow-up">
+              {[funilPai, funilFollowup].map(f => {
+                const ativo = f.id === funil.id
+                return (
+                  <button key={f.id} role="tab" aria-selected={ativo} onClick={() => router.push(`/crm?funil=${f.id}`)}
+                    title={f.id === funilFollowup.id ? "Leads quentes que receberam proposta e não estão no momento de comprar" : undefined}
+                    className={cn("flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-all",
+                      ativo ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                    {f.id === funilFollowup.id ? <><CalendarClock className="h-3.5 w-3.5" /> Follow-up</> : "Em negociação"}
+                    <span className="tabular-nums text-xs text-muted-foreground">{quadro.contagemFunis[f.id] || 0}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Indicadores */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+      {/* Indicadores: uma faixa só */}
+      <div className="flex overflow-x-auto rounded-xl border bg-background divide-x shrink-0">
         {kpis.map(k => (
-          <div key={k.rotulo} className="flex items-center gap-3 rounded-xl border bg-background p-3 shadow-sm" title={k.dica}>
-            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${k.cor}`}><k.icone className="h-4 w-4" /></span>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground truncate">{k.rotulo}</div>
-              <div className="text-base font-bold leading-tight truncate">{k.valor}</div>
-              {k.extra && <div className="text-[11px] text-muted-foreground truncate">{k.extra}</div>}
+          <div key={k.rotulo} className="min-w-[150px] flex-1 px-4 py-2.5" title={k.dica}>
+            <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <k.icone className="h-3.5 w-3.5" />{k.rotulo}
             </div>
+            <div className="mt-0.5 text-lg font-semibold tabular-nums leading-tight">{k.valor}</div>
+            {k.extra && <div className="text-[11px] text-muted-foreground truncate">{k.extra}</div>}
           </div>
         ))}
       </div>
 
-      {/* Filtro de temperatura */}
-      <div className="flex flex-wrap items-center gap-1.5 text-xs">
-        {mostraFiltroVendedor && (
-          <>
-            <button onClick={() => setVendedor(vendedor === quadro.userId ? "" : quadro.userId)}
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ring-1 ring-inset transition-colors ${vendedor === quadro.userId
-                ? "bg-[#d97021] text-white ring-[#d97021]" : "bg-background ring-border text-muted-foreground hover:text-foreground"}`}>
-              <UserRound className="h-3 w-3" /> Meus leads
-            </button>
-            {equipe.length > 0 && (
-              <button onClick={() => setVendedor(vendedor === SEM_RESPONSAVEL ? "" : SEM_RESPONSAVEL)}
-                title="Leads que chegaram neste funil e ainda não têm ninguém da equipe como responsável"
-                className={`rounded-full px-2.5 py-1 font-medium ring-1 ring-inset transition-colors ${vendedor === SEM_RESPONSAVEL
-                  ? "bg-amber-500 text-white ring-amber-500" : "bg-background ring-border text-muted-foreground hover:text-foreground"}`}>
-                Na fila (sem responsável)
+      {/* Busca e filtros */}
+      <div className="flex flex-col gap-2 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <input className={cn(inputClasse, "pl-8 bg-background")} placeholder="Buscar lead, cliente, cidade..." value={busca} onChange={e => setBusca(e.target.value)} aria-label="Buscar lead" />
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto">
+            {mostraFiltroVendedor && (
+              <button className={chip(vendedor === quadro.userId)} onClick={() => setVendedor(vendedor === quadro.userId ? "" : quadro.userId)}>
+                <UserRound className="h-3 w-3" /> Meus leads
               </button>
             )}
-            <span className="mx-1 h-4 w-px bg-border" />
-          </>
-        )}
-        <span className="text-muted-foreground mr-1">Temperatura:</span>
-        {([["", "Todos"], ["quente", "Quentes"], ["morno", "Mornos"], ["frio", "Frios"]] as const).map(([v, r]) => (
-          <button key={v} onClick={() => setTemp(v)}
-            className={`rounded-full px-2.5 py-1 font-medium ring-1 ring-inset transition-colors ${temp === v
-              ? v ? TEMPERATURA_INFO[v].classe + " ring-2" : "bg-foreground text-background ring-foreground"
-              : "bg-background ring-border text-muted-foreground hover:text-foreground"}`}>
-            {r}
-          </button>
-        ))}
-        {(temp || busca || vendedor) && (
-          <button className="ml-1 inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground" onClick={() => { setTemp(""); setBusca(""); setVendedor("") }}>
-            <X className="h-3 w-3" /> limpar filtros
-          </button>
+            {mostraFiltroVendedor && equipe.length > 0 && (
+              <button className={chip(vendedor === SEM_RESPONSAVEL)} onClick={() => setVendedor(vendedor === SEM_RESPONSAVEL ? "" : SEM_RESPONSAVEL)}
+                title="Leads que ainda não têm ninguém da equipe como responsável">
+                Na fila
+              </button>
+            )}
+            {(["quente", "morno", "frio"] as const).map(v => (
+              <button key={v} className={chip(temp === v)} onClick={() => setTemp(temp === v ? "" : v)}>
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: TEMPERATURA_INFO[v].cor }} />
+                {TEMPERATURA_INFO[v].rotulo}s
+              </button>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1.5 bg-background" onClick={() => setMaisFiltros(m => !m)} aria-expanded={maisFiltros}>
+            <SlidersHorizontal className="h-4 w-4" /> <span className="hidden sm:inline">Filtros</span>
+            {filtrosExtras > 0 && <span className="rounded-full bg-[#d97021] px-1.5 text-[10px] font-semibold text-white">{filtrosExtras}</span>}
+          </Button>
+          {temFiltro && (
+            <button className="hidden sm:inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => { setTemp(""); setBusca(""); setVendedor(""); setOrdenacao("manual"); setPeriodoFechados("30") }}>
+              <X className="h-3 w-3" /> Limpar
+            </button>
+          )}
+        </div>
+        {maisFiltros && (
+          <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-background p-3">
+            {/* no celular os atalhos ficam aqui */}
+            <div className="flex w-full flex-wrap gap-1.5 sm:hidden">
+              {mostraFiltroVendedor && (
+                <button className={chip(vendedor === quadro.userId)} onClick={() => setVendedor(vendedor === quadro.userId ? "" : quadro.userId)}>
+                  <UserRound className="h-3 w-3" /> Meus leads
+                </button>
+              )}
+              {(["quente", "morno", "frio"] as const).map(v => (
+                <button key={v} className={chip(temp === v)} onClick={() => setTemp(temp === v ? "" : v)}>
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: TEMPERATURA_INFO[v].cor }} />
+                  {TEMPERATURA_INFO[v].rotulo}s
+                </button>
+              ))}
+            </div>
+            {mostraFiltroVendedor && (
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                Responsável
+                <select className={cn(inputClasse, "w-48 bg-background text-foreground")} value={vendedor} onChange={e => setVendedor(e.target.value)}>
+                  <option value="">Todos</option>
+                  {equipe.length > 0 && <option value={SEM_RESPONSAVEL}>Na fila (sem responsável)</option>}
+                  {quadro.usuarios.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                </select>
+              </label>
+            )}
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Ordem dos cartões
+              <select className={cn(inputClasse, "w-44 bg-background text-foreground")} value={ordenacao} onChange={e => setOrdenacao(e.target.value as "manual" | "score")}>
+                <option value="manual">Manual (arrastar)</option>
+                <option value="score">Mais quentes primeiro</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Ganhos e perdidos de
+              <select className={cn(inputClasse, "w-40 bg-background text-foreground")} value={periodoFechados} onChange={e => setPeriodoFechados(e.target.value)}>
+                <option value="30">Últimos 30 dias</option>
+                <option value="90">Últimos 90 dias</option>
+                <option value="365">Últimos 12 meses</option>
+                <option value="todos">Todo o período</option>
+              </select>
+            </label>
+            {temFiltro && (
+              <Button variant="ghost" size="sm" className="gap-1 sm:hidden" onClick={() => { setTemp(""); setBusca(""); setVendedor(""); setOrdenacao("manual"); setPeriodoFechados("30") }}>
+                <X className="h-3 w-3" /> Limpar filtros
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
-      {/* ------------------------------------------------ Quadro */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden pb-2 -mx-1 px-1">
-        <div className="flex gap-3 h-full min-w-max">
-          {/* Ganho só no funil de vendas (a coluna só aparece fora dele se ainda tiver cartões antigos) */}
-          {quadro.etapas.filter(e => e.tipo !== "ganho" || funil?.permite_ganho || (porEtapa[e.id] || []).length > 0).map(etapa => {
+      {/* ------------------------------------------------ Celular: uma etapa por vez */}
+      <div className="flex min-h-0 flex-1 flex-col gap-2 md:hidden">
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+          {etapasVisiveis.map(etapa => {
+            const ativa = etapa.id === etapaAtivaMobile?.id
+            return (
+              <button key={etapa.id} onClick={() => setEtapaMobile(etapa.id)}
+                className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium",
+                  ativa ? "border-foreground bg-foreground text-background" : "bg-background text-muted-foreground")}>
+                {iconeEtapa(etapa)}{etapa.nome}
+                <span className="tabular-nums opacity-70">{(porEtapa[etapa.id] || []).length}</span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-4">
+          {etapaAtivaMobile && (porEtapa[etapaAtivaMobile.id] || []).map(cartao)}
+          {etapaAtivaMobile && (porEtapa[etapaAtivaMobile.id] || []).length === 0 && (
+            <p className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">Nenhum lead nesta etapa.</p>
+          )}
+        </div>
+      </div>
+
+      {/* ------------------------------------------------ Quadro (computador) */}
+      <div className="hidden min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-2 md:block">
+        <div className="flex h-full min-w-max gap-3">
+          {etapasVisiveis.map(etapa => {
             const cards = porEtapa[etapa.id] || []
             const total = cards.reduce((s, l) => s + valorDoLead(l), 0)
             const ativa = colunaAlvo === etapa.id
             return (
-              <div key={etapa.id}
-                className={`w-[280px] shrink-0 flex flex-col rounded-xl bg-slate-100/80 ring-1 ring-inset ring-slate-200/70 transition-all ${ativa ? "ring-2 ring-[#d97021] bg-orange-50" : ""}`}
+              <section key={etapa.id} aria-label={etapa.nome}
+                className={cn("flex w-[272px] shrink-0 flex-col rounded-xl bg-muted/50 transition-colors", ativa && "bg-orange-50 ring-2 ring-[#d97021]")}
                 {...eventosColuna(etapa.id, etapa)}>
-                <div className="px-3 pt-3 pb-2">
+                <header className="px-3 pb-2 pt-3">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 font-semibold text-sm min-w-0">
-                      {etapa.tipo === "ganho" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                        : etapa.tipo === "perdido" ? <XCircle className="h-4 w-4 shrink-0 text-red-600" />
-                        : <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: etapa.cor }} />}
-                      <span className="truncate">{etapa.nome}</span>
-                    </span>
-                    <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium shadow-sm">{cards.length}</span>
+                    <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+                      {iconeEtapa(etapa)}<span className="truncate">{etapa.nome}</span>
+                      <span className="text-xs font-normal tabular-nums text-muted-foreground">{cards.length}</span>
+                    </h3>
+                    {etapa.tipo === "aberta" && etapa.probabilidade ? (
+                      <span className="text-[11px] tabular-nums text-muted-foreground" title="Chance de fechar nesta etapa">{etapa.probabilidade}%</span>
+                    ) : null}
                   </div>
-                  <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{brl.format(total)}</span>
-                    {etapa.tipo === "aberta" && etapa.probabilidade ? <span>{etapa.probabilidade}% chance</span> : null}
-                  </div>
-                  <div className="mt-2 h-0.5 rounded-full" style={{ backgroundColor: etapa.cor, opacity: 0.6 }} />
-                </div>
-
-                <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
-                  {cards.map(l => (
-                    <CartaoLead key={l.id} l={l} quadro={quadro} nomeUsuario={nomeUsuario}
-                      arrastando={arrastando} cartaoAlvo={cartaoAlvo}
-                      onDragStart={() => setArrastando(l.id)}
-                      onDragEnd={() => { setArrastando(null); setColunaAlvo(null); setCartaoAlvo(null) }}
-                      onDragOver={() => { if (cartaoAlvo !== l.id) setCartaoAlvo(l.id) }}
-                      onAbrir={() => router.push(`/crm/lead/${l.id}`)}
-                      naFila={equipe.length > 0 && !equipe.includes(l.vendedor_id)}
-                      foraDeEtapa={orfaos.has(l.id)}
-                      onAssumir={podeAssumir && l.status === "aberto" && l.vendedor_id !== quadro.userId ? () => assumir(l) : undefined} />
-                  ))}
+                  <div className="mt-0.5 text-xs tabular-nums text-muted-foreground">{brl.format(total)}</div>
+                </header>
+                <div className="flex-1 space-y-2 overflow-y-auto px-2 pb-2">
+                  {cards.map(cartao)}
                   {cards.length === 0 && (
-                    <div className="text-xs text-muted-foreground text-center py-8 border-2 border-dashed border-slate-300/70 rounded-lg">
+                    <div className="rounded-lg border-2 border-dashed border-muted-foreground/15 py-8 text-center text-xs text-muted-foreground">
                       {etapa.tipo === "aberta" ? "Arraste leads para cá" : etapa.tipo === "ganho" ? "Solte aqui para ganhar" : "Solte aqui para perder"}
                     </div>
                   )}
                 </div>
-              </div>
+              </section>
             )
           })}
+        </div>
+      </div>
 
-          {/* Coluna para mover entre Vendas e Follow-up */}
+      {/* Destinos ao arrastar: aparecem só enquanto um cartão está sendo arrastado */}
+      {arrastando && (funilFollowup || quadro.funis.length > 1) && (
+        <div className="fixed inset-x-0 bottom-6 z-40 hidden justify-center gap-3 px-4 md:flex">
           {funilFollowup && (
             <div {...eventosColuna(COLUNA_FOLLOWUP, COLUNA_FOLLOWUP)}
-              className={`w-[200px] shrink-0 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 text-center transition-all ${colunaAlvo === COLUNA_FOLLOWUP ? "border-sky-500 bg-sky-50" : "border-slate-300"}`}>
-              <span className="flex h-10 w-10 items-center justify-center rounded-full text-white" style={{ backgroundColor: noFollowup ? (funilPai?.cor || "#d97021") : funilFollowup.cor }}>
-                <CalendarClock className="h-4 w-4" />
-              </span>
-              <div className="text-sm font-semibold">{noFollowup ? "Voltar para negociação" : "Mover para Follow-up"}</div>
-              <p className="text-xs text-muted-foreground">
-                {noFollowup ? `O lead volta para ${funilPai?.nome || "Vendas"}, em Negociação.` : "Não vai comprar agora, não respondeu ou ficou de dar resposta depois."}
-              </p>
+              className={cn("flex w-72 items-center gap-3 rounded-xl border-2 border-dashed bg-background/95 p-3 shadow-lg backdrop-blur transition-colors",
+                colunaAlvo === COLUNA_FOLLOWUP ? "border-sky-500 bg-sky-50" : "border-slate-300")}>
+              <CalendarClock className="h-5 w-5 shrink-0 text-sky-600" />
+              <div className="text-left">
+                <div className="text-sm font-semibold">{noFollowup ? "Voltar para negociação" : "Mover para Follow-up"}</div>
+                <div className="text-xs text-muted-foreground">{noFollowup ? `Volta para ${funilPai?.nome || "Vendas"}, em Negociação` : "Não vai comprar agora"}</div>
+              </div>
             </div>
           )}
-
-          {/* Coluna para enviar ao próximo funil */}
           {quadro.funis.length > 1 && (
             <div {...eventosColuna(COLUNA_ENVIAR, COLUNA_ENVIAR)}
-              className={`w-[200px] shrink-0 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 text-center transition-all ${colunaAlvo === COLUNA_ENVIAR ? "border-[#d97021] bg-orange-50" : "border-slate-300"}`}>
-              <span className="flex h-10 w-10 items-center justify-center rounded-full text-white" style={{ backgroundColor: proximoFunil?.cor || "#94a3b8" }}>
-                <Send className="h-4 w-4" />
-              </span>
-              <div className="text-sm font-semibold">{proximoFunil ? `Enviar para ${proximoFunil.nome}` : "Enviar para outro funil"}</div>
-              <p className="text-xs text-muted-foreground">Arraste o lead aqui quando ele estiver pronto para a próxima equipe.</p>
+              className={cn("flex w-72 items-center gap-3 rounded-xl border-2 border-dashed bg-background/95 p-3 shadow-lg backdrop-blur transition-colors",
+                colunaAlvo === COLUNA_ENVIAR ? "border-[#d97021] bg-orange-50" : "border-slate-300")}>
+              <Send className="h-5 w-5 shrink-0 text-[#d97021]" />
+              <div className="text-left">
+                <div className="text-sm font-semibold">{proximoFunil ? `Enviar para ${proximoFunil.nome}` : "Enviar para outro funil"}</div>
+                <div className="text-xs text-muted-foreground">Passa o lead para outra equipe</div>
+              </div>
             </div>
           )}
         </div>
-      </div>
+      )}
 
       <NovoLeadDialog
         aberto={novoAberto}
@@ -522,84 +578,91 @@ function CartaoLead({ l, quadro, nomeUsuario, arrastando, cartaoAlvo, onDragStar
   const temCampos = quadro.campos.some(c => c.ativo)
 
   return (
-    <div
+    <article
       draggable
       onDragStart={e => { onDragStart(); e.dataTransfer.effectAllowed = "move" }}
       onDragEnd={onDragEnd}
       onDragOver={onDragOver}
       onClick={onAbrir}
-      className={`group relative rounded-lg border bg-background p-3 shadow-sm cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md
-        ${arrastando === l.id ? "opacity-40 rotate-1" : ""}
-        ${cartaoAlvo === l.id && arrastando && arrastando !== l.id ? "border-t-4 border-t-[#d97021]" : ""}`}
-      style={{ borderLeft: `3px solid ${l.status === "aberto" && temCampos ? TEMPERATURA_INFO[t].cor : "transparent"}` }}
+      onKeyDown={e => { if (e.key === "Enter") onAbrir() }}
+      tabIndex={0}
+      aria-label={l.titulo}
+      className={cn(
+        "group relative cursor-pointer rounded-lg border bg-background p-3 shadow-xs outline-none transition-[border-color,box-shadow] hover:border-foreground/20 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-[#d97021]/50",
+        arrastando === l.id && "opacity-40",
+        cartaoAlvo === l.id && arrastando && arrastando !== l.id && "border-t-2 border-t-[#d97021]",
+      )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-semibold text-sm leading-snug line-clamp-2">{l.titulo}</div>
+          <div className="text-sm font-medium leading-snug line-clamp-2">{l.titulo}</div>
           {l.cliente_nome && l.cliente_nome !== l.titulo && (
-            <div className="text-xs text-muted-foreground truncate">{l.cliente_nome}</div>
+            <div className="truncate text-xs text-muted-foreground">{l.cliente_nome}</div>
           )}
         </div>
-        <span title={nomeUsuario(l.vendedor_id)} className="shrink-0 h-7 w-7 rounded-full bg-gradient-to-br from-[#f3a35f] to-[#d97021] text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+        <span title={nomeUsuario(l.vendedor_id)} aria-label={`Responsável: ${nomeUsuario(l.vendedor_id)}`}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
           {iniciais(nomeUsuario(l.vendedor_id))}
         </span>
       </div>
 
-      {(l.cidade || l.uf) && (
-        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1.5">
-          <MapPin className="h-3 w-3 shrink-0" /> <span className="truncate">{[l.cidade, l.uf].filter(Boolean).join(" - ")}</span>
+      <div className="mt-2 flex items-end justify-between gap-2">
+        <div className="min-w-0">
+          <div className={cn("text-sm font-semibold tabular-nums", l.status === "ganho" && "text-emerald-700")}>
+            {valor ? brl.format(valor) : <span className="text-xs font-normal text-muted-foreground">Sem valor</span>}
+          </div>
+          {(l.cidade || l.uf) && (
+            <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+              <MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{[l.cidade, l.uf].filter(Boolean).join(" - ")}</span>
+            </div>
+          )}
+        </div>
+        {temCampos && l.status === "aberto" && (
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium" style={{ color: TEMPERATURA_INFO[t].cor }} title={`Score ${l.score}`}>
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: TEMPERATURA_INFO[t].cor }} />{TEMPERATURA_INFO[t].rotulo}
+          </span>
+        )}
+      </div>
+
+      {(l.status === "aberto" || !!l.qtd_orcamentos || foraDeEtapa || (l.status === "perdido" && l.motivo_perda_id)) && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2 text-[11px] text-muted-foreground">
+          {l.status === "aberto" && (
+            <span className={cn("inline-flex items-center gap-1", parado && "font-medium text-amber-700")} title="Dias nesta etapa">
+              {parado ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{dias}d
+            </span>
+          )}
+          {l.proxima_acao_em && l.status === "aberto" && (
+            <span className={cn("inline-flex items-center gap-1", contatoAtrasado && "font-medium text-red-600")} title={contatoAtrasado ? "Próximo contato atrasado" : "Próximo contato"}>
+              <CalendarClock className="h-3 w-3" />{formatarData(l.proxima_acao_em).slice(0, 5)}
+            </span>
+          )}
+          {!!l.tarefas_abertas && (
+            <span className={cn("inline-flex items-center gap-1", l.tarefa_atrasada && "font-medium text-red-600")} title={l.tarefa_atrasada ? "Tarefa atrasada" : "Tarefas abertas"}>
+              <ListTodo className="h-3 w-3" />{l.tarefas_abertas}
+            </span>
+          )}
+          {!!l.qtd_orcamentos && (
+            <span className="inline-flex items-center gap-1" title="Orçamentos">
+              <FileText className="h-3 w-3" />{l.qtd_orcamentos}
+            </span>
+          )}
+          {naFila && l.status === "aberto" && <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-800">na fila</span>}
+          {foraDeEtapa && (
+            <span className="rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-700" title="A etapa gravada não é deste funil. Arraste o cartão para a coluna certa.">sem etapa</span>
+          )}
+          {l.status === "perdido" && l.motivo_perda_id && (
+            <span className="rounded bg-red-50 px-1.5 py-0.5 text-red-700">{quadro.motivos.find(m => m.id === l.motivo_perda_id)?.nome}</span>
+          )}
+          {onAssumir && (
+            <button onClick={e => { e.stopPropagation(); onAssumir() }}
+              className={cn("ml-auto rounded-md px-2 py-0.5 font-semibold transition-colors",
+                naFila ? "bg-[#d97021] text-white hover:bg-[#c3631b]" : "text-[#d97021] opacity-0 hover:bg-orange-50 group-hover:opacity-100 focus:opacity-100")}>
+              Assumir
+            </button>
+          )}
         </div>
       )}
-
-      <div className="flex items-center justify-between gap-2 mt-2.5">
-        <span className={`text-base font-bold ${l.status === "ganho" ? "text-emerald-700" : ""}`}>
-          {valor ? brl.format(valor) : <span className="text-muted-foreground font-normal text-xs">sem valor</span>}
-        </span>
-        {temCampos && l.status === "aberto" && <ScoreBadge score={l.score} config={quadro.config} />}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2.5 border-t text-[11px]">
-        {l.status === "aberto" && (
-          <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 ${parado ? "bg-amber-100 text-amber-800 font-medium" : "bg-muted text-muted-foreground"}`}
-            title="Dias nesta etapa">
-            {parado && <AlertTriangle className="h-3 w-3" />}{dias}d
-          </span>
-        )}
-        {!!l.qtd_orcamentos && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-blue-50 text-blue-700 px-1.5 py-0.5" title="Orçamentos">
-            <FileText className="h-3 w-3" />{l.qtd_orcamentos}
-          </span>
-        )}
-        {!!l.tarefas_abertas && (
-          <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 ${l.tarefa_atrasada ? "bg-red-100 text-red-700 font-medium" : "bg-muted text-muted-foreground"}`}
-            title={l.tarefa_atrasada ? "Tarefa atrasada" : "Tarefas abertas"}>
-            <ListTodo className="h-3 w-3" />{l.tarefas_abertas}
-          </span>
-        )}
-        {l.proxima_acao_em && l.status === "aberto" && (
-          <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 ${contatoAtrasado ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`} title="Próximo contato">
-            <CalendarClock className="h-3 w-3" />{formatarData(l.proxima_acao_em).slice(0, 5)}
-          </span>
-        )}
-        {foraDeEtapa && (
-          <span className="rounded bg-red-100 text-red-700 px-1.5 py-0.5 font-medium" title="A etapa gravada não é deste funil. Arraste o cartão para a coluna certa.">
-            sem etapa — arraste para uma coluna
-          </span>
-        )}
-        {naFila && l.status === "aberto" && (
-          <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 font-medium" title="Ninguém da equipe deste funil é o responsável ainda">na fila</span>
-        )}
-        {onAssumir && (
-          <button onClick={e => { e.stopPropagation(); onAssumir() }}
-            className={`ml-auto rounded-md px-2 py-0.5 font-semibold transition-colors ${naFila ? "bg-[#d97021] text-white hover:bg-[#c3631b]" : "text-[#d97021] opacity-0 group-hover:opacity-100 hover:bg-orange-50"}`}>
-            Assumir
-          </button>
-        )}
-        {l.status === "perdido" && l.motivo_perda_id && (
-          <span className="rounded bg-red-50 text-red-700 px-1.5 py-0.5">{quadro.motivos.find(m => m.id === l.motivo_perda_id)?.nome}</span>
-        )}
-      </div>
-    </div>
+    </article>
   )
 }
 
